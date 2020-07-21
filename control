@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# release version
+version=1.0.0
+
+CWD=$(cd $(dirname $0)/; pwd)
+cd $CWD
+
+usage()
+{
+	echo $"Usage: $0 {start|stop|restart|status|build|pack} <module>"
+	exit 0
+}
+
+build()
+{
+	export GO111MODULE=on
+    export GOPROXY=https://goproxy.cn
+	go build -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable zbxtable.go
+}
+
+pack()
+{
+	mkdir -p zbxtable-${version}
+    mv zbxtable zbxtable-${version}/
+    mv zbxtable.service zbxtable-${version}/
+    mv msty.ttf zbxtable-${version}/
+    mv keys/ zbxtable-${version}/
+    mv conf/ zbxtable-${version}/
+    mv nginx.conf zbxtable-${version}/
+	tar zcvf zbxtable-${version}.tar.gz zbxtable-${version}/
+}
+
+case "$1" in
+	build)
+		build $2
+		;;
+	pack)
+		pack $2
+		;;
+	*)
+		usage
+esac
