@@ -19,7 +19,8 @@ var Web = cli.Command{
 //runWeb 启动web
 func runWeb(c *cli.Context) {
 	logs.SetLogger(logs.AdapterFile, `{"filename":"logs/zbxtable.log","level":7,"maxlines":0,
-		"maxsize":0,"daily":true,"maxdays":10,"color":true}`)
+		"maxsize":0,"daily":true,"maxdays":10,
+		"color":true,"perm":"0755"}`)
 
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
