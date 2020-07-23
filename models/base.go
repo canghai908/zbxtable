@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/astaxie/beego"
@@ -19,7 +20,7 @@ func TableName(str string) string {
 //API for zabbix
 var API = &zabbix.API{}
 
-//ModelsInit init
+//ModelsInit  p
 func ModelsInit() {
 	//database init
 	dbhost := beego.AppConfig.String("hostname")
@@ -38,13 +39,19 @@ func ModelsInit() {
 	if beego.AppConfig.String("runmode") == "dev" {
 		orm.Debug = true
 	}
+	//database init
 	DatabaseInit()
-	//zabbix init
+	//zabbix api login
 	ZabbixServer := beego.AppConfig.String("zabbix_server")
 	ZabbixUser := beego.AppConfig.String("zabbix_user")
 	ZabbixPass := beego.AppConfig.String("zabbix_pass")
 	API = zabbix.NewAPI(ZabbixServer + "/api_jsonrpc.php")
-	API.Login(ZabbixUser, ZabbixPass)
+	_, err := API.Login(ZabbixUser, ZabbixPass)
+	if err != nil {
+		beego.Error("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+	//web登录
 	Intt()
 }
 

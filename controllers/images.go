@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/astaxie/beego"
@@ -38,7 +39,7 @@ func (c *ImagesController) GetOne() {
 	b := strings.Split(all, "?")
 	StartTime = b[0]
 	EndTime = strings.Split(b[1], "=")[1]
-	graphid := idStr
+	GraphID := idStr
 	c.Ctx.ResponseWriter.Header().Set("Content-Type", "image/png")
 	c.Ctx.ResponseWriter.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
 	c.Ctx.ResponseWriter.Header().Set("Pragma", "no-cache, value")
@@ -46,8 +47,23 @@ func (c *ImagesController) GetOne() {
 	client1 := &http.Client{nil, nil,
 		models.JAR, 99999999999999}
 	ZabbixServer := beego.AppConfig.String("zabbix_server")
-	reqest1, err := http.NewRequest("GET", ZabbixServer+"/chart2.php?graphid="+graphid+"&from="+StartTime+"&to="+EndTime+
-		"&profileIdx=web.graphs.filter&profileIdx2=200&width=400", nil)
+	//imgurl
+	imgurl := ZabbixServer + "/chart2.php?"
+	data := url.Values{}
+	URL, err := url.Parse(imgurl)
+	if err != nil {
+		beego.Error("Fatal error ", err.Error())
+	}
+	data.Set("graphid", GraphID)
+	data.Set("StartTime", StartTime)
+	data.Set("EndTime", EndTime)
+	data.Set("profileIdx", "web.graphs.filter")
+	data.Set("profileIdx2", "200")
+	data.Set("width", "400")
+	//Encode rul
+	URL.RawQuery = data.Encode()
+	urlPath := URL.String()
+	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())
 	}
