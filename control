@@ -8,7 +8,7 @@ cd $CWD
 
 usage()
 {
-	echo $"Usage: $0 {start|stop|restart|status|build|pack} <module>"
+	echo $"Usage: $0 {build|pack}"
 	exit 0
 }
 
@@ -22,12 +22,12 @@ build()
 pack()
 {
 	mkdir -p zbxtable-${version}
-    mv zbxtable zbxtable-${version}/
-    mv zbxtable.service zbxtable-${version}/
-    mv msty.ttf zbxtable-${version}/
-    mv keys/ zbxtable-${version}/
-    mv conf/ zbxtable-${version}/
-    mv nginx.conf zbxtable-${version}/
+    cp zbxtable zbxtable-${version}/
+    cp zbxtable.service zbxtable-${version}/
+    cp msty.ttf zbxtable-${version}/
+    cp keys/ zbxtable-${version}/
+    cp conf/ zbxtable-${version}/
+    cp nginx.conf zbxtable-${version}/
 	tar zcvf zbxtable-${version}.tar.gz zbxtable-${version}/
 }
 
