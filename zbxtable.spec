@@ -1,10 +1,10 @@
 Name:		zbxtable
-Version:	1.0.0
+Version:	%{version}
 Release: 	1%{?alphatag:.%{alphatag}}%{?dist}
 Summary:	A tools export table on Zabbix
 Group:		Applications/Internet
 License:	Apache-2.0
-URL:		https://blog.cactifans.com/
+URL:		https://zbxtable.cactifans.com
 Source0:	zbxtable-%{version}%{?alphatag:%{alphatag}}.tar.gz
 Requires(pre):		/usr/sbin/useradd
 

@@ -3,8 +3,6 @@ package models
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/astaxie/beego"
 )
 
 //GetGraphByHostID by id
@@ -27,9 +25,8 @@ func GetGraphByHostID(hostid int, start, end int64) ([]GraphInfo, int64, error) 
 	}
 	var bb GraphInfo
 	var cc []GraphInfo
-	appurl := beego.AppConfig.String("appurl")
 	for _, v := range hb {
-		bb.GraphID = appurl + "/v1/images/" + v.GraphID + "?from=" + StartTime + "?to=" + EndTime
+		bb.GraphID = "/v1/images/" + v.GraphID + "?from=" + StartTime + "?to=" + EndTime
 		bb.Name = v.Name
 		cc = append(cc, bb)
 	}

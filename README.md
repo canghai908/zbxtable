@@ -43,7 +43,7 @@ MS-Agent: 安装在 Zabbix Server 上,用于接收 Zabbix Server 产生的告警
 
 ## 文档
 
-[ZbxTable 使用说明](https://blog.cactifans.com/2020/07/19/ZbxTable%E6%AD%A3%E5%BC%8F%E5%BC%80%E6%BA%90/)
+[ZbxTable 使用说明](https://zbxtable.cactifans.com)
 
 ## 源码
 
