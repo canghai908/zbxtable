@@ -24,6 +24,7 @@ pack()
 	mkdir -p zbxtable-${version}
     cp zbxtable zbxtable-${version}/
     cp zbxtable.service zbxtable-${version}/
+	cp zbxtable.init zbxtable-${version}/
     cp msty.ttf zbxtable-${version}/
     cp -r keys zbxtable-${version}/
     cp -r conf zbxtable-${version}/
