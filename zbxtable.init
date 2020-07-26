@@ -1,0 +1,63 @@
+#!/bin/env bash
+# chkconfig: - 86 14
+# description: zbxtable daemon
+#
+
+### BEGIN INIT INFO
+# Provides: zbxtable
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# Default-Start:
+# Default-Stop: 0 1 2 3 4 5 6
+# Short-Description: Start and stop zbxtable
+# Description: zbxtable
+### END INIT INFO
+
+# Source function library.
+. /etc/init.d/functions
+
+# ENV
+ZBXTABLE_HOME="/usr/local/zbxtable"
+APP_NAME="zbxtable"
+timeout=10
+lockfile=/var/lock/subsys/zbxtable
+
+start()
+{
+    echo -n $"Starting ZbxTable: "
+    cd $ZBXTABLE_HOME
+    nohup $ZBXTABLE_HOME/$APP_NAME web >> $ZBXTABLE_HOME/logs/$APP_NAME.log 2>&1 & echo $! >/tmp/$APP_NAME.pid &
+    rv=$?
+    echo
+    [ $rv -eq 0 ] && touch $lockfile
+    return $rv
+}
+
+stop()
+{
+    echo -n $"Shutting down ZbxTable: "
+    killproc -p /tmp/$APP_NAME.pid -d $timeout
+    rv=$?
+    echo
+    [ $rv -eq 0 ] && rm -f $lockfile
+    return $rv
+}
+
+restart()
+{
+    stop
+    start
+}
+
+case "$1" in
+    start|stop|restart)
+        $1
+        ;;
+    force-reload)
+        restart
+        ;;
+    *)
+	echo $"Usage: $0 {start|stop|restart|force-reload}"
+	exit 2
+	;;
+esac

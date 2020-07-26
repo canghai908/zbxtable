@@ -37,9 +37,12 @@ install -m 0755 -p conf/app.conf $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/conf/
 install -m 0755 -p keys/rsakey.pem $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/keys/
 install -m 0755 -p keys/rsakey.pem.pub $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/keys/
 
-#systemd
-install -Dm 0644 -p zbxtable.service $RPM_BUILD_ROOT%{_unitdir}/zbxtable.service
-
+#install startup scripts
+%if 0%{?rhel} >= 7
+install -Dm 0755 -p zbxtable.service $RPM_BUILD_ROOT%{_unitdir}/zbxtable.service
+%else
+install -Dm 0755 -p zbxtable.init $RPM_BUILD_ROOT%{_sysconfdir}/init.d/zbxtable
+%endif
 exit 0
 
 %clean
@@ -50,6 +53,14 @@ getent group zbxtable > /dev/null || groupadd -r zbxtable
 getent passwd zbxtable > /dev/null || \
 	useradd -r -g zbxtable -d %{_localstatedir}/lib/zbxtable -s /sbin/nologin \
 	-c "ZbxTable System" zbxtable
+:
+
+%post
+%if 0%{?rhel} >= 7
+%systemd_post zbxtable.service
+%else
+/sbin/chkconfig --add zbxtable
+%endif
 :
 
 
@@ -69,4 +80,9 @@ getent passwd zbxtable > /dev/null || \
 %{_prefix}/local/zbxtable/conf/app.conf
 %{_prefix}/local/zbxtable/keys/rsakey.pem
 %{_prefix}/local/zbxtable/keys/rsakey.pem.pub
+
+%if 0%{?rhel} >= 7
 %{_unitdir}/zbxtable.service
+%else
+%{_sysconfdir}/init.d/zbxtable
+%endif
