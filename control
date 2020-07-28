@@ -16,7 +16,7 @@ build()
 {
 	export GO111MODULE=on
     export GOPROXY=https://goproxy.cn
-	go build -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable zbxtable.go
+	go build -a -v -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable zbxtable.go
 }
 
 pack()
