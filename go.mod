@@ -19,6 +19,7 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gobuild/log v1.0.0
 	github.com/hyperboloide/lk v0.0.0-20200412230107-b7ff65916135
+	github.com/json-iterator/go v1.1.6
 	github.com/juusechec/jwt-beego v0.0.0-20180206200454-c8c7c4585066
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/signintech/gopdf v0.9.7

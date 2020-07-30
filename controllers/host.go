@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
 	"strconv"
 
 	"github.com/canghai908/zbxtable/models"

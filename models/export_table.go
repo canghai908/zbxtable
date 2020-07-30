@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"log"
 	"math"
 	"strconv"
@@ -426,9 +425,9 @@ func GetTrenDataTable(itd []Itm, itemkey, host, ItemType string, start, end int6
 
 //GetTrenDataFileName trend data
 //获取趋势数据并输出为[]bytes
-func GetTrenDataFileName(item Item, start, end int64) ([]byte, error) {
+func GetTrenDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 
-	rep, err := GetTrendDataByItemid(item.Itemid, strconv.FormatInt(start, 10), strconv.FormatInt(end, 10))
+	rep, err := GetTrendDataByItemid(v.Item, start, end)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -444,7 +443,7 @@ func GetTrenDataFileName(item Item, start, end int64) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	ma, err := CreateTrenXlsx(hb, item, start, end)
+	ma, err := CreateTrenXlsx(hb, v, start, end)
 	if err != nil {
 		return []byte{}, err
 	}

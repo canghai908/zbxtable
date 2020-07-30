@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"log"
 )
 
@@ -32,11 +31,14 @@ func GetHistoryByItemID(itemid, history string, limit string) ([]History, error)
 
 //GetHistoryByItemIDNew by id
 func GetHistoryByItemIDNew(item Item, time_from, time_till int64) ([]History, error) {
-	rep, err := API.Call("history.get", Params{"output": "extend",
-		"itemids": item.Itemid, "history": item.ValueType, "sortfield": "clock",
-		"sortorder": "DESC",
-		"time_from": time_from,
-		"time_till": time_till})
+	rep, err := API.Call("history.get",
+		Params{"output": "extend",
+			"itemids":   item.Itemid,
+			"history":   item.ValueType,
+			"sortfield": "clock",
+			"sortorder": "DESC",
+			"time_from": time_from,
+			"time_till": time_till})
 	if err != nil {
 		return []History{}, err
 	}

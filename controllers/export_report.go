@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
 	"strconv"
 	"time"
 
@@ -62,7 +61,7 @@ func (c *ExpController) GetItemTrend() {
 	Start = st.Unix()
 	End = en.Unix()
 
-	iodata, err := models.GetTrenDataFileName(v.Item, Start, End)
+	iodata, err := models.GetTrenDataFileName(v, Start, End)
 	if err != nil {
 		ExpRes.Code = 200
 		ExpRes.Message = err.Error()

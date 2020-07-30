@@ -10,7 +10,10 @@ import (
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/canghai908/zbxtable/utils"
 	_ "github.com/go-sql-driver/mysql"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //TableName func
 func TableName(str string) string {

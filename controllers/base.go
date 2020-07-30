@@ -3,7 +3,10 @@ package controllers
 import (
 	"github.com/astaxie/beego"
 	jwtbeego "github.com/canghai908/jwt-beego"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //BaseController use
 type BaseController struct {

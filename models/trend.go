@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"log"
 )
 
@@ -54,11 +53,14 @@ func GetTrendData(itemid, timefrom, timetill string) ([]Trend, error) {
 }
 
 //GetTrendDataByItemid by itemid limit
-func GetTrendDataByItemid(itemid, timefrom, timetill string) ([]Trend, error) {
+func GetTrendDataByItemid(item Item, time_from, time_till int64) ([]Trend, error) {
 	output := []string{"itemid", "clock", "num", "value_min", "value_avg", "value_max"}
-	itemids := []string{itemid}
-	rep, err := API.CallWithError("trend.get", Params{"output": output, "time_from": timefrom,
-		"time_till": timetill, "itemids": itemids})
+	itemids := []string{item.Itemid}
+	rep, err := API.CallWithError("trend.get",
+		Params{"output": output,
+			"time_from": time_from,
+			"time_till": time_till,
+			"itemids":   itemids})
 	if err != nil {
 		log.Fatalln(err)
 		return []Trend{}, err

@@ -135,7 +135,7 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 }
 
 //CreateTrenXlsx excel table
-func CreateTrenXlsx(Filedata []Trend, item Item, start, end int64) ([]byte, error) {
+func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte, error) {
 
 	StartUnix := time.Unix(start, 0)
 	StrStart := StartUnix.Format("2006-01-02 15:04:05")
@@ -152,51 +152,68 @@ func CreateTrenXlsx(Filedata []Trend, item Item, start, end int64) ([]byte, erro
 
 	//表头设计
 	//主机名
-	xlsx.SetCellValue("Sheet1", "A1", "指标名称")
-	xlsx.SetCellValue("Sheet1", "B1", item.Name)
+	xlsx.SetCellValue("Sheet1", "A1", "主机名称")
+	xlsx.SetCellValue("Sheet1", "B1", v.Host.Name)
 	//指标类型
-	xlsx.SetCellValue("Sheet1", "A2", "指标类型")
-	xlsx.SetCellValue("Sheet1", "B2", item.Key)
+	xlsx.SetCellValue("Sheet1", "A2", "指标名称")
+	xlsx.SetCellValue("Sheet1", "B2", v.Item.Name)
+	//指标key
+	xlsx.SetCellValue("Sheet1", "A3", "指标Key")
+	xlsx.SetCellValue("Sheet1", "B3", v.Item.Key)
+
 	//指标类型
-	xlsx.SetCellValue("Sheet1", "A2", "指标ID")
-	xlsx.SetCellValue("Sheet1", "B2", item.Itemid)
+	var ValueTypeStr string
+	switch v.Item.ValueType {
+	case "0":
+		ValueTypeStr = "浮点型"
+	case "1":
+		ValueTypeStr = "字符型"
+	case "2":
+		ValueTypeStr = "日志型"
+	case "3":
+		ValueTypeStr = "整型"
+	case "4":
+		ValueTypeStr = "文本型"
+	default:
+		ValueTypeStr = "整型"
+	}
+	//指标ID
+	xlsx.SetCellValue("Sheet1", "A4", "指标ID")
+	xlsx.SetCellValue("Sheet1", "B4", v.Item.Itemid)
+	//指标类型
+	xlsx.SetCellValue("Sheet1", "A5", "数据类型")
+	xlsx.SetCellValue("Sheet1", "B5", ValueTypeStr)
 	//开始时间
-	xlsx.SetCellValue("Sheet1", "A3", "开始时间")
-	xlsx.SetCellValue("Sheet1", "B3", StrStart)
+	xlsx.SetCellValue("Sheet1", "A6", "开始时间")
+	xlsx.SetCellValue("Sheet1", "B6", StrStart)
 	//结束时间
-	xlsx.SetCellValue("Sheet1", "A4", "结束时间")
-	xlsx.SetCellValue("Sheet1", "B4", StrEnd)
+	xlsx.SetCellValue("Sheet1", "A7", "结束时间")
+	xlsx.SetCellValue("Sheet1", "B7", StrEnd)
 
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		fmt.Println("创建样式失败", err)
-	}
-	styleleft, err := xlsx.NewStyle(`{"alignment":{"horizontal":"left"}}`)
-	if err != nil {
-		fmt.Println("创建样式失败", err)
+		beego.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式
-	for i := 0; i < 5; i++ {
-		xlsx.SetCellStyle("Sheet1", "A5", "A"+strconv.Itoa(lea+9), stylecenter)
-		xlsx.SetCellStyle("Sheet1", "B5", "B5", stylecenter)
-		xlsx.SetCellStyle("Sheet1", "B6", "B"+strconv.Itoa(lea+9), styleleft)
-		xlsx.SetCellStyle("Sheet1", "C5", "C5", stylecenter)
-		xlsx.SetCellStyle("Sheet1", "C6", "C"+strconv.Itoa(lea+9), styleleft)
-		xlsx.SetCellStyle("Sheet1", "D5", "D5", stylecenter)
-		xlsx.SetCellStyle("Sheet1", "D6", "D"+strconv.Itoa(lea+9), styleleft)
-	}
+	xlsx.SetCellStyle("Sheet1", "A8", "A"+strconv.Itoa(lea+9), stylecenter)
+	xlsx.SetCellStyle("Sheet1", "B8", "B"+strconv.Itoa(lea+9), stylecenter)
+	xlsx.SetCellStyle("Sheet1", "C8", "C"+strconv.Itoa(lea+9), stylecenter)
+	xlsx.SetCellStyle("Sheet1", "D8", "D"+strconv.Itoa(lea+9), stylecenter)
 	//遍历数据
-	//log.Println(Filedata)
 	xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(8), "时间")
-	xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(8), "平均"+"("+item.Units+")")
-	xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(8), "最大"+"("+item.Units+")")
-	xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(8), "最小"+"("+item.Units+")")
+	xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(8), "平均"+"("+v.Item.Units+")")
+	xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(8), "最大"+"("+v.Item.Units+")")
+	xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(8), "最小"+"("+v.Item.Units+")")
 	for k, v := range Filedata {
 		//数据分类遍历
 		//数据具体数据遍历
-		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+9), v.Clock)
+		loc, _ := time.LoadLocation("Asia/Shanghai")
+		timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+		TimeUnix := time.Unix(timeint64, 0).In(loc)
+		StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+9), StrTime)
 		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+9), v.ValueAvg)
 		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+9), v.ValueMax)
 		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+9), v.ValueMin)
@@ -227,7 +244,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 
 	//表头设计
 	//主机名
-	xlsx.SetCellValue("Sheet1", "A1", "主机名")
+	xlsx.SetCellValue("Sheet1", "A1", "主机名称")
 	xlsx.SetCellValue("Sheet1", "B1", v.Host.Name)
 	//指标名
 	xlsx.SetCellValue("Sheet1", "A2", "指标名称")
