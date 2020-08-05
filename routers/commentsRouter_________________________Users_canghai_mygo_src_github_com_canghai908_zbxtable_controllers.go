@@ -10,7 +10,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"],
         beego.ControllerComments{
             Method: "GetAll",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -19,7 +19,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"],
         beego.ControllerComments{
             Method: "GetOne",
-            Router: `/:id`,
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -28,7 +28,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"],
         beego.ControllerComments{
             Method: "Analysis",
-            Router: `/analysis`,
+            Router: "/analysis",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -37,7 +37,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:AlarmController"],
         beego.ControllerComments{
             Method: "Export",
-            Router: `/export`,
+            Router: "/export",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -46,7 +46,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"],
         beego.ControllerComments{
             Method: "Login",
-            Router: `/login`,
+            Router: "/login",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -55,7 +55,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"],
         beego.ControllerComments{
             Method: "Logout",
-            Router: `/logout`,
+            Router: "/logout",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -64,7 +64,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"],
         beego.ControllerComments{
             Method: "Receive",
-            Router: `/receive`,
+            Router: "/receive",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -73,7 +73,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:BeforeUserController"],
         beego.ControllerComments{
             Method: "Webhook",
-            Router: `/webhook`,
+            Router: "/webhook",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -82,7 +82,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:EchartController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:EchartController"],
         beego.ControllerComments{
             Method: "GetHistory",
-            Router: `/history`,
+            Router: "/history",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -91,7 +91,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"],
         beego.ControllerComments{
             Method: "GetItemHistory",
-            Router: `/history`,
+            Router: "/history",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -100,7 +100,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"],
         beego.ControllerComments{
             Method: "Inspect",
-            Router: `/inspect`,
+            Router: "/inspect",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -109,7 +109,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ExpController"],
         beego.ControllerComments{
             Method: "GetItemTrend",
-            Router: `/trend`,
+            Router: "/trend",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -118,7 +118,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:GraphController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:GraphController"],
         beego.ControllerComments{
             Method: "Post",
-            Router: `/:hostid`,
+            Router: "/:hostid",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -127,7 +127,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:GraphController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:GraphController"],
         beego.ControllerComments{
             Method: "Exp",
-            Router: `/exp`,
+            Router: "/exp",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -136,7 +136,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HistoryController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HistoryController"],
         beego.ControllerComments{
             Method: "GetHistoryByItemID",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -145,7 +145,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"],
         beego.ControllerComments{
             Method: "Post",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -154,7 +154,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"],
         beego.ControllerComments{
             Method: "GetAll",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -163,7 +163,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"],
         beego.ControllerComments{
             Method: "GetOne",
-            Router: `/:id`,
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -172,7 +172,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostController"],
         beego.ControllerComments{
             Method: "GetApplication",
-            Router: `/application/:hostid`,
+            Router: "/application/:hostid",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -181,7 +181,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"],
         beego.ControllerComments{
             Method: "GetAll",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -190,7 +190,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"],
         beego.ControllerComments{
             Method: "GetList",
-            Router: `/list`,
+            Router: "/list",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -199,7 +199,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:HostGroupsController"],
         beego.ControllerComments{
             Method: "GetHostByGroupID",
-            Router: `/list/:id`,
+            Router: "/list/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -208,7 +208,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ImagesController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ImagesController"],
         beego.ControllerComments{
             Method: "GetOne",
-            Router: `/:id`,
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -217,7 +217,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:IndexController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:IndexController"],
         beego.ControllerComments{
             Method: "GetInfo",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -226,7 +226,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ItemController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ItemController"],
         beego.ControllerComments{
             Method: "GetItemByKey",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -235,7 +235,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ItemController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ItemController"],
         beego.ControllerComments{
             Method: "GetAllItemByKey",
-            Router: `/list`,
+            Router: "/list",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -244,7 +244,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"],
         beego.ControllerComments{
             Method: "GetOne",
-            Router: `/:id`,
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -253,7 +253,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"],
         beego.ControllerComments{
             Method: "Chpwd",
-            Router: `/chpwd`,
+            Router: "/chpwd",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -262,7 +262,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ManagerController"],
         beego.ControllerComments{
             Method: "Info",
-            Router: `/info`,
+            Router: "/info",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -271,7 +271,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ProblemsController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:ProblemsController"],
         beego.ControllerComments{
             Method: "GetInfo",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -280,7 +280,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TemplateController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TemplateController"],
         beego.ControllerComments{
             Method: "GetInfo",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -289,7 +289,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TemplateController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TemplateController"],
         beego.ControllerComments{
             Method: "GetAll",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -298,7 +298,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TrendController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TrendController"],
         beego.ControllerComments{
             Method: "GetTrendByItemID",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -307,7 +307,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TriggersController"] = append(beego.GlobalControllerRouter["github.com/canghai908/zbxtable/controllers:TriggersController"],
         beego.ControllerComments{
             Method: "GetInfo",
-            Router: `/`,
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,

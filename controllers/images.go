@@ -55,8 +55,8 @@ func (c *ImagesController) GetOne() {
 		beego.Error("Fatal error ", err.Error())
 	}
 	data.Set("graphid", GraphID)
-	data.Set("StartTime", StartTime)
-	data.Set("EndTime", EndTime)
+	data.Set("from", StartTime)
+	data.Set("to", EndTime)
 	data.Set("profileIdx", "web.graphs.filter")
 	data.Set("profileIdx2", "200")
 	data.Set("width", "400")
