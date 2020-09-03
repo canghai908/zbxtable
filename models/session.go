@@ -1,8 +1,12 @@
 package models
 
 import (
+	"compress/gzip"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/astaxie/beego"
@@ -39,7 +43,7 @@ func Intt() {
 
 	client := &http.Client{
 		nil, nil, JAR, 99999999999999}
-	reqest, err := http.NewRequest("POST", ZabbixServer, strings.NewReader(v.Encode()))
+	reqest, err := http.NewRequest("POST", ZabbixServer+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())
 	}
@@ -54,4 +58,27 @@ func Intt() {
 		beego.Error("Fatal error ", err.Error())
 	}
 	defer response.Body.Close()
+	if beego.BConfig.RunMode == "dev" {
+		beego.Info("Login to zabbix response.StatusCode is ", response.StatusCode)
+	}
+	if response.StatusCode == 200 {
+		var reader io.Reader
+		switch response.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, _ = gzip.NewReader(response.Body)
+		default:
+			reader = response.Body
+		}
+		data, err := ioutil.ReadAll(reader)
+		if err != nil {
+			beego.Error("Failed to read response data: %+v", err)
+		}
+		if beego.BConfig.RunMode == "dev" {
+			beego.Info("Login to zabbix response body is:", string(data))
+		}
+		if !strings.Contains(string(data), "Dashboard") {
+			beego.Error("Login to Zabbix failed!")
+			os.Exit(1)
+		}
+	}
 }
