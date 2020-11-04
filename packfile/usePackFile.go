@@ -35,7 +35,7 @@ func init() {
 	for key := range _bindata {
 		filePath, _ := filepath.Abs(strings.TrimPrefix(key, "."))
 		data, err := Asset(key)
-		if err = nil {
+		if err == nil {
 			writeFile(filePath, data)
 		}
 	}
