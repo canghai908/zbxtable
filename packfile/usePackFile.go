@@ -34,12 +34,7 @@ func writeFile(path string, data []byte) {
 func init() {
 	for key := range _bindata {
 		filePath, _ := filepath.Abs(strings.TrimPrefix(key, "."))
-		data, err := Asset(key)
-		if err != nil {
-			// Asset was not found.
-			fmt.Printf("Fail to find: %s\n", filePath)
-		} else {
-			writeFile(filePath, data)
-		}
+		data, _ := Asset(key)
+		writeFile(filePath, data)
 	}
 }
