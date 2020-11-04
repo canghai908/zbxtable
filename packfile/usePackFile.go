@@ -34,7 +34,9 @@ func writeFile(path string, data []byte) {
 func init() {
 	for key := range _bindata {
 		filePath, _ := filepath.Abs(strings.TrimPrefix(key, "."))
-		data, _ := Asset(key)
-		writeFile(filePath, data)
+		data, err := Asset(key)
+		if err = nil {
+			writeFile(filePath, data)
+		}
 	}
 }
