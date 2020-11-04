@@ -60,8 +60,6 @@ mkdir -p $GOPATH/src/github.com/canghai908
 cd $GOPATH/src/github.com/canghai908
 git clone https://github.com/canghai908/zbxtable.git
 cd zbxtable
-go generate -tags=packfile ./packfile/usePackFile.go
-go build -a -v -tags=packfile -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable zbxtable.go
 ./control build
 ./control pack
 ```
