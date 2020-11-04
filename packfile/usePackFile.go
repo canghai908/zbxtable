@@ -26,8 +26,6 @@ func writeFile(path string, data []byte) {
 		if err2 := ioutil.WriteFile(path, data, os.ModePerm); err2 != nil {
 			fmt.Printf("Write file failed: %s\n", path)
 		}
-	} else {
-		fmt.Printf("File exist, skip: %s\n", path)
 	}
 }
 
