@@ -18,3 +18,4 @@ runtime/*
 */test
 */vendor
 logs/*
+packfile/staticFile.go

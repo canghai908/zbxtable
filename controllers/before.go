@@ -8,9 +8,9 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
+	jwtbeego "github.com/canghai908/jwt-beego"
 	"github.com/canghai908/zbxtable/models"
 	"github.com/canghai908/zbxtable/utils"
-	jwt "github.com/juusechec/jwt-beego"
 )
 
 // BeforeUserController sd
@@ -55,7 +55,7 @@ func (u *BeforeUserController) Login() {
 		res.Code = 400
 		res.Message = "用户名或密码错误"
 	} else {
-		et := jwt.EasyToken{
+		et := jwtbeego.EasyToken{
 			Username: Manager.Username,
 			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
 		}

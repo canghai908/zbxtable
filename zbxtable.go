@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/canghai908/zbxtable/cmd"
+	_ "github.com/canghai908/zbxtable/packfile"
 	"github.com/json-iterator/go/extra"
 	"github.com/urfave/cli"
 )
@@ -26,7 +27,6 @@ func init() {
 	extra.RegisterFuzzyDecoders()
 }
 func main() {
-
 	app := cli.NewApp()
 	app.Name = "ZbxTable"
 	app.Usage = "A Zabbix Table tools"

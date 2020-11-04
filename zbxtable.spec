@@ -26,16 +26,9 @@ rm -rf $RPM_BUILD_ROOT
 
 # install necessary directories
 mkdir -p $RPM_BUILD_ROOT%{_prefix}/local/zbxtable
-mkdir -p $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/conf
-mkdir -p $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/keys
 
 # install  binaries and conf
 install -m 0755 -p zbxtable $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/
-install -m 0755 -p nginx.conf $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/
-install -m 0755 -p msty.ttf $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/
-install -m 0755 -p conf/app.conf $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/conf/
-install -m 0755 -p keys/rsakey.pem $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/keys/
-install -m 0755 -p keys/rsakey.pem.pub $RPM_BUILD_ROOT%{_prefix}/local/zbxtable/keys/
 
 #install startup scripts
 %if 0%{?rhel} >= 7
@@ -72,14 +65,7 @@ getent passwd zbxtable > /dev/null || \
 %defattr(755,zbxtable,zbxtable,755)
 %attr(0755,zbxtable,zbxtable)
 %dir %{_prefix}/local/zbxtable
-%dir %{_prefix}/local/zbxtable/conf
-%dir %{_prefix}/local/zbxtable/keys
 %{_prefix}/local/zbxtable/zbxtable
-%{_prefix}/local/zbxtable/nginx.conf
-%{_prefix}/local/zbxtable/msty.ttf
-%{_prefix}/local/zbxtable/conf/app.conf
-%{_prefix}/local/zbxtable/keys/rsakey.pem
-%{_prefix}/local/zbxtable/keys/rsakey.pem.pub
 
 %if 0%{?rhel} >= 7
 %{_unitdir}/zbxtable.service
