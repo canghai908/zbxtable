@@ -46,6 +46,7 @@ func Intt() {
 	reqest, err := http.NewRequest("POST", ZabbixServer+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())
+		return
 	}
 	reqest.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	reqest.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -56,6 +57,7 @@ func Intt() {
 	response, err := client.Do(reqest)
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())
+		return
 	}
 	defer response.Body.Close()
 	if beego.BConfig.RunMode == "dev" {

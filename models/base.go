@@ -20,6 +20,30 @@ func TableName(str string) string {
 	return fmt.Sprintf("%s%s", beego.AppConfig.String("dbprefix"), str)
 }
 
+//DatabaseInit 数据初始化
+func DatabaseInit() {
+	//数据初始化操作
+	//添加管理员账号
+	o := orm.NewOrm()
+	v := &Manager{Username: "admin"}
+	err = o.Read(v, "Username")
+	if err == orm.ErrNoRows {
+		beego.Info("the admin user does not exist, create a new admin account later!")
+		var manager Manager
+		manager.Username = "admin"
+		manager.Password = utils.Md5([]byte("Zbxtable"))
+		manager.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
+		manager.Role = "admin"
+		manager.Status = 0
+		manager.Created = time.Now()
+		id, err := o.Insert(&manager)
+		if err != nil {
+			beego.Error(err)
+		}
+		beego.Info("create an administrator account successfully, the admin ID is:", id)
+	}
+}
+
 //API for zabbix
 var API = &zabbix.API{}
 
@@ -56,28 +80,4 @@ func ModelsInit() {
 	}
 	//web登录
 	Intt()
-}
-
-//DatabaseInit 数据初始化
-func DatabaseInit() {
-	//数据初始化操作
-	//添加管理员账号
-	o := orm.NewOrm()
-	v := &Manager{Username: "admin"}
-	err = o.Read(v, "Username")
-	if err == orm.ErrNoRows {
-		beego.Info("the admin user does not exist, create a new admin account later!")
-		var manager Manager
-		manager.Username = "admin"
-		manager.Password = utils.Md5([]byte("Zbxtable"))
-		manager.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
-		manager.Role = "admin"
-		manager.Status = 0
-		manager.Created = time.Now()
-		id, err := o.Insert(&manager)
-		if err != nil {
-			beego.Error(err)
-		}
-		beego.Info("create an administrator account successfully, the admin ID is:", id)
-	}
 }
