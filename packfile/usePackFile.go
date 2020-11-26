@@ -26,8 +26,6 @@ func writeFile(path string, data []byte) {
 		if err2 := ioutil.WriteFile(path, data, os.ModePerm); err2 != nil {
 			fmt.Printf("Write file failed: %s\n", path)
 		}
-	} else {
-		fmt.Printf("File exist, skip: %s\n", path)
 	}
 }
 
@@ -35,10 +33,7 @@ func init() {
 	for key := range _bindata {
 		filePath, _ := filepath.Abs(strings.TrimPrefix(key, "."))
 		data, err := Asset(key)
-		if err != nil {
-			// Asset was not found.
-			fmt.Printf("Fail to find: %s\n", filePath)
-		} else {
+		if err == nil {
 			writeFile(filePath, data)
 		}
 	}

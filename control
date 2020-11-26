@@ -15,7 +15,7 @@ usage()
 build()
 {
 	export GO111MODULE=on
-    export GOPROXY=https://goproxy.io
+  export GOPROXY=https://goproxy.io
 	go generate -tags=packfile ./packfile/usePackFile.go
 	go build -a -v -tags=packfile -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable zbxtable.go
 }
@@ -23,8 +23,8 @@ build()
 pack()
 {
 	mkdir -p zbxtable-${version}
-    cp zbxtable zbxtable-${version}/
-    cp zbxtable.service zbxtable-${version}/
+  cp zbxtable zbxtable-${version}/
+  cp zbxtable.service zbxtable-${version}/
 	cp zbxtable.init zbxtable-${version}/
 	tar zcvf zbxtable-${version}.tar.gz zbxtable-${version}/
 }

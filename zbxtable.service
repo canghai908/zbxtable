@@ -3,12 +3,10 @@ Description=zbxtable
 After=syslog.target
 After=network.target
 
-
 [Service]
 PIDFile=/tmp/zbxtable.pid
 User=zbxtable
 Group=zbxtable
-Environment=GOPATH=/home/mygo
 WorkingDirectory=/usr/local/zbxtable
 ExecStart=/bin/bash -c '/usr/local/zbxtable/zbxtable web'
 
