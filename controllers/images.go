@@ -46,9 +46,9 @@ func (c *ImagesController) GetOne() {
 
 	client1 := &http.Client{nil, nil,
 		models.JAR, 99999999999999}
-	ZabbixServer := beego.AppConfig.String("zabbix_server")
+	ZabbixWeb := beego.AppConfig.String("zabbix_web")
 	//imgurl
-	imgurl := ZabbixServer + "/chart2.php?"
+	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {

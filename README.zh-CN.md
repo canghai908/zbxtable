@@ -1,4 +1,4 @@
- [English](./README.md) | 简体中文
+[English](./README.md) | 简体中文
 
 # ZbxTable
 
@@ -6,12 +6,12 @@ ZbxTable 是使用 Go 语言开发的一个 Zabbix 报表系统。
 
 ## 主要功能：
 
-* 导出监控指标特定时间段内的详情数据与趋势数据到 xlsx
-* 导出特定时间段内 Zabbix 的告警消息到 xlsx
-* 对特定时间段内的告警消息进行分析，告警 Top10 等
-* 按照主机组导出巡检报告
-* 对 Zabbix 图形按照数类型进行显示和查看并支持导出到 pdf
-* 主机未恢复告警显示和查询
+- 导出监控指标特定时间段内的详情数据与趋势数据到 xlsx
+- 导出特定时间段内 Zabbix 的告警消息到 xlsx
+- 对特定时间段内的告警消息进行分析，告警 Top10 等
+- 按照主机组导出巡检报告
+- 对 Zabbix 图形按照数类型进行显示和查看并支持导出到 pdf
+- 主机未恢复告警显示和查询
 
 ## 系统架构
 
@@ -35,6 +35,7 @@ MS-Agent: 安装在 Zabbix Server 上, 用于接收 Zabbix Server 产生的告�
 
 | zabbix 版本 | 兼容性            |
 | :---------- | :---------------- |
+| 5.2.x LTS   | ✅                |
 | 5.0.x LTS   | ✅                |
 | 4.4.x       | ✅                |
 | 4.2.x       | ✅                |
@@ -57,7 +58,7 @@ MS-Agent: [https://github.com/canghai908/ms-agent](https://github.com/canghai908
 
 ## 编译
 
-``` 
+```
 mkdir -p $GOPATH/src/github.com/canghai908
 cd $GOPATH/src/github.com/canghai908
 git clone https://github.com/canghai908/zbxtable.git

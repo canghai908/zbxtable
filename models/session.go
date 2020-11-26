@@ -33,7 +33,7 @@ var JAR = new(Jar)
 //Intt a
 func Intt() {
 	v := url.Values{}
-	ZabbixServer := beego.AppConfig.String("zabbix_server")
+	ZabbixWeb := beego.AppConfig.String("zabbix_web")
 	ZabbixUser := beego.AppConfig.String("zabbix_user")
 	ZabbixPass := beego.AppConfig.String("zabbix_pass")
 	v.Set("name", ZabbixUser)
@@ -43,7 +43,7 @@ func Intt() {
 
 	client := &http.Client{
 		nil, nil, JAR, 99999999999999}
-	reqest, err := http.NewRequest("POST", ZabbixServer+"/index.php", strings.NewReader(v.Encode()))
+	reqest, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())
 	}

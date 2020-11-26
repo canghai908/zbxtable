@@ -45,10 +45,10 @@ func ModelsInit() {
 	//database init
 	DatabaseInit()
 	//zabbix api login
-	ZabbixServer := beego.AppConfig.String("zabbix_server")
+	ZabbixWeb := beego.AppConfig.String("zabbix_web")
 	ZabbixUser := beego.AppConfig.String("zabbix_user")
 	ZabbixPass := beego.AppConfig.String("zabbix_pass")
-	API = zabbix.NewAPI(ZabbixServer + "/api_jsonrpc.php")
+	API = zabbix.NewAPI(ZabbixWeb + "/api_jsonrpc.php")
 	_, err := API.Login(ZabbixUser, ZabbixPass)
 	if err != nil {
 		beego.Error("Fatal error ", err.Error())

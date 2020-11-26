@@ -36,7 +36,7 @@ var Install = cli.Command{
 func installAagent(c *cli.Context) {
 	var ZabbixAddress, ZabbixAdmin, ZabbixPasswd string
 
-	ZabbixAdd := beego.AppConfig.String("zabbix_server")
+	ZabbixAdd := beego.AppConfig.String("zabbix_web")
 	ZabbixAddress = ZabbixAdd + "/api_jsonrpc.php"
 	ZabbixAdmin = beego.AppConfig.String("zabbix_user")
 	ZabbixPasswd = beego.AppConfig.String("zabbix_pass")
@@ -133,7 +133,12 @@ func installAagent(c *cli.Context) {
 	userpara["name"] = "ms-agent"
 	tpasswdord := RandStringRunes()
 	userpara["passwd"] = tpasswdord
-	userpara["type"] = "3"
+	//5.2版本 取消type字段,切换为roleid，roleid=2默认为管理员角色
+	if strings.HasPrefix(version, "5.2") {
+		userpara["roleid"] = "2"
+	} else {
+		userpara["type"] = "3"
+	}
 	userpara["usrgrps"] = a
 	userpara["user_medias"] = b
 	user, err := API.CallWithError("user.create", userpara)

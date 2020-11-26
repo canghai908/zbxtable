@@ -94,10 +94,10 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup, pdfHolder chan<- gopdf.ImageHolder) {
 	defer wg.Done()
 	//请求图形
-	ZabbixServer := beego.AppConfig.String("zabbix_server")
+	ZabbixWeb := beego.AppConfig.String("zabbix_web")
 	client1 := &http.Client{nil, nil,
 		JAR, 99999999999992}
-	imgurl := ZabbixServer + "/chart2.php?"
+	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
