@@ -164,12 +164,12 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts string) (cnt int64, al
 	al := new(Alarm)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	//return "hello"
+	//count alarms
 	_, err = o.QueryTable(al).Filter("occurtime__gte",
 		begin).Filter("occurtime__lte", end).Filter("host__contains", hosts).All(&CountAlarms)
 	// offset int64, limit int64, begin, end time.Time) (ml []interface{}, cnt int, err error) {
 	_, err = o.QueryTable(al).Filter("occurtime__gte",
-		begin).Filter("occurtime__lte", end).Limit(limits, (pages-1)*limits).Filter("host__contains", hosts).All(&alarms)
+		begin).Filter("occurtime__lte", end).Limit(limits, (pages-1)*limits).OrderBy("-occurtime").Filter("host__contains", hosts).All(&alarms)
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
@@ -187,7 +187,7 @@ func ExportAlarm(begin, end time.Time, hosts string) ([]byte, error) {
 	intend := end.Unix()
 	// offset int64, limit int64, begin, end time.Time) (ml []interface{}, cnt int, err error) {
 	_, err = o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte",
-		end).Filter("host__contains", hosts).All(&alarms)
+		end).Filter("host__contains", hosts).OrderBy("-occurtime").All(&alarms)
 	cnt := int64(len(alarms))
 	if err != nil {
 		return []byte{}, err

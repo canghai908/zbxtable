@@ -12,6 +12,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/json-iterator/go v1.1.10
+	github.com/lib/pq v1.0.0
 	github.com/signintech/gopdf v0.9.12
 	github.com/tealeg/xlsx v1.0.5
 	github.com/urfave/cli v1.22.4

@@ -11,6 +11,7 @@ import (
 	"github.com/canghai908/zbxtable/utils"
 	_ "github.com/go-sql-driver/mysql"
 	jsoniter "github.com/json-iterator/go"
+	_ "github.com/lib/pq"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -55,18 +56,37 @@ func ModelsInit() {
 	dbpass := beego.AppConfig.String("dbpsword")
 	dbname := beego.AppConfig.String("database")
 	dbport := beego.AppConfig.String("port")
-	if dbport == "" {
-		dbport = "3306"
+	dbdriver := beego.AppConfig.String("dbdriver")
+	//database type
+	switch dbdriver {
+	case "mysql":
+		if dbport == "" {
+			dbport = "3306"
+		}
+		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
+			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
+		orm.RegisterDataBase("default", "mysql", dburl)
+	case "postgres":
+		if dbport == "" {
+			dbport = "5432"
+		}
+		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + "/" + dbname + "?sslmode=disable"
+		orm.RegisterDataBase("default", "postgres", dburl)
+	default:
+		if dbport == "" {
+			dbport = "3306"
+		}
+		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
+			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
+		orm.RegisterDataBase("default", "mysql", dburl)
 	}
-	dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
-		dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-	orm.RegisterDataBase("default", "mysql", dburl)
 	orm.RegisterModel(new(Alarm), new(Manager))
 	orm.RunSyncdb("default", false, true)
 	if beego.AppConfig.String("runmode") == "dev" {
 		orm.Debug = true
 	}
-	//database init
+
+	// init admin
 	DatabaseInit()
 	//zabbix api login
 	ZabbixWeb := beego.AppConfig.String("zabbix_web")
@@ -78,6 +98,6 @@ func ModelsInit() {
 		beego.Error("Fatal error ", err.Error())
 		os.Exit(1)
 	}
-	//web登录
+	//web login
 	Intt()
 }
