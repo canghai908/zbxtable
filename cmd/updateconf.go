@@ -7,13 +7,15 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-//Web 配置
-var Uc = cli.Command{
-	Name:        "uc",
-	Usage:       "Update config file",
-	Description: "Update config file",
-	Action:      updateconfig,
-}
+var (
+	//Web 配置
+	Uc = cli.Command{
+		Name:        "uc",
+		Usage:       "Update config file",
+		Description: "Update config file",
+		Action:      updateconfig,
+	}
+)
 
 //runWeb 启动web
 func updateconfig(c *cli.Context) {

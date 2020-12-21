@@ -26,13 +26,15 @@ func RandStringRunes() string {
 	return string(b)
 }
 
-// Install cli
-var Install = cli.Command{
-	Name:        "install",
-	Usage:       "Install ms-agent tools to Zabbix Server",
-	Description: "A tools to send alarm message to ZbxTable",
-	Action:      installAagent,
-}
+var (
+	// Install cli
+	Install = cli.Command{
+		Name:        "install",
+		Usage:       "Install ms-agent tools to Zabbix Server",
+		Description: "A tools to send alarm message to ZbxTable",
+		Action:      installAagent,
+	}
+)
 
 func installAagent(c *cli.Context) {
 	var ZabbixAddress, ZabbixAdmin, ZabbixPasswd string

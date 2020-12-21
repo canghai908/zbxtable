@@ -20,13 +20,15 @@ $$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\
 $$$$$$$$\ $$$$$$$  |$$ /  $$ |   $$ |   $$ |  $$ |$$$$$$$  |$$$$$$$$\ $$$$$$$$\ 
 \________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|`
 
-//Web 配置
-var Web = cli.Command{
-	Name:        "web",
-	Usage:       "Start web server",
-	Description: "ZbxTable web server",
-	Action:      runWeb,
-}
+var (
+	//Web 配置
+	Web = cli.Command{
+		Name:        "web",
+		Usage:       "Start web server",
+		Description: "ZbxTable web server",
+		Action:      runWeb,
+	}
+)
 
 //runWeb 启动web
 func runWeb(c *cli.Context) {

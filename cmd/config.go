@@ -52,13 +52,15 @@ const qrencode = `##############################################################
 ######################################################################
 ######################################################################`
 
-// Init cli
-var Init = cli.Command{
-	Name:        "init",
-	Usage:       "Install ms-agent tools to Zabbix Server",
-	Description: "A tools to send alarm message to ZbxTable",
-	Action:      AppInit,
-}
+var (
+	// Init cli
+	Init = cli.Command{
+		Name:        "init",
+		Usage:       "Init config file",
+		Description: "A tools to send alarm message to ZbxTable",
+		Action:      AppInit,
+	}
+)
 
 //AppInit
 func AppInit(c *cli.Context) {
