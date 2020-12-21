@@ -23,8 +23,8 @@ build()
 pack()
 {
 	mkdir -p zbxtable-${version}
-  	cp zbxtable zbxtable-${version}/
-  	cp zbxtable.service zbxtable-${version}/
+  cp zbxtable zbxtable-${version}/
+  cp zbxtable.service zbxtable-${version}/
 	cp zbxtable.init zbxtable-${version}/
 	tar zcvf zbxtable-${version}.tar.gz zbxtable-${version}/
 }
