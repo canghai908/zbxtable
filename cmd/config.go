@@ -232,18 +232,25 @@ WEB:
 //CheckDb
 func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) error {
 	//database type
-	var err error
 	switch dbdriver {
 	case "mysql":
 		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		_, err = sql.Open("mysql", dburl)
+		db, err := sql.Open("mysql", dburl)
+		if err != nil {
+			return err
+		}
+		err = db.Ping()
 		if err != nil {
 			return err
 		}
 	case "postgresql":
 		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		_, err = sql.Open("postgres", dburl)
+		db, err := sql.Open("postgres", dburl)
+		if err != nil {
+			return err
+		}
+		err = db.Ping()
 		if err != nil {
 			return err
 		}
