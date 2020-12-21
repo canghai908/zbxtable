@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //ProblemsRes rest
@@ -32,18 +32,18 @@ func GetProblems() ([]Problems, int64, error) {
 		"sortfield": par,
 		"sortorder": "DESC"})
 	if err != nil {
-		log.Println(err)
+		logs.Error(err)
 		return []Problems{}, 0, err
 	}
 	hba, err := json.Marshal(problems.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Problems{}, 0, err
 	}
 	var hb []Problems
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Problems{}, 0, err
 	}
 	return hb, int64(len(hb)), err

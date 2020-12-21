@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //GetHistoryByItemID by id
@@ -44,7 +44,7 @@ func GetHistoryByItemIDNew(item Item, time_from, time_till int64) ([]History, er
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []History{}, err
 	}
 
@@ -52,7 +52,7 @@ func GetHistoryByItemIDNew(item Item, time_from, time_till int64) ([]History, er
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []History{}, err
 	}
 	return hb, err
@@ -70,7 +70,7 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []History{}, err
 	}
 
@@ -78,7 +78,7 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []History{}, err
 	}
 	return hb, err

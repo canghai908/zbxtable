@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/urfave/cli"
 )
@@ -41,22 +42,22 @@ func installAagent(c *cli.Context) {
 	ZabbixAdmin = beego.AppConfig.String("zabbix_user")
 	ZabbixPasswd = beego.AppConfig.String("zabbix_pass")
 
-	beego.Info("Zabbix API Address:", ZabbixAddress)
-	beego.Info("Zabbix Admin User:", ZabbixAdmin)
-	beego.Info("Zabbix Admin Password:", ZabbixPasswd)
+	logs.Info("Zabbix API Address:", ZabbixAddress)
+	logs.Info("Zabbix Admin User:", ZabbixAdmin)
+	logs.Info("Zabbix Admin Password:", ZabbixPasswd)
 	API := zabbix.NewAPI(ZabbixAddress)
 	_, err := API.Login(ZabbixAdmin, ZabbixPasswd)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
-	beego.Info("登录zabbix平台成功!")
+	logs.Info("登录zabbix平台成功!")
 	version, err := API.Version()
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
-	beego.Info("zabbix版本为:", version)
+	logs.Info("zabbix版本为:", version)
 	//MediaParams mediatype new
 	MediaParams := make(map[string]interface{}, 0)
 	//对zabbix版本进行判断，5版本配置有所变化
@@ -93,27 +94,27 @@ func installAagent(c *cli.Context) {
 	}
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
 	result := ma.Result.(map[string]interface{})
 	mediatypeids := result["mediatypeids"].([]interface{})
 	//var mediaid string
 	mediaid := mediatypeids[0].(string)
-	beego.Info("创建告警媒介成功!")
+	logs.Info("创建告警媒介成功!")
 
 	//GroupParams create usergroup
 	GroupParams := make(map[string]interface{}, 0)
 	GroupParams["name"] = "MS-Agent Group"
 	group, err := API.CallWithError("usergroup.create", GroupParams)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
 	resgroup := group.Result.(map[string]interface{})
 	usrgrpids := resgroup["usrgrpids"].([]interface{})
 	groupid := usrgrpids[0].(string)
-	beego.Info("创建告警用户组成功!")
+	logs.Info("创建告警用户组成功!")
 
 	//create user
 	userpara := make(map[string]interface{}, 0)
@@ -144,15 +145,15 @@ func installAagent(c *cli.Context) {
 	userpara["user_medias"] = b
 	user, err := API.CallWithError("user.create", userpara)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
 	resuser := user.Result.(map[string]interface{})
 	userids := resuser["userids"].([]interface{})
 	userid := userids[0].(string)
-	beego.Info("创建告警用户成功!")
-	beego.Info("用户名:ms-agent")
-	beego.Info("密码:", tpasswdord)
+	logs.Info("创建告警用户成功!")
+	logs.Info("用户名:ms-agent")
+	logs.Info("密码:", tpasswdord)
 	actpara := make(map[string]interface{}, 0)
 	actpara["name"] = "MS-Agent Action"
 	actpara["eventsource"] = "0"
@@ -201,9 +202,9 @@ func installAagent(c *cli.Context) {
 	//action create
 	_, err = API.CallWithError("action.create", actpara)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 		return
 	}
-	beego.Info("创建告警动作成功!")
-	beego.Info("插件安装完成!")
+	logs.Info("创建告警动作成功!")
+	logs.Info("插件安装完成!")
 }

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/astaxie/beego/logs"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -43,9 +44,9 @@ func (u *BeforeUserController) Login() {
 		return
 	}
 	var SessionTimeout int
-	SessionTimeout, err = beego.AppConfig.Int("session_timeout")
+	SessionTimeout, err = beego.AppConfig.Int("timeout")
 	if err != nil {
-		log.Println(err)
+		logs.Error(err)
 		SessionTimeout = 12
 	}
 	o := orm.NewOrm()

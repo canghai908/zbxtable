@@ -3,11 +3,11 @@ package models
 import (
 	"bytes"
 	"fmt"
+	"github.com/astaxie/beego/logs"
 	"strconv"
 	"time"
 
 	"github.com/360EntSecGroup-Skylar/excelize/v2"
-	"github.com/astaxie/beego"
 )
 
 //Crt excel table
@@ -193,7 +193,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式
@@ -284,7 +284,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		beego.Error(err)
+		logs.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式

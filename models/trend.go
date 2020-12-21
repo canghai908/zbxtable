@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //GetTrendByItemID by itemid limit
@@ -11,18 +11,18 @@ func GetTrendByItemID(itemid string, limit string) ([]Trend, error) {
 	rep, err := API.Call("trend.get", Params{"output": par,
 		"itemids": par1, "limit": limit})
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	var hb []Trend
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	return hb, err
@@ -35,18 +35,18 @@ func GetTrendData(itemid, timefrom, timetill string) ([]Trend, error) {
 	rep, err := API.Call("trend.get", Params{"output": output, "time_from": timefrom,
 		"time_till": timetill, "itemids": itemids})
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	var hb []Trend
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	return hb, err
@@ -62,18 +62,18 @@ func GetTrendDataByItemid(item Item, time_from, time_till int64) ([]Trend, error
 			"time_till": time_till,
 			"itemids":   itemids})
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	var hb []Trend
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Trend{}, err
 	}
 	return hb, err

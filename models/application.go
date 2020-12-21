@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //GetApplicationByHostid st
@@ -16,14 +16,14 @@ func GetApplicationByHostid(hostid string) ([]Application, int64, error) {
 	//log.Println(rep.Result)
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Application{}, 0, err
 	}
 
 	var hb []Application
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Application{}, 0, err
 	}
 	return hb, int64(len(hb)), err

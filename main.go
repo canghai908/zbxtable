@@ -35,6 +35,8 @@ func main() {
 	app.Commands = []cli.Command{
 		cmd.Web,
 		cmd.Install,
+		cmd.Init,
+		cmd.Uc,
 	}
 	app.Run(os.Args)
 }

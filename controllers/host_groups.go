@@ -17,7 +17,6 @@ func (c *HostGroupsController) URLMapping() {
 	c.Mapping("GetList", c.GetList)
 	c.Mapping("GetAll", c.GetAll)
 	c.Mapping("GetHostByGroupID", c.GetHostByGroupID)
-	//	c.Mapping("GetHost", fn func())
 }
 
 // GetList Gaa

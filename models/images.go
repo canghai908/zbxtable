@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"compress/gzip"
+	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
 	"net/url"
@@ -20,12 +21,12 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	pdf.AddPage()
 	err = pdf.AddTTFFont("msty", "./msty.ttf")
 	if err != nil {
-		beego.Error(err.Error())
+		logs.Error(err.Error())
 	}
 
 	err = pdf.SetFont("msty", "", 8)
 	if err != nil {
-		beego.Error(err.Error())
+		logs.Error(err.Error())
 	}
 	//表头配置
 	TimeStr := time.Now().Format("2006-01-02 15:04:05")
@@ -41,16 +42,16 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 		rep, err := API.CallWithError("graph.get", Params{"output": "extend",
 			"hostids": vv, "sortfiled": "name"})
 		if err != nil {
-			beego.Error(err.Error())
+			logs.Error(err.Error())
 		}
 		hba, err := json.Marshal(rep.Result)
 		if err != nil {
-			beego.Error(err.Error())
+			logs.Error(err.Error())
 		}
 		var hb []GraphInfo
 		err = json.Unmarshal(hba, &hb)
 		if err != nil {
-			beego.Error(err.Error())
+			logs.Error(err.Error())
 		}
 		//轮训图形
 		PdfResponses := make(chan gopdf.ImageHolder)
@@ -85,7 +86,7 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	var b bytes.Buffer
 	err = pdf.Write(&b)
 	if err != nil {
-		beego.Error(err.Error())
+		logs.Error(err.Error())
 	}
 	return b.Bytes(), nil
 }
@@ -101,7 +102,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error("Fatal error ", err.Error())
 	}
 	data.Set("graphid", grupinfo.GraphID)
 	data.Set("from", start)
@@ -114,7 +115,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	urlPath := URL.String()
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error("Fatal error ", err.Error())
 	}
 	reqest1.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	reqest1.Header.Add("Accept-Encoding", "gzip, deflate")
@@ -136,7 +137,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 		}
 		imgH2, err := gopdf.ImageHolderByReader(reader)
 		if err != nil {
-			beego.Error("Fatal error ", err.Error())
+			logs.Error("Fatal error ", err.Error())
 		}
 		pdfHolder <- imgH2
 	}

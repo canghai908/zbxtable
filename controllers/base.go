@@ -46,7 +46,6 @@ func (c *BaseController) Prepare() {
 				Total int    `json:"total"`
 			} `json:"data"`
 		}
-		//this.Ctx.Output.SetStatus(401)
 		var res resp
 		res.Code = 50014
 		res.Message = "token过期或非法的token"

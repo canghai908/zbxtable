@@ -1,7 +1,8 @@
 package models
 
 import (
-	"fmt"
+	fmt "fmt"
+	"github.com/astaxie/beego/logs"
 	"os"
 	"time"
 
@@ -18,7 +19,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //TableName func
 func TableName(str string) string {
-	return fmt.Sprintf("%s%s", beego.AppConfig.String("dbprefix"), str)
+	return fmt.Sprintf("%s%s", "zbxtable_", str)
 }
 
 //DatabaseInit 数据初始化
@@ -29,7 +30,7 @@ func DatabaseInit() {
 	v := &Manager{Username: "admin"}
 	err = o.Read(v, "Username")
 	if err == orm.ErrNoRows {
-		beego.Info("the admin user does not exist, create a new admin account later!")
+		logs.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
 		manager.Username = "admin"
 		manager.Password = utils.Md5([]byte("Zbxtable"))
@@ -39,9 +40,9 @@ func DatabaseInit() {
 		manager.Created = time.Now()
 		id, err := o.Insert(&manager)
 		if err != nil {
-			beego.Error(err)
+			logs.Error(err)
 		}
-		beego.Info("create an administrator account successfully, the admin ID is:", id)
+		logs.Info("create an administrator account successfully, the admin ID is:", id)
 	}
 }
 
@@ -51,31 +52,22 @@ var API = &zabbix.API{}
 //ModelsInit  p
 func ModelsInit() {
 	//database init
-	dbhost := beego.AppConfig.String("hostname")
-	dbuser := beego.AppConfig.String("username")
-	dbpass := beego.AppConfig.String("dbpsword")
-	dbname := beego.AppConfig.String("database")
-	dbport := beego.AppConfig.String("port")
-	dbdriver := beego.AppConfig.String("dbdriver")
+	dbtype := beego.AppConfig.String("dbtype")
+	dbhost := beego.AppConfig.String("dbhost")
+	dbuser := beego.AppConfig.String("dbuser")
+	dbpass := beego.AppConfig.String("dbpass")
+	dbname := beego.AppConfig.String("dbname")
+	dbport := beego.AppConfig.String("dbport")
 	//database type
-	switch dbdriver {
+	switch dbtype {
 	case "mysql":
-		if dbport == "" {
-			dbport = "3306"
-		}
 		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
 		orm.RegisterDataBase("default", "mysql", dburl)
-	case "postgres":
-		if dbport == "" {
-			dbport = "5432"
-		}
-		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + "/" + dbname + "?sslmode=disable"
+	case "postgresql":
+		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
 		orm.RegisterDataBase("default", "postgres", dburl)
 	default:
-		if dbport == "" {
-			dbport = "3306"
-		}
 		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
 		orm.RegisterDataBase("default", "mysql", dburl)
@@ -95,7 +87,7 @@ func ModelsInit() {
 	API = zabbix.NewAPI(ZabbixWeb + "/api_jsonrpc.php")
 	_, err := API.Login(ZabbixUser, ZabbixPass)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error("Fatal error ", err.Error())
 		os.Exit(1)
 	}
 	//web login

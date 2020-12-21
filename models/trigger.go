@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //TriggersRes rest
@@ -78,19 +78,18 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		"only_true":       "true",
 		"monitored":       "true"})
 	if err != nil {
-		log.Println(err)
+		logs.Error(err)
 		return []EndTrigger{}, 0, err
 	}
-
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
-		log.Println(err)
+		logs.Error(err)
 		return []EndTrigger{}, 0, err
 	}
 	var hb []LastTriggers
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Println(err)
+		logs.Error(err)
 		return []EndTrigger{}, 0, err
 	}
 	var bs EndTrigger

@@ -1,10 +1,10 @@
 package controllers
 
 import (
+	"github.com/astaxie/beego/logs"
+	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/astaxie/beego"
 
 	"github.com/canghai908/zbxtable/models"
 )
@@ -69,8 +69,10 @@ func (c *ExpController) GetItemTrend() {
 		c.ServeJSON()
 		return
 	}
+	oldfilename := v.Host.Name + "_" + v.Item.Name + "_trend" + ".xlsx"
+	filename := url.QueryEscape(oldfilename)
 	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
-	c.Ctx.Output.Header("Content-Disposition", "attachment; filename="+v.Host.Name+"_"+v.Item.Name+"_trend"+".xlsx")
+	c.Ctx.Output.Header("Content-Disposition", "attachment;filename="+filename)
 	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
 	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Ctx.Output.Status = 200
@@ -121,8 +123,10 @@ func (c *ExpController) GetItemHistory() {
 		c.ServeJSON()
 		return
 	}
+	oldfilename := v.Host.Name + "_" + v.Item.Name + "_history" + ".xlsx"
+	filename := url.QueryEscape(oldfilename)
 	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
-	c.Ctx.Output.Header("Content-Disposition", "attachment; filename="+v.Host.Name+"_"+v.Item.Name+"_history"+".xlsx")
+	c.Ctx.Output.Header("Content-Disposition", "attachment; filename="+filename)
 	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
 	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Ctx.Output.Status = 200
@@ -167,7 +171,7 @@ func (c *ExpController) Inspect() {
 	for kk, v := range hostdata {
 		b, err := models.GetItemByKey(v.HostID, "system.cpu.util[,idle]")
 		if err != nil {
-			beego.Error(err)
+			logs.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.Data["json"] = ExpRes
@@ -177,7 +181,7 @@ func (c *ExpController) Inspect() {
 		mem1, err := models.GetItemByKey(v.HostID, "vm.memory.size[total]")
 
 		if err != nil {
-			beego.Error(err)
+			logs.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.Data["json"] = ExpRes
@@ -185,7 +189,7 @@ func (c *ExpController) Inspect() {
 		}
 		mem2, err := models.GetItemByKey(v.HostID, "vm.memory.size[available]")
 		if err != nil {
-			beego.Error(err)
+			logs.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.Data["json"] = ExpRes
@@ -225,8 +229,10 @@ func (c *ExpController) Inspect() {
 		c.ServeJSON()
 		return
 	}
+	oldfilename := v.Name + ".xlsx"
+	filename := url.QueryEscape(oldfilename)
 	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
-	c.Ctx.Output.Header("Content-Disposition", "attachment; filename="+v.Name+".xlsx")
+	c.Ctx.Output.Header("Content-Disposition", "attachment; filename="+filename)
 	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
 	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Ctx.Output.Status = 200

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"log"
+	"github.com/astaxie/beego/logs"
 )
 
 //GetItemByKey bye key
@@ -12,12 +12,12 @@ func GetItemByKey(hostid, key string) (item []Item, err error) {
 		"sortfield": "name", "limit": "1", "hostids": hostid, "search": par})
 
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 
@@ -25,7 +25,7 @@ func GetItemByKey(hostid, key string) (item []Item, err error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 	// //fmt.Println(hb.Host)
@@ -40,12 +40,12 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 		"hostids": hostid})
 
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, 0, err
 	}
 
@@ -53,7 +53,7 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	//	log.Println(string(hba))
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logs.Error(err)
 		return []Item{}, 0, err
 	}
 	return hb, int64(len(hb)), err
