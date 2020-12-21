@@ -7,6 +7,7 @@ import (
 	"github.com/canghai908/zbxtable/models"
 	"github.com/canghai908/zbxtable/routers"
 	"github.com/urfave/cli"
+	"os"
 )
 
 const prompt = `
@@ -34,7 +35,13 @@ func runWeb(c *cli.Context) {
 	logs.SetLogger(logs.AdapterFile, `{"filename":"logs/zbxtable.log","level":7,"maxlines":0,
 		"maxsize":0,"daily":true,"maxdays":10,
 		"color":true,"perm":"0755"}`)
-	err := CheckConf()
+	_, err := os.Stat("./conf/app.conf")
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("Please run 'zbxtable init' to create app.conf")
+		return
+	}
+	err = CheckConf()
 	if err != nil {
 		fmt.Println(err)
 		return
