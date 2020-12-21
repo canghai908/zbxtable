@@ -18,8 +18,7 @@ $$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\
   $$  /   $$  __$$\  $$  $$<     $$ |   $$  __$$ |$$  __$$\ $$ |      $$  __|   
  $$  /    $$ |  $$ |$$  /\$$\    $$ |   $$ |  $$ |$$ |  $$ |$$ |      $$ |      
 $$$$$$$$\ $$$$$$$  |$$ /  $$ |   $$ |   $$ |  $$ |$$$$$$$  |$$$$$$$$\ $$$$$$$$\ 
-\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|
-`
+\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|`
 
 //Web 配置
 var Web = cli.Command{
@@ -31,10 +30,10 @@ var Web = cli.Command{
 
 //runWeb 启动web
 func runWeb(c *cli.Context) {
-	fmt.Println(prompt)
 	logs.SetLogger(logs.AdapterFile, `{"filename":"logs/zbxtable.log","level":7,"maxlines":0,
 		"maxsize":0,"daily":true,"maxdays":10,
 		"color":true,"perm":"0755"}`)
+	logs.Info(prompt)
 	_, err := os.Stat("./conf/app.conf")
 	if err != nil {
 		fmt.Println(err)

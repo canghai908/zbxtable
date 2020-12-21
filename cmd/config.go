@@ -146,7 +146,7 @@ DB:
 	//db check
 	err = CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
 	if err != nil {
-		fmt.Println("Connection to database " + dbname + "  failed,please reconfigure the database connection information")
+		fmt.Println("Connection to database " + dbname + "  failed,please reconfigure the database connection information.")
 		goto DB
 	}
 	fmt.Println("Connected to database " + dbname + " successfully!")
@@ -190,7 +190,7 @@ WEB:
 		fmt.Println("Connection to Zabbix Web " + zabbix_web + " failed,please reconfigure the zabbix web connection information.")
 		goto WEB
 	}
-	fmt.Println("Connected to zabbix web successfully！Zabbix version is :", version)
+	fmt.Println("Connected to zabbix web successfully！Zabbix version is ", version)
 	fmt.Println("The configuration information is as follows:")
 	fmt.Println("ZbxTable dbtype:", dbtype)
 	fmt.Println("ZbxTable dbhost:", dbhost)
