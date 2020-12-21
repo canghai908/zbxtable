@@ -16,6 +16,7 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/signintech/gopdf v0.9.12
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/tealeg/xlsx v1.0.5
 	github.com/urfave/cli v1.22.4
 	gopkg.in/ini.v1 v1.62.0
