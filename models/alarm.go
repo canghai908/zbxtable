@@ -10,16 +10,43 @@ import (
 
 //Alarm struct
 type Alarm struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Host      string    `orm:"column(host);size(255)" json:"host"`
-	Hgroup    string    `orm:"column(hgroup);size(255)" json:"hgroup"`
+	ID int `orm:"column(id);auto" json:"id"`
+	//v2 add begin
+	TenantID  string `orm:"column(tenant_id);size(255)" json:"tenant_id"`
+	HostID    string `orm:"column(host_id);size(255)" json:"host_id"`
+	Hostname  string `orm:"column(hostname);size(200)" json:"hostname"`
+	Host      string `orm:"column(host);size(200)" json:"host"`
+	HostsIP   string `orm:"column(host_ip);size(200)" json:"host_ip"`
+	TriggerID int    `orm:"column(trigger_id);size(200)" json:"trigger_id"`
+	ItemID    int    `orm:"column(item_id);size(200)" json:"item_id"`
+	ItemName  string `orm:"column(item_name);size(200)" json:"item_name"`
+	ItemValue string `orm:"column(item_value);size(200)" json:"item_value"`
+	//v2 add end
+	Hgroup    string    `orm:"column(hgroup);size(200)" json:"hgroup"`
 	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(255)" json:"level"`
-	Message   string    `orm:"column(message);size(255)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(255)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(255)" json:"detail"`
-	Status    string    `orm:"column(status);size(255)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(255)" json:"eventid"`
+	Level     string    `orm:"column(level);size(200)" json:"level"`
+	Message   string    `orm:"column(message);size(200)" json:"message"`
+	Hkey      string    `orm:"column(hkey);size(200)" json:"hkey"`
+	Detail    string    `orm:"column(detail);size(200)" json:"detail"`
+	Status    string    `orm:"column(status);size(200)" json:"status"`
+	EventID   string    `orm:"column(event_id);size(200)" json:"eventid"`
+}
+type EventTpl struct {
+	HostsID      string `json:"host_id"`
+	HostHost     string `json:"host_host"`
+	Hostname     string `json:"hostname"`
+	HostsIP      string `json:"host_ip"`
+	HostGroup    string `json:"host_group"`
+	EventTime    string `json:"event_time"`
+	Severity     string `json:"severity"`
+	TriggerID    int    `json:"trigger_id"`
+	TriggerName  string `json:"trigger_name"`
+	TriggerKey   string `json:"trigger_key"`
+	TriggerValue string `json:"trigger_value"`
+	ItemID       int    `json:"item_id"`
+	ItemName     string `json:"item_name"`
+	ItemValue    string `json:"item_value"`
+	EventID      string `json:"event_id"`
 }
 
 //ListQueryAlarm query

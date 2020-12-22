@@ -69,11 +69,14 @@ type EndTrigger struct {
 //GetTriggers get porblems
 func GetTriggers() ([]EndTrigger, int64, error) {
 	par11 := []string{"hostid", "name"}
+	filter := make(map[string]string)
+	filter["value"] = "1"
 	triggers, err := API.CallWithError("trigger.get", Params{"output": "extend",
 		"sortfield":       "lastchange",
 		"sortorder":       "DESC",
 		"selectHosts":     par11,
 		"selectLastEvent": "extend",
+		"filter":          filter,
 		"maintenance":     "false",
 		"only_true":       "true",
 		"monitored":       "true"})
