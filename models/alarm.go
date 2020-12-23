@@ -236,7 +236,7 @@ func AnalysisAlarm(begin, end time.Time) (arrytile []string, pie []Pie, na []str
 	dpie := []Pie{}
 	//饼图数据
 	num, err := o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or  STATUS='0' GROUP BY level;").Values(&maps)
+		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or  STATUS='1' GROUP BY level;").Values(&maps)
 	if err == nil && num > 0 {
 		for i := 0; i < len(maps); i++ {
 			ss = append(ss, maps[i]["level"].(string))
@@ -251,7 +251,7 @@ func AnalysisAlarm(begin, end time.Time) (arrytile []string, pie []Pie, na []str
 	var name []string
 	var values []int
 	_, err = o.Raw("SELECT host, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or STATUS='0' GROUP BY host order by host_count desc limit 10;").Values(&map1s)
+		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or STATUS='1' GROUP BY host order by host_count desc limit 10;").Values(&map1s)
 	if err == nil && num > 0 {
 		if len(map1s) <= 10 {
 			for i := 0; i < len(map1s); i++ {
