@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"math/rand"
 	"strings"
 	"time"
@@ -15,7 +16,45 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+type EventTpl struct {
+	HostsID      string `json:"host_id"`
+	HostHost     string `json:"host_host"`
+	Hostname     string `json:"hostname"`
+	HostsIP      string `json:"host_ip"`
+	HostGroup    string `json:"host_group"`
+	EventTime    string `json:"event_time"`
+	Severity     string `json:"severity"`
+	TriggerID    string `json:"trigger_id"`
+	TriggerName  string `json:"trigger_name"`
+	TriggerKey   string `json:"trigger_key"`
+	TriggerValue string `json:"trigger_value"`
+	ItemID       string `json:"item_id"`
+	ItemName     string `json:"item_name"`
+	ItemValue    string `json:"item_value"`
+	EventID      string `json:"event_id"`
+}
+
+func CreateEventTpl() string {
+	var tpl = EventTpl{
+		HostsID:      "{HOST.ID}",
+		HostHost:     "{HOST.HOST}",
+		Hostname:     "{HOST.NAME}",
+		HostsIP:      "{HOST.IP}",
+		HostGroup:    "{TRIGGER.HOSTGROUP.NAME}",
+		EventTime:    "{EVENT.DATE} {EVENT.TIME}",
+		Severity:     "{TRIGGER.NSEVERITY}",
+		TriggerID:    "{TRIGGER.ID}",
+		TriggerName:  "{TRIGGER.NAME}",
+		TriggerKey:   "{TRIGGER.KEY}",
+		TriggerValue: "{TRIGGER.VALUE}",
+		ItemID:       "{ITEM.ID}",
+		ItemName:     "{ITEM.NAME}",
+		ItemValue:    "{ITEM.VALUE}",
+		EventID:      "{EVENT.ID}",
+	}
+	TPl, _ := json.MarshalIndent(tpl, "", "    ")
+	return string(TPl)
+}
 
 //RandStringRunes 随机密码生成
 func RandStringRunes() string {
@@ -31,12 +70,14 @@ var (
 	Install = cli.Command{
 		Name:        "install",
 		Usage:       "Install ms-agent tools to Zabbix Server",
-		Description: "A tools to send alarm message to ZbxTable",
+		Description: "Install ms-agent tools to Zabbix Server",
 		Action:      installAagent,
 	}
+	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	API         = &zabbix.API{}
 )
 
-func installAagent(c *cli.Context) {
+func LoginZabbix() (string, error) {
 	var ZabbixAddress, ZabbixAdmin, ZabbixPasswd string
 
 	ZabbixAdd := beego.AppConfig.String("zabbix_web")
@@ -47,53 +88,35 @@ func installAagent(c *cli.Context) {
 	logs.Info("Zabbix API Address:", ZabbixAddress)
 	logs.Info("Zabbix Admin User:", ZabbixAdmin)
 	logs.Info("Zabbix Admin Password:", ZabbixPasswd)
-	API := zabbix.NewAPI(ZabbixAddress)
+	API = zabbix.NewAPI(ZabbixAddress)
 	_, err := API.Login(ZabbixAdmin, ZabbixPasswd)
 	if err != nil {
 		logs.Error(err)
-		return
+		return "", err
 	}
-	logs.Info("登录zabbix平台成功!")
+	logs.Info("Login to zabbix successed")
 	version, err := API.Version()
+	if err != nil {
+		logs.Error(err)
+		return "", err
+	}
+	logs.Info("Zabbix version is", version)
+	return version, nil
+}
+
+func installAagent(c *cli.Context) {
+	//login zabbix to get version
+	version, err := LoginZabbix()
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	logs.Info("zabbix版本为:", version)
-	//MediaParams mediatype new
 	MediaParams := make(map[string]interface{}, 0)
-	//对zabbix版本进行判断，5版本配置有所变化
-	if strings.HasPrefix(version, "5") {
-		//5版本配置
-		MediaParams["description"] = "MS-Agent Media"
-		MediaParams["name"] = "MS-Agent Media"
-		MediaParams["type"] = "1"
-		MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
-		MediaParams["exec_path"] = "ms-agent"
-		MediaParams["maxattempts"] = "3"
-		MediaParams["attempt_interval"] = "3s"
-		MessageTemplates := make(map[int]interface{}, 1)
-		MediaParams["message_templates"] = MessageTemplates
-		Operations := make(map[string]interface{}, 0)
-		Operations["eventsource"] = "0"
-		Operations["recovery"] = "0"
-		Operations["subject"] = "[{TRIGGER.SEVERITY}]服务器:{HOSTNAME1}发生:{TRIGGER.NAME}故障！"
-		Operations["message"] = "告警主机: {HOSTNAME1}\n主机分组: {TRIGGER.HOSTGROUP.NAME}\n告警时间: {EVENT.DATE} {EVENT.TIME}\n告警等级: {TRIGGER.SEVERITY}\n告警信息: {TRIGGER.NAME}\n告警项目: {TRIGGER.KEY1}\n问题详情: {ITEM.NAME}:{ITEM.VALUE}\n当前状态: {TRIGGER.STATUS}\n事件ID: {EVENT.ID}"
-		RecoveryOperations := make(map[string]interface{}, 0)
-		RecoveryOperations["eventsource"] = "0"
-		RecoveryOperations["recovery"] = "1"
-		RecoveryOperations["subject"] = "[{TRIGGER.SEVERITY}]服务器:{HOSTNAME1}发生:{TRIGGER.NAME}恢复！"
-		RecoveryOperations["message"] = "告警主机: {HOSTNAME1}\n主机分组: {TRIGGER.HOSTGROUP.NAME}\n告警时间: {EVENT.DATE} {EVENT.TIME}\n告警等级: {TRIGGER.SEVERITY}\n告警信息: {TRIGGER.NAME}\n告警项目: {TRIGGER.KEY1}\n问题详情: {ITEM.NAME}:{ITEM.VALUE}\n当前状态: {TRIGGER.STATUS}\n事件ID: {EVENT.ID}"
-		MessageTemplates[0] = Operations
-		MessageTemplates[1] = RecoveryOperations
-	} else {
-		//其他版本
-		MediaParams["description"] = "MS-Agent Media"
-		MediaParams["name"] = "MS-Agent Media"
-		MediaParams["type"] = "1"
-		MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
-		MediaParams["exec_path"] = "ms-agent"
-	}
+	MediaParams["description"] = "MS-Agent Media"
+	MediaParams["name"] = "MS-Agent Media"
+	MediaParams["type"] = "1"
+	MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
+	MediaParams["exec_path"] = "ms-agent"
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
 	if err != nil {
 		logs.Error(err)
@@ -103,8 +126,7 @@ func installAagent(c *cli.Context) {
 	mediatypeids := result["mediatypeids"].([]interface{})
 	//var mediaid string
 	mediaid := mediatypeids[0].(string)
-	logs.Info("创建告警媒介成功!")
-
+	logs.Info("crate media type successfully!")
 	//GroupParams create usergroup
 	GroupParams := make(map[string]interface{}, 0)
 	GroupParams["name"] = "MS-Agent Group"
@@ -116,8 +138,7 @@ func installAagent(c *cli.Context) {
 	resgroup := group.Result.(map[string]interface{})
 	usrgrpids := resgroup["usrgrpids"].([]interface{})
 	groupid := usrgrpids[0].(string)
-	logs.Info("创建告警用户组成功!")
-
+	logs.Info("create user group successfully!")
 	//create user
 	userpara := make(map[string]interface{}, 0)
 	usrgrps := make(map[string]string, 0)
@@ -126,7 +147,7 @@ func installAagent(c *cli.Context) {
 	a := make(map[int]interface{})
 	a[0] = usrgrps
 	usermepara["mediatypeid"] = mediaid
-	usermepara["sendto"] = "ms-agent"
+	usermepara["sendto"] = "v2"
 	usermepara["active"] = "0"
 	usermepara["severity"] = "63"
 	usermepara["period"] = "1-7,00:00-24:00"
@@ -153,19 +174,19 @@ func installAagent(c *cli.Context) {
 	resuser := user.Result.(map[string]interface{})
 	userids := resuser["userids"].([]interface{})
 	userid := userids[0].(string)
-	logs.Info("创建告警用户成功!")
-	logs.Info("用户名:ms-agent")
-	logs.Info("密码:", tpasswdord)
+	logs.Info("Create alarm user successfully!")
+	logs.Info("Username : ms-agent1")
+	logs.Info("Password :", tpasswdord)
 	actpara := make(map[string]interface{}, 0)
 	actpara["name"] = "MS-Agent Action"
 	actpara["eventsource"] = "0"
 	actpara["status"] = "0"
 	actpara["esc_period"] = "60"
-	actpara["def_longdata"] = "告警主机: {HOSTNAME1}\n主机分组: {TRIGGER.HOSTGROUP.NAME}\n告警时间: {EVENT.DATE} {EVENT.TIME}\n告警等级: {TRIGGER.SEVERITY}\n告警信息: {TRIGGER.NAME}\n告警项目: {TRIGGER.KEY1}\n问题详情: {ITEM.NAME}:{ITEM.VALUE}\n当前状态: {TRIGGER.STATUS}\n事件ID: {EVENT.ID}"
-	actpara["def_shortdata"] = "[{TRIGGER.SEVERITY}]服务器:{HOSTNAME1}发生:{TRIGGER.NAME}故障！"
+	actpara["def_longdata"] = CreateEventTpl()
+	actpara["def_shortdata"] = "{TRIGGER.STATUS}"
 	actpara["recovery_msg"] = "1"
-	actpara["r_longdata"] = "告警主机: {HOSTNAME1}\n主机分组: {TRIGGER.HOSTGROUP.NAME}\n告警时间: {EVENT.DATE} {EVENT.TIME}\n告警等级: {TRIGGER.SEVERITY}\n告警信息: {TRIGGER.NAME}\n告警项目: {TRIGGER.KEY1}\n问题详情: {ITEM.NAME}:{ITEM.VALUE}\n当前状态: {TRIGGER.STATUS}\n事件ID: {EVENT.ID}"
-	actpara["r_shortdata"] = "[{TRIGGER.SEVERITY}]服务器:{HOSTNAME1}{TRIGGER.NAME}已恢复！"
+	actpara["r_longdata"] = CreateEventTpl()
+	actpara["r_shortdata"] = "{TRIGGER.STATUS}"
 
 	//operations
 	operpara := make(map[string]interface{}, 0)
@@ -175,8 +196,15 @@ func installAagent(c *cli.Context) {
 	v := make(map[int]interface{})
 	v[0] = use
 	opm := make(map[string]string, 0)
-	opm["default_msg"] = "1"
-	opm["mediatypeid"] = mediaid
+	if strings.HasPrefix(version, "5") {
+		opm["default_msg"] = "0"
+		opm["mediatypeid"] = mediaid
+		opm["subject"] = "{TRIGGER.STATUS}"
+		opm["message"] = CreateEventTpl()
+	} else {
+		opm["default_msg"] = "1"
+		opm["mediatypeid"] = mediaid
+	}
 	operpara["opmessage_usr"] = v
 	operpara["opmessage"] = opm
 
@@ -188,8 +216,15 @@ func installAagent(c *cli.Context) {
 	v2 := make(map[int]interface{})
 	v2[0] = use2
 	opm1 := make(map[string]string, 0)
-	opm1["default_msg"] = "1"
-	opm1["mediatypeid"] = mediaid
+	if strings.HasPrefix(version, "5") {
+		opm1["default_msg"] = "0"
+		opm1["mediatypeid"] = mediaid
+		opm1["subject"] = "{TRIGGER.STATUS}"
+		opm1["message"] = CreateEventTpl()
+	} else {
+		opm1["default_msg"] = "1"
+		opm1["mediatypeid"] = mediaid
+	}
 	recovpara["opmessage_usr"] = v2
 	recovpara["opmessage"] = opm1
 
@@ -207,6 +242,7 @@ func installAagent(c *cli.Context) {
 		logs.Error(err)
 		return
 	}
-	logs.Info("创建告警动作成功!")
-	logs.Info("插件安装完成!")
+	logs.Info("Create alarm action successfully!")
+	logs.Info("MS-Agent plugin configured successfully!")
+	logs.Info("MS-Agent token is", beego.AppConfig.String("token"))
 }

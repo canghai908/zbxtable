@@ -17,8 +17,8 @@ type Alarm struct {
 	Hostname  string `orm:"column(hostname);size(200)" json:"hostname"`
 	Host      string `orm:"column(host);size(200)" json:"host"`
 	HostsIP   string `orm:"column(host_ip);size(200)" json:"host_ip"`
-	TriggerID int    `orm:"column(trigger_id);size(200)" json:"trigger_id"`
-	ItemID    int    `orm:"column(item_id);size(200)" json:"item_id"`
+	TriggerID int64  `orm:"column(trigger_id);size(200)" json:"trigger_id"`
+	ItemID    int64  `orm:"column(item_id);size(200)" json:"item_id"`
 	ItemName  string `orm:"column(item_name);size(200)" json:"item_name"`
 	ItemValue string `orm:"column(item_value);size(200)" json:"item_value"`
 	//v2 add end
@@ -29,7 +29,7 @@ type Alarm struct {
 	Hkey      string    `orm:"column(hkey);size(200)" json:"hkey"`
 	Detail    string    `orm:"column(detail);size(200)" json:"detail"`
 	Status    string    `orm:"column(status);size(200)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(200)" json:"eventid"`
+	EventID   int64     `orm:"column(event_id);size(200)" json:"eventid"`
 }
 type EventTpl struct {
 	HostsID      string `json:"host_id"`
@@ -39,14 +39,14 @@ type EventTpl struct {
 	HostGroup    string `json:"host_group"`
 	EventTime    string `json:"event_time"`
 	Severity     string `json:"severity"`
-	TriggerID    int    `json:"trigger_id"`
+	TriggerID    int64  `json:"trigger_id"`
 	TriggerName  string `json:"trigger_name"`
 	TriggerKey   string `json:"trigger_key"`
 	TriggerValue string `json:"trigger_value"`
-	ItemID       int    `json:"item_id"`
+	ItemID       int64  `json:"item_id"`
 	ItemName     string `json:"item_name"`
 	ItemValue    string `json:"item_value"`
-	EventID      string `json:"event_id"`
+	EventID      int64  `json:"event_id"`
 }
 
 //ListQueryAlarm query
@@ -236,7 +236,7 @@ func AnalysisAlarm(begin, end time.Time) (arrytile []string, pie []Pie, na []str
 	dpie := []Pie{}
 	//饼图数据
 	num, err := o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' GROUP BY level;").Values(&maps)
+		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or  STATUS='0' GROUP BY level;").Values(&maps)
 	if err == nil && num > 0 {
 		for i := 0; i < len(maps); i++ {
 			ss = append(ss, maps[i]["level"].(string))
@@ -251,7 +251,7 @@ func AnalysisAlarm(begin, end time.Time) (arrytile []string, pie []Pie, na []str
 	var name []string
 	var values []int
 	_, err = o.Raw("SELECT host, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' GROUP BY host order by host_count desc limit 10;").Values(&map1s)
+		strbeing + "' and occurtime <='" + strend + "' AND STATUS='故障' or STATUS='0' GROUP BY host order by host_count desc limit 10;").Values(&map1s)
 	if err == nil && num > 0 {
 		if len(map1s) <= 10 {
 			for i := 0; i < len(map1s); i++ {

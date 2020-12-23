@@ -17,7 +17,8 @@ func GetCountHost() (info IndexInfo, err error) {
 		return IndexInfo{}, err
 	}
 	problems, err := API.CallWithError("problem.get", Params{"output": "extend",
-		"countOutput": true})
+		"countOutput": true,
+	})
 	if err != nil {
 		return IndexInfo{}, err
 	}

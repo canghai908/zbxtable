@@ -37,6 +37,7 @@ func main() {
 		cmd.Install,
 		cmd.Init,
 		cmd.Uc,
+		cmd.Ua,
 	}
 	app.Run(os.Args)
 }

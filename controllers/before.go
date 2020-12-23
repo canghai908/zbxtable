@@ -87,121 +87,43 @@ func (u *BeforeUserController) Logout() {
 // @Success 200 {string} logout success
 // @router /receive [post]
 func (u *BeforeUserController) Receive() {
+	type Re struct {
+		ID  int64  `json:"id"`
+		Msg string `json:"msg"`
+	}
+	var res Re
 	if !u.Ctx.Input.IsPost() {
-		u.Data["json"] = "method is not allowed for the requested url."
+		res.ID = 0
+		res.Msg = "method is not allowed for the requested url."
+		u.Data["json"] = res
 		u.ServeJSON()
 		return
 	}
-
 	token := u.Ctx.Request.Header.Get("Token")
-	if token != beego.AppConfig.String("token") {
-		u.Data["json"] = "Token Error!"
-		u.ServeJSON()
-		return
-	}
 	tenantid := u.Ctx.Request.Header.Get("ZBX-TenantID")
-	version := u.Ctx.Request.Header.Get("MS-Version")
-
 	mess := u.Ctx.Request.Body
 	defer mess.Close()
 	body, err := ioutil.ReadAll(mess)
 	if err != nil {
-		u.Data["json"] = err.Error()
+		res.ID = 0
+		res.Msg = err.Error()
+		u.Data["json"] = res
 		u.ServeJSON()
 		return
 	}
-	err = models.MsFormat(token, version, tenantid, body)
+	id, err := models.MsAdd(token, tenantid, body)
 	if err != nil {
-		logs.Info(err)
+		res.ID = 0
+		res.Msg = "Please run 'zbxtable ua' to update action."
+		u.Data["json"] = res
+		u.ServeJSON()
 		return
 	}
+	res.ID = id
+	res.Msg = "successed"
 	u.Data["json"] = res
 	u.ServeJSON()
-
-	//t := strings.Split(string(body), "\n")
-	//if len(t) != 9 {
-	//	u.Data["json"] = "message format is error!"
-	//	u.ServeJSON()
-	//	return
-	//}
-	//list := make(map[int]string)
-	//list[0] = "告警主机:"
-	//list[1] = "主机分组:"
-	//list[2] = "告警时间:"
-	//list[3] = "告警等级:"
-	//list[4] = "告警信息:"
-	//list[5] = "告警项目:"
-	//list[6] = "问题详情:"
-	//list[7] = "当前状态:"
-	//list[8] = "事件ID:"
-	//value := make(map[int]string)
-	//for i := 0; i < 9; i++ {
-	//	switch strings.Contains(t[i], list[i]) {
-	//	case true:
-	//		c := strings.Split(t[i], list[i])
-	//		value[i] = strings.TrimLeft(c[1], " ")
-	//	case false:
-	//		log.Println(t[i] + "config is error")
-	//		break
-	//	}
-	//}
-	//var alarm models.Alarm
-	//alarm.Host = strings.TrimRight(value[0], "\r")
-	//alarm.Hgroup = strings.TrimRight(value[1], "\r")
-	//otime, err := utils.ParTime(value[2])
-	//if err != nil {
-	//	u.Data["json"] = err.Error()
-	//	u.ServeJSON()
-	//	return
-	//}
-	//if err != nil {
-	//	u.Data["json"] = err.Error()
-	//	u.ServeJSON()
-	//	return
-	//}
-	//alarm.Occurtime = otime
-	//le := strings.TrimRight(value[3], "\r")
-	//switch le {
-	//case "Not classified":
-	//	alarm.Level = "未分类"
-	//case "Information":
-	//	alarm.Level = "信息"
-	//case "Warning":
-	//	alarm.Level = "警告"
-	//case "Average":
-	//	alarm.Level = "一般"
-	//case "High":
-	//	alarm.Level = "严重"
-	//case "Disaster":
-	//	alarm.Level = "致命"
-	//default:
-	//	alarm.Level = "一般"
-	//}
-	//alarm.Message = strings.TrimRight(value[4], "\r")
-	//alarm.Hkey = strings.TrimRight(value[5], "\r")
-	//alarm.Detail = strings.TrimRight(value[6], "\r")
-	//if strings.TrimRight(value[7], "\r") == "PROBLEM" {
-	//	alarm.Status = "故障"
-	//} else {
-	//	alarm.Status = "恢复"
-	//}
-	//alarm.EventID = strings.TrimRight(value[8], "\r")
-	////写入mysql数据库
-	//id, err := models.AddAlarm(&alarm)
-	//if err != nil {
-	//	u.Data["json"] = err.Error()
-	//	u.ServeJSON()
-	//	return
-	//}
-	//type Re struct {
-	//	ID  int64  `json:"id"`
-	//	Msg string `json:"msg"`
-	//}
-	//var res Re
-	//res.ID = id
-	//res.Msg = "ok"
-	//u.Data["json"] = res
-	//u.ServeJSON()
+	return
 }
 
 // Webhook receive message controller
