@@ -175,7 +175,7 @@ func installAagent(c *cli.Context) {
 	userids := resuser["userids"].([]interface{})
 	userid := userids[0].(string)
 	logs.Info("Create alarm user successfully!")
-	logs.Info("Username : ms-agent1")
+	logs.Info("Username : ms-agent")
 	logs.Info("Password :", tpasswdord)
 	actpara := make(map[string]interface{}, 0)
 	actpara["name"] = "MS-Agent Action"

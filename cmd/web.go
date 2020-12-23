@@ -42,7 +42,7 @@ func runWeb(c *cli.Context) {
 		fmt.Println("Please run 'zbxtable init' to create app.conf")
 		return
 	}
-	err = CheckConf()
+	err = PreCheckConf()
 	if err != nil {
 		fmt.Println(err)
 		return

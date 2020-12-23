@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/urfave/cli"
 	"gopkg.in/ini.v1"
@@ -22,7 +21,7 @@ func updateconfig(c *cli.Context) {
 	logs.Info("Start upgrading the old configuration file!")
 	cfg, err := ini.Load("./conf/app.conf")
 	if err != nil {
-		fmt.Println(err)
+		logs.Error(err)
 		return
 	}
 	conf := make(map[string]string)
@@ -32,31 +31,50 @@ func updateconfig(c *cli.Context) {
 	for _, v := range b {
 		p, err := cfg.Section("").GetKey(v)
 		if err != nil {
-			fmt.Println(err)
+			logs.Error(err)
 			return
 		}
 		conf[v] = p.String()
+	}
+	err = CheckConf(conf["zabbix_web"], conf["zabbix_user"], conf["zabbix_pass"],
+		conf["dbdriver"], conf["hostname"], conf["username"], conf["dbpsword"], conf["database"], conf["port"])
+	if err != nil {
+		logs.Error(err)
+		return
 	}
 	err = WriteConf(conf["zabbix_web"], conf["zabbix_user"], conf["zabbix_pass"],
 		conf["dbdriver"], conf["hostname"], conf["username"], conf["dbpsword"], conf["database"], conf["port"],
 		conf["httpport"], conf["runmode"], conf["session_timeout"], conf["token"])
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = CheckConf()
-	if err != nil {
-		fmt.Println(err)
+		logs.Error(err)
 		return
 	}
 	logs.Info("Successfully upgraded the old configuration file!")
 }
 
 //check conf
-func CheckConf() error {
+func CheckConf(zabbix_web, zabbix_user, zabbix_pass,
+	dbtype, dbhost, dbuser, dbpass, dbname, dbport string) error {
+	err := CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
+	if err != nil {
+		logs.Error(err)
+		return err
+	}
+	logs.Info("Connected to database " + dbname + " successfully!")
+	version, err := CheckZabbix(zabbix_web, zabbix_user, zabbix_pass)
+	if err != nil {
+		logs.Error(err)
+		return err
+	}
+	logs.Info("Connected to zabbix web successfully！Zabbix version is :", version)
+	return nil
+}
+
+//check conf
+func PreCheckConf() error {
 	cfg, err := ini.Load("./conf/app.conf")
 	if err != nil {
-		fmt.Println(err)
+		logs.Error(err)
 		return err
 	}
 	conf := make(map[string]string)
@@ -65,17 +83,20 @@ func CheckConf() error {
 	for _, v := range b {
 		p, err := cfg.Section("").GetKey(v)
 		if err != nil {
+			logs.Error(err)
 			return err
 		}
 		conf[v] = p.String()
 	}
 	err = CheckDb(conf["dbtype"], conf["dbhost"], conf["dbuser"], conf["dbpass"], conf["dbname"], conf["dbport"])
 	if err != nil {
+		logs.Error(err)
 		return err
 	}
 	logs.Info("Connected to database " + conf["dbname"] + " successfully!")
 	version, err := CheckZabbix(conf["zabbix_web"], conf["zabbix_user"], conf["zabbix_pass"])
 	if err != nil {
+		logs.Error(err)
 		return err
 	}
 	logs.Info("Connected to zabbix web successfully！Zabbix version is :", version)
