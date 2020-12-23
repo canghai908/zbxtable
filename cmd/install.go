@@ -126,7 +126,7 @@ func installAagent(c *cli.Context) {
 	mediatypeids := result["mediatypeids"].([]interface{})
 	//var mediaid string
 	mediaid := mediatypeids[0].(string)
-	logs.Info("crate media type successfully!")
+	logs.Info("Create media type successfully!")
 	//GroupParams create usergroup
 	GroupParams := make(map[string]interface{}, 0)
 	GroupParams["name"] = "MS-Agent Group"
@@ -138,7 +138,7 @@ func installAagent(c *cli.Context) {
 	resgroup := group.Result.(map[string]interface{})
 	usrgrpids := resgroup["usrgrpids"].([]interface{})
 	groupid := usrgrpids[0].(string)
-	logs.Info("create user group successfully!")
+	logs.Info("Create user group successfully!")
 	//create user
 	userpara := make(map[string]interface{}, 0)
 	usrgrps := make(map[string]string, 0)
