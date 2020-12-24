@@ -53,7 +53,8 @@ func CreateEventTpl() string {
 		EventID:      "{EVENT.ID}",
 	}
 	TPl, _ := json.MarshalIndent(tpl, "", "    ")
-	return string(TPl)
+	tp := strings.ReplaceAll(string(TPl), `"`, `¦`)
+	return tp
 }
 
 //RandStringRunes 随机密码生成
