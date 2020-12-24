@@ -16,6 +16,6 @@ runtime/*
 *bin
 */test/*
 */test
-*/vendor
 logs/*
 packfile/staticFile.go
+/conf/
