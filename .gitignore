@@ -19,3 +19,4 @@ runtime/*
 logs/*
 packfile/staticFile.go
 /conf/
+/web/
