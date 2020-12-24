@@ -114,7 +114,7 @@ func (u *BeforeUserController) Receive() {
 	id, err := models.MsAdd(token, tenantid, body)
 	if err != nil {
 		res.ID = 0
-		res.Msg = "Please run 'zbxtable ua' to update action."
+		res.Msg = err.Error()
 		u.Data["json"] = res
 		u.ServeJSON()
 		return

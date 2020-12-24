@@ -5,14 +5,18 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/canghai908/zbxtable/utils"
+	"strings"
 )
 
 func MsAdd(token, tenantid string, message []byte) (int64, error) {
 	if token != beego.AppConfig.String("token") {
 		return 0, errors.New("Token Error!")
 	}
+	//replace "
+	p1 := strings.ReplaceAll(string(message), `"`, `\"`)
+	p2 := strings.ReplaceAll(p1, `¦`, `"`)
 	var mes EventTpl
-	err := json.Unmarshal(message, &mes)
+	err := json.Unmarshal([]byte(p2), &mes)
 	if err != nil {
 		logs.Error(err)
 		return 0, err
@@ -46,5 +50,5 @@ func MsAdd(token, tenantid string, message []byte) (int64, error) {
 		logs.Error(err)
 		return 0, err
 	}
-	return id, err
+	return id, nil
 }

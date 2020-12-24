@@ -84,13 +84,3 @@ func RemoveRepByMap(slc []string) []string {
 	}
 	return result
 }
-
-//RemoveRep a
-func RemoveRep(slc []string) []string {
-	if len(slc) < 1024 {
-		// 切片长度小于1024的时候，循环来过滤
-		return RemoveRepByLoop(slc)
-	}
-	// 大于的时候，通过map来过滤
-	return RemoveRepByMap(slc)
-}
