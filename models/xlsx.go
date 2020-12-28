@@ -365,7 +365,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	}
 	xlsx.SetActiveSheet(index)
 	var b bytes.Buffer
-	err = xlsx.Write(&b)
+	err := xlsx.Write(&b)
 	if err != nil {
 		return []byte{}, err
 	}

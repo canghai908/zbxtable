@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/manifoldco/promptui"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 	"os"
 	"strconv"
@@ -54,16 +54,15 @@ const qrencode = `##############################################################
 
 var (
 	// Init cli
-	Init = cli.Command{
-		Name:        "init",
-		Usage:       "Init config file",
-		Description: "A tools to send alarm message to ZbxTable",
-		Action:      AppInit,
+	Init = &cli.Command{
+		Name:   "init",
+		Usage:  "Init config file",
+		Action: AppInit,
 	}
 )
 
 //AppInit
-func AppInit(c *cli.Context) {
+func AppInit(*cli.Context) error {
 DB:
 	validate := func(input string) error {
 		_, err := strconv.ParseFloat(input, 64)
@@ -81,6 +80,7 @@ DB:
 	_, dbtype, err := ProDbtype.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
+		return err
 	}
 	//db host
 	ProDbhost := promptui.Prompt{
@@ -91,7 +91,7 @@ DB:
 	dbhost, err := ProDbhost.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db name
 	ProDBname := promptui.Prompt{
@@ -102,7 +102,7 @@ DB:
 	dbname, err := ProDBname.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db user
 	ProDBuser := promptui.Prompt{
@@ -113,7 +113,7 @@ DB:
 	dbuser, err := ProDBuser.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db pass
 	ProDBpass := promptui.Prompt{
@@ -124,7 +124,7 @@ DB:
 	dbpass, err := ProDBpass.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//switch DefaultPort
 	var DefaultPort string
@@ -144,6 +144,7 @@ DB:
 	dbport, err := ProDBport.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
+		return err
 	}
 	//db check
 	err = CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
@@ -162,7 +163,7 @@ WEB:
 	zabbix_web, err := ProZbxWeb.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//zabbix username
 	ProZbxUser := promptui.Prompt{
@@ -173,7 +174,7 @@ WEB:
 	zabbix_user, err := ProZbxUser.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//zabbix Password
 	ProZbxPass := promptui.Prompt{
@@ -184,7 +185,7 @@ WEB:
 	zabbix_pass, err := ProZbxPass.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//check zabbix connection
 	version, err := CheckZabbix(zabbix_web, zabbix_user, zabbix_pass)
@@ -211,7 +212,7 @@ WEB:
 	_, result, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	switch result {
 	case "Yes":
@@ -221,7 +222,7 @@ WEB:
 			"", "", "", token)
 		if err != nil {
 			fmt.Printf("write config file failed %v\n", err)
-			return
+			return err
 		}
 		fmt.Println("The configuration file ./conf/app.conf is generated successfully!")
 		fmt.Println("Follow WeChat public account to get the latest news!")
@@ -229,6 +230,7 @@ WEB:
 	case "No":
 		goto DB
 	}
+	return nil
 }
 
 //CheckDb

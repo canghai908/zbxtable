@@ -9,7 +9,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	zabbix "github.com/canghai908/zabbix-go"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
@@ -66,16 +66,19 @@ func RandStringRunes() string {
 	return string(b)
 }
 
+//const
 var (
-	// Install cli
-	Install = cli.Command{
-		Name:        "install",
-		Usage:       "Install ms-agent tools to Zabbix Server",
-		Description: "Install ms-agent tools to Zabbix Server",
-		Action:      installAagent,
-	}
 	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	API         = &zabbix.API{}
+)
+
+//ms-aget const
+var (
+	MSName   = "ms-agent"
+	MSUser   = "ms-agent"
+	MSGroup  = "MS-Agent Group"
+	MSMedia  = "MS-Agent Media"
+	MSAction = "MS-Agent Action"
 )
 
 func LoginZabbix() (string, error) {
@@ -105,23 +108,33 @@ func LoginZabbix() (string, error) {
 	return version, nil
 }
 
-func installAagent(c *cli.Context) {
+var (
+	// Install cli
+	Install = &cli.Command{
+		Name:   "install",
+		Usage:  "Install ms-agent tools to Zabbix Server",
+		Action: installAagent,
+	}
+)
+
+//installAagent
+func installAagent(*cli.Context) error {
 	//login zabbix to get version
 	version, err := LoginZabbix()
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	MediaParams := make(map[string]interface{}, 0)
-	MediaParams["description"] = "MS-Agent Media"
-	MediaParams["name"] = "MS-Agent Media"
+	MediaParams["description"] = MSMedia
+	MediaParams["name"] = MSMedia
 	MediaParams["type"] = "1"
 	MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
-	MediaParams["exec_path"] = "ms-agent"
+	MediaParams["exec_path"] = MSName
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	result := ma.Result.(map[string]interface{})
 	mediatypeids := result["mediatypeids"].([]interface{})
@@ -130,11 +143,11 @@ func installAagent(c *cli.Context) {
 	logs.Info("Create media type successfully!")
 	//GroupParams create usergroup
 	GroupParams := make(map[string]interface{}, 0)
-	GroupParams["name"] = "MS-Agent Group"
+	GroupParams["name"] = MSGroup
 	group, err := API.CallWithError("usergroup.create", GroupParams)
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	resgroup := group.Result.(map[string]interface{})
 	usrgrpids := resgroup["usrgrpids"].([]interface{})
@@ -154,8 +167,8 @@ func installAagent(c *cli.Context) {
 	usermepara["period"] = "1-7,00:00-24:00"
 	b := make(map[int]interface{}, 0)
 	b[0] = usermepara
-	userpara["alias"] = "ms-agent"
-	userpara["name"] = "ms-agent"
+	userpara["alias"] = MSUser
+	userpara["name"] = MSUser
 	tpasswdord := RandStringRunes()
 	userpara["passwd"] = tpasswdord
 	//5.2版本 取消type字段,切换为roleid，roleid=2默认为管理员角色
@@ -170,16 +183,16 @@ func installAagent(c *cli.Context) {
 	user, err := API.CallWithError("user.create", userpara)
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	resuser := user.Result.(map[string]interface{})
 	userids := resuser["userids"].([]interface{})
 	userid := userids[0].(string)
 	logs.Info("Create alarm user successfully!")
-	logs.Info("Username : ms-agent")
+	logs.Info("Username :" + MSUser)
 	logs.Info("Password :", tpasswdord)
 	actpara := make(map[string]interface{}, 0)
-	actpara["name"] = "MS-Agent Action"
+	actpara["name"] = MSAction
 	actpara["eventsource"] = "0"
 	actpara["status"] = "0"
 	actpara["esc_period"] = "60"
@@ -199,13 +212,12 @@ func installAagent(c *cli.Context) {
 	opm := make(map[string]string, 0)
 	if strings.HasPrefix(version, "5") {
 		opm["default_msg"] = "0"
-		opm["mediatypeid"] = mediaid
 		opm["subject"] = "{TRIGGER.STATUS}"
 		opm["message"] = CreateEventTpl()
 	} else {
 		opm["default_msg"] = "1"
-		opm["mediatypeid"] = mediaid
 	}
+	opm["mediatypeid"] = mediaid
 	operpara["opmessage_usr"] = v
 	operpara["opmessage"] = opm
 
@@ -219,13 +231,12 @@ func installAagent(c *cli.Context) {
 	opm1 := make(map[string]string, 0)
 	if strings.HasPrefix(version, "5") {
 		opm1["default_msg"] = "0"
-		opm1["mediatypeid"] = mediaid
 		opm1["subject"] = "{TRIGGER.STATUS}"
 		opm1["message"] = CreateEventTpl()
 	} else {
 		opm1["default_msg"] = "1"
-		opm1["mediatypeid"] = mediaid
 	}
+	opm1["mediatypeid"] = mediaid
 	recovpara["opmessage_usr"] = v2
 	recovpara["opmessage"] = opm1
 
@@ -241,9 +252,10 @@ func installAagent(c *cli.Context) {
 	_, err = API.CallWithError("action.create", actpara)
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	logs.Info("Create alarm action successfully!")
 	logs.Info("MS-Agent plugin configured successfully!")
 	logs.Info("MS-Agent token is", beego.AppConfig.String("token"))
+	return nil
 }

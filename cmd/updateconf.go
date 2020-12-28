@@ -2,27 +2,26 @@ package cmd
 
 import (
 	"github.com/astaxie/beego/logs"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 )
 
 var (
 	//Web 配置
-	Uc = cli.Command{
-		Name:        "uc",
-		Usage:       "Update config file",
-		Description: "Update config file",
-		Action:      updateconfig,
+	Uc = &cli.Command{
+		Name:   "uc",
+		Usage:  "Update config file",
+		Action: updateconfig,
 	}
 )
 
 //runWeb 启动web
-func updateconfig(c *cli.Context) {
+func updateconfig(*cli.Context) error {
 	logs.Info("Start upgrading the old configuration file!")
 	cfg, err := ini.Load("./conf/app.conf")
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	conf := make(map[string]string)
 	var b = []string{"appname", "httpport", "runmode", "copyrequestbody", "session_timeout",
@@ -32,7 +31,7 @@ func updateconfig(c *cli.Context) {
 		p, err := cfg.Section("").GetKey(v)
 		if err != nil {
 			logs.Error(err)
-			return
+			return err
 		}
 		conf[v] = p.String()
 	}
@@ -40,16 +39,17 @@ func updateconfig(c *cli.Context) {
 		conf["dbdriver"], conf["hostname"], conf["username"], conf["dbpsword"], conf["database"], conf["port"])
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	err = WriteConf(conf["zabbix_web"], conf["zabbix_user"], conf["zabbix_pass"],
 		conf["dbdriver"], conf["hostname"], conf["username"], conf["dbpsword"], conf["database"], conf["port"],
 		conf["httpport"], conf["runmode"], conf["session_timeout"], conf["token"])
 	if err != nil {
 		logs.Error(err)
-		return
+		return err
 	}
 	logs.Info("Successfully upgraded the old configuration file!")
+	return nil
 }
 
 //check conf

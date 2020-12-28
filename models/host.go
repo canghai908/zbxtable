@@ -15,7 +15,7 @@ func HostsList(page, limit, hosts string) ([]Hosts, int64, error) {
 	par := []string{"templateid", "name"}
 	var rep = zabbix.Response{}
 
-	rep, err = API.Call("host.get", Params{"selectParentTemplates": par, "selectGroups": "extend", "selectInterfaces": "extend"})
+	rep, err := API.Call("host.get", Params{"selectParentTemplates": par, "selectGroups": "extend", "selectInterfaces": "extend"})
 	if err != nil {
 		return []Hosts{}, 0, err
 	}

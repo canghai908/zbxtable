@@ -1,7 +1,6 @@
 package models
 
 import (
-	"log"
 	"strconv"
 	"time"
 
@@ -213,7 +212,7 @@ func ExportAlarm(begin, end time.Time, hosts string) ([]byte, error) {
 	intbegin := begin.Unix()
 	intend := end.Unix()
 	// offset int64, limit int64, begin, end time.Time) (ml []interface{}, cnt int, err error) {
-	_, err = o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte",
+	_, err := o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte",
 		end).Filter("host__contains", hosts).OrderBy("-occurtime").All(&alarms)
 	cnt := int64(len(alarms))
 	if err != nil {
@@ -270,31 +269,31 @@ func AnalysisAlarm(begin, end time.Time) (arrytile []string, pie []Pie, na []str
 	return ss, dpie, name, values, nil
 }
 
-// UpdateAlarmByID updates Alarm by Id and returns error if
-func UpdateAlarmByID(m *Alarm) (err error) {
-	o := orm.NewOrm()
-	v := Alarm{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			log.Println("Number of records updated in database:", num)
-		}
-	}
-	return
-}
-
-// DeleteAlarm deletes Alarm by Id and returns error if
-// the record to be deleted doesn't exist
-func DeleteAlarm(id int) (err error) {
-	o := orm.NewOrm()
-	v := Alarm{ID: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Delete(&Alarm{ID: id}); err == nil {
-			log.Println("Number of records deleted in database:", num)
-		}
-	}
-	return
-}
+//// UpdateAlarmByID updates Alarm by Id and returns error if
+//func UpdateAlarmByID(m *Alarm) (err error) {
+//	o := orm.NewOrm()
+//	v := Alarm{ID: m.ID}
+//	// ascertain id exists in the database
+//	if err = o.Read(&v); err == nil {
+//		var num int64
+//		if num, err = o.Update(m); err == nil {
+//			log.Println("Number of records updated in database:", num)
+//		}
+//	}
+//	return
+//}
+//
+//// DeleteAlarm deletes Alarm by Id and returns error if
+//// the record to be deleted doesn't exist
+//func DeleteAlarm(id int) (err error) {
+//	o := orm.NewOrm()
+//	v := Alarm{ID: id}
+//	// ascertain id exists in the database
+//	if err = o.Read(&v); err == nil {
+//		var num int64
+//		if num, err = o.Delete(&Alarm{ID: id}); err == nil {
+//			log.Println("Number of records deleted in database:", num)
+//		}
+//	}
+//	return
+//}

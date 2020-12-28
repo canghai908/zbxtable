@@ -28,7 +28,7 @@ func DatabaseInit() {
 	//添加管理员账号
 	o := orm.NewOrm()
 	v := &Manager{Username: "admin"}
-	err = o.Read(v, "Username")
+	err := o.Read(v, "Username")
 	if err == orm.ErrNoRows {
 		logs.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
@@ -63,21 +63,36 @@ func ModelsInit() {
 	case "mysql":
 		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		orm.RegisterDataBase("default", "mysql", dburl)
+		err := orm.RegisterDataBase("default", "mysql", dburl)
+		if err != nil {
+			logs.Error(err)
+			os.Exit(1)
+		}
 	case "postgresql":
 		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		orm.RegisterDataBase("default", "postgres", dburl)
+		err := orm.RegisterDataBase("default", "postgres", dburl)
+		if err != nil {
+			logs.Error(err)
+			os.Exit(1)
+		}
 	default:
 		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		orm.RegisterDataBase("default", "mysql", dburl)
+		err := orm.RegisterDataBase("default", "mysql", dburl)
+		if err != nil {
+			logs.Error(err)
+			os.Exit(1)
+		}
 	}
 	orm.RegisterModel(new(Alarm), new(Manager))
-	orm.RunSyncdb("default", false, true)
+	err := orm.RunSyncdb("default", false, true)
+	if err != nil {
+		logs.Error(err)
+		os.Exit(1)
+	}
 	if beego.AppConfig.String("runmode") == "dev" {
 		orm.Debug = true
 	}
-
 	// init admin
 	DatabaseInit()
 	//zabbix api login
@@ -85,9 +100,9 @@ func ModelsInit() {
 	ZabbixUser := beego.AppConfig.String("zabbix_user")
 	ZabbixPass := beego.AppConfig.String("zabbix_pass")
 	API = zabbix.NewAPI(ZabbixWeb + "/api_jsonrpc.php")
-	_, err := API.Login(ZabbixUser, ZabbixPass)
+	_, err = API.Login(ZabbixUser, ZabbixPass)
 	if err != nil {
-		logs.Error("Fatal error ", err.Error())
+		logs.Error(err)
 		os.Exit(1)
 	}
 	//web login
