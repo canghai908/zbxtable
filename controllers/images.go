@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"compress/gzip"
+	"github.com/astaxie/beego/logs"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -52,7 +53,7 @@ func (c *ImagesController) GetOne() {
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	data.Set("graphid", GraphID)
 	data.Set("from", StartTime)
@@ -65,7 +66,7 @@ func (c *ImagesController) GetOne() {
 	urlPath := URL.String()
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	reqest1.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	reqest1.Header.Add("Accept-Encoding", "gzip, deflate")
@@ -74,7 +75,7 @@ func (c *ImagesController) GetOne() {
 	reqest1.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response1, err := client1.Do(reqest1)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	defer response1.Body.Close()
 	if response1.StatusCode == 200 {
@@ -87,7 +88,7 @@ func (c *ImagesController) GetOne() {
 		}
 		data, err := ioutil.ReadAll(reader)
 		if err != nil {
-			beego.Error("读取响应数据失败: %+v", err)
+			logs.Error(err)
 		}
 		c.Ctx.ResponseWriter.Write(data)
 	}
