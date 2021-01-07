@@ -105,6 +105,6 @@ func ModelsInit() {
 		logs.Error(err)
 		os.Exit(1)
 	}
-	//web login
-	Intt()
+	//zabbix web login
+	LoginZabbixWeb()
 }

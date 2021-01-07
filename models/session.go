@@ -31,8 +31,8 @@ func (jar *Jar) Cookies(u *url.URL) []*http.Cookie {
 //JAR st
 var JAR = new(Jar)
 
-//Intt a
-func Intt() {
+//LoginZabbixWeb a
+func LoginZabbixWeb() {
 	v := url.Values{}
 	ZabbixWeb := beego.AppConfig.String("zabbix_web")
 	ZabbixUser := beego.AppConfig.String("zabbix_user")
