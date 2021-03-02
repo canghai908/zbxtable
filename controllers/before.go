@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/astaxie/beego/logs"
 	"io/ioutil"
+	"strconv"
 	"time"
 
 	"github.com/astaxie/beego"
@@ -41,8 +42,10 @@ func (u *BeforeUserController) Login() {
 		u.ServeJSON()
 		return
 	}
-	var SessionTimeout int
-	SessionTimeout, err = beego.AppConfig.Int("timeout")
+	//session timeout
+	var SessionTimeout int64
+	SessionTimeout, err = strconv.ParseInt(models.GetConfKey("timeout"), 10, 32)
+	//SessionTimeout=
 	if err != nil {
 		logs.Error(err)
 		SessionTimeout = 12
@@ -139,7 +142,7 @@ func (u *BeforeUserController) Webhook() {
 		return
 	}
 	tok := u.Ctx.Request.Header.Get("Token")
-	if tok != beego.AppConfig.String("token") {
+	if tok != models.GetConfKey("token") {
 		u.Data["json"] = "Token Error!"
 		u.ServeJSON()
 		return

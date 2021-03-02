@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	zabbix "github.com/canghai908/zabbix-go"
@@ -59,6 +58,8 @@ var (
 		Usage:  "Init config file",
 		Action: AppInit,
 	}
+	API = &zabbix.API{}
+	Cfg = &ini.File{}
 )
 
 //AppInit
@@ -149,6 +150,7 @@ DB:
 	//db check
 	err = CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
 	if err != nil {
+		fmt.Println(err)
 		fmt.Println("Connection to database " + dbname + "  failed,please reconfigure the database connection information.")
 		goto DB
 	}
@@ -188,12 +190,13 @@ WEB:
 		return err
 	}
 	//check zabbix connection
-	version, err := CheckZabbix(zabbix_web, zabbix_user, zabbix_pass)
+	version, err := CheckZabbixAPI(zabbix_web, zabbix_user, zabbix_pass)
 	if err != nil {
-		fmt.Println("Connection to Zabbix Web " + zabbix_web + " failed,please reconfigure the zabbix web connection information.")
+		fmt.Println(err)
+		fmt.Println("Connection to Zabbix API " + zabbix_web + " /api_jsonrpc.php failed,please reconfigure the zabbix web connection information.")
 		goto WEB
 	}
-	fmt.Println("Connected to zabbix web successfully！Zabbix version is ", version)
+	fmt.Println("Connected to Zabbix API successfully！Zabbix version is ", version)
 	fmt.Println("The configuration information is as follows:")
 	fmt.Println("ZbxTable dbtype:", dbtype)
 	fmt.Println("ZbxTable dbhost:", dbhost)
@@ -233,49 +236,6 @@ WEB:
 	return nil
 }
 
-//CheckDb
-func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) error {
-	//database type
-	switch dbdriver {
-	case "mysql":
-		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
-			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		db, err := sql.Open("mysql", dburl)
-		if err != nil {
-			return err
-		}
-		err = db.Ping()
-		if err != nil {
-			return err
-		}
-	case "postgresql":
-		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		db, err := sql.Open("postgres", dburl)
-		if err != nil {
-			return err
-		}
-		err = db.Ping()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-//CheckZabbix
-func CheckZabbix(address, user, pass string) (string, error) {
-	api := zabbix.NewAPI(address + "/api_jsonrpc.php")
-	_, err := api.Login(user, pass)
-	if err != nil {
-		return "", err
-	}
-	version, err := api.Version()
-	if err != nil {
-		return "", err
-	}
-	return version, nil
-}
-
 //Write config files
 func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
@@ -309,7 +269,11 @@ func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	cfg.Section("").NewKey("dbtype", dbtype)
 	cfg.Section("").NewKey("dbhost", dbhost)
 	cfg.Section("").NewKey("dbuser", dbuser)
-	cfg.Section("").NewKey("dbpass", dbpass)
+	var newpass string
+	if strings.Contains(dbpass, `#`) || strings.Contains(dbpass, `$`) || strings.Contains(dbpass, `!`) {
+		newpass = strings.ReplaceAll(dbpass, "'", "")
+	}
+	cfg.Section("").NewKey("dbpass", newpass)
 	cfg.Section("").NewKey("dbname", dbname)
 	cfg.Section("").NewKey("dbport", dbport)
 	//zabbix info

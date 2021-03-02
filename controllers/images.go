@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"compress/gzip"
+	"crypto/tls"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"io/ioutil"
@@ -44,10 +45,12 @@ func (c *ImagesController) GetOne() {
 	c.Ctx.ResponseWriter.Header().Set("Content-Type", "image/png")
 	c.Ctx.ResponseWriter.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
 	c.Ctx.ResponseWriter.Header().Set("Pragma", "no-cache, value")
-
-	client1 := &http.Client{nil, nil,
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client1 := &http.Client{tr, nil,
 		models.JAR, 99999999999999}
-	ZabbixWeb := beego.AppConfig.String("zabbix_web")
+	ZabbixWeb := models.GetConfKey("zabbix_web")
 	//imgurl
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}

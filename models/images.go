@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/signintech/gopdf"
 )
 
@@ -101,8 +101,11 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup, pdfHolder chan<- gopdf.ImageHolder) {
 	defer wg.Done()
 	//请求图形
-	ZabbixWeb := beego.AppConfig.String("zabbix_web")
-	client1 := &http.Client{nil, nil,
+	ZabbixWeb := GetConfKey("zabbix_web")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client1 := &http.Client{tr, nil,
 		JAR, 99999999999992}
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}

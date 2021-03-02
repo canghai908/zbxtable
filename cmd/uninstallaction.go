@@ -15,8 +15,10 @@ var (
 )
 
 func UninstallAction(*cli.Context) error {
+	//CheckConfExist
+	CheckConfExist()
 	//login zabbix to get version
-	_, err := LoginZabbix()
+	_, err := CheckZabbixAPI(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"))
 	if err != nil {
 		logs.Error(err)
 		return err

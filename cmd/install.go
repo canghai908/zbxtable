@@ -6,9 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
-	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/urfave/cli/v2"
 )
 
@@ -69,7 +67,6 @@ func RandStringRunes() string {
 //const
 var (
 	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	API         = &zabbix.API{}
 )
 
 //ms-aget const
@@ -80,33 +77,6 @@ var (
 	MSMedia  = "MS-Agent Media"
 	MSAction = "MS-Agent Action"
 )
-
-func LoginZabbix() (string, error) {
-	var ZabbixAddress, ZabbixAdmin, ZabbixPasswd string
-
-	ZabbixAdd := beego.AppConfig.String("zabbix_web")
-	ZabbixAddress = ZabbixAdd + "/api_jsonrpc.php"
-	ZabbixAdmin = beego.AppConfig.String("zabbix_user")
-	ZabbixPasswd = beego.AppConfig.String("zabbix_pass")
-
-	logs.Info("Zabbix API Address:", ZabbixAddress)
-	logs.Info("Zabbix Admin User:", ZabbixAdmin)
-	logs.Info("Zabbix Admin Password:", ZabbixPasswd)
-	API = zabbix.NewAPI(ZabbixAddress)
-	_, err := API.Login(ZabbixAdmin, ZabbixPasswd)
-	if err != nil {
-		logs.Error(err)
-		return "", err
-	}
-	logs.Info("Login to zabbix successed")
-	version, err := API.Version()
-	if err != nil {
-		logs.Error(err)
-		return "", err
-	}
-	logs.Info("Zabbix version is", version)
-	return version, nil
-}
 
 var (
 	// Install cli
@@ -119,8 +89,10 @@ var (
 
 //installAagent
 func installAagent(*cli.Context) error {
+	//CheckConfExist
+	CheckConfExist()
 	//login zabbix to get version
-	version, err := LoginZabbix()
+	version, err := CheckZabbixAPI(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"))
 	if err != nil {
 		logs.Error(err)
 		return err
@@ -256,6 +228,6 @@ func installAagent(*cli.Context) error {
 	}
 	logs.Info("Create alarm action successfully!")
 	logs.Info("MS-Agent plugin configured successfully!")
-	logs.Info("MS-Agent token is", beego.AppConfig.String("token"))
+	logs.Info("MS-Agent token is", InitConfig("token"))
 	return nil
 }

@@ -14,7 +14,6 @@ func HostsList(page, limit, hosts string) ([]Hosts, int64, error) {
 	if err != nil {
 		return []Hosts{}, 0, err
 	}
-
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
 		return []Hosts{}, 0, err

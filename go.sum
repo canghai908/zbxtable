@@ -23,8 +23,8 @@ github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6r
 github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737/go.mod h1:PmM6Mmwb0LSuEubjR8N7PtNe1KxZLtOUHtbeikc5h60=
 github.com/canghai908/jwt-beego v0.0.0-20201104081505-b5c6aa899c18 h1:JiFmIjjTB9UxgVDtcuN6CkBGseRV8lLgvbezA/9zqDs=
 github.com/canghai908/jwt-beego v0.0.0-20201104081505-b5c6aa899c18/go.mod h1:RYLIpu3mcfRKY/Q2fvPXsXQ4Cs1n5+wuC2xdFUsvdm8=
-github.com/canghai908/zabbix-go v0.0.0-20190301064811-5577c772412c h1:0OoAe5XQ5x1EriJt0+OaHqwwCEWT92qeLWis+s1kDEI=
-github.com/canghai908/zabbix-go v0.0.0-20190301064811-5577c772412c/go.mod h1:dGREhQtqYpoS8RwQQ1lfo6gA+I3FipZd5PdeUpbCGOw=
+github.com/canghai908/zabbix-go v0.0.0-20210226094813-a163a0ad1bf2 h1:d80KABRCY6SPJH5Lu+mG3tT4IE6lDUAyRrFKLNHXejg=
+github.com/canghai908/zabbix-go v0.0.0-20210226094813-a163a0ad1bf2/go.mod h1:0OWKWPwWdsT8OTb3EeuUt+4tJXlh76t4I3UcTpjB4QI=
 github.com/casbin/casbin v1.7.0/go.mod h1:c67qKN6Oum3UF5Q1+BByfFxkwKvhwW57ITjqwtzR1KE=
 github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
@@ -135,7 +135,6 @@ github.com/peterh/liner v1.0.1-0.20171122030339-3681c2a91233/go.mod h1:xIteQHvHu
 github.com/phpdave11/gofpdi v1.0.8 h1:9HRg0Z0qDfWeMU7ska+YNQ13RHxTxqP5KTg/dBl4o7c=
 github.com/phpdave11/gofpdi v1.0.8/go.mod h1:vBmVV0Do6hSBHC8uKUQ71JGW+ZGQq74llk/7bXwjDoI=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
@@ -188,8 +187,6 @@ github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/syndtr/goleveldb v0.0.0-20160425020131-cfa635847112/go.mod h1:Z4AUp2Km+PwemOoO/VB5AOx9XSsIItzFjoJlOSiYmn0=
 github.com/syndtr/goleveldb v0.0.0-20181127023241-353a9fca669c/go.mod h1:Z4AUp2Km+PwemOoO/VB5AOx9XSsIItzFjoJlOSiYmn0=
-github.com/tealeg/xlsx v1.0.5 h1:+f8oFmvY8Gw1iUXzPk+kz+4GpbDZPK1FhPiQRd+ypgE=
-github.com/tealeg/xlsx v1.0.5/go.mod h1:btRS8dz54TDnvKNosuAqxrM1QgN1udgk9O34bDCnORM=
 github.com/ugorji/go v0.0.0-20171122102828-84cb69a8af83/go.mod h1:hnLbHMwcvSihnDhEfx2/BzKp2xb0Y+ErdfYcrs9tkJQ=
 github.com/urfave/cli/v2 v2.3.0 h1:qph92Y649prgesehzOrQjdWyxFOp/QVM+6imKHad91M=
 github.com/urfave/cli/v2 v2.3.0/go.mod h1:LJmUH05zAU44vOAcrfzZQKsZbVcdbOG8rtL3/XcUArI=

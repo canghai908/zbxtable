@@ -119,8 +119,10 @@ func GetActionID(ActionName string) (string, error) {
 }
 
 func UpdateAction(*cli.Context) error {
+	//CheckConfExist
+	CheckConfExist()
 	//login zabbix to get version
-	version, err := LoginZabbix()
+	version, err := CheckZabbixAPI(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"))
 	if err != nil {
 		logs.Error(err)
 		return err
