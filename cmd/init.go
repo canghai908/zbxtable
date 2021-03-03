@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	zabbix "github.com/canghai908/zabbix-go"
@@ -9,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/manifoldco/promptui"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 	"os"
 	"strconv"
@@ -54,16 +53,17 @@ const qrencode = `##############################################################
 
 var (
 	// Init cli
-	Init = cli.Command{
-		Name:        "init",
-		Usage:       "Init config file",
-		Description: "A tools to send alarm message to ZbxTable",
-		Action:      AppInit,
+	Init = &cli.Command{
+		Name:   "init",
+		Usage:  "Init config file",
+		Action: AppInit,
 	}
+	API = &zabbix.API{}
+	Cfg = &ini.File{}
 )
 
 //AppInit
-func AppInit(c *cli.Context) {
+func AppInit(*cli.Context) error {
 DB:
 	validate := func(input string) error {
 		_, err := strconv.ParseFloat(input, 64)
@@ -81,6 +81,7 @@ DB:
 	_, dbtype, err := ProDbtype.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
+		return err
 	}
 	//db host
 	ProDbhost := promptui.Prompt{
@@ -91,7 +92,7 @@ DB:
 	dbhost, err := ProDbhost.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db name
 	ProDBname := promptui.Prompt{
@@ -102,7 +103,7 @@ DB:
 	dbname, err := ProDBname.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db user
 	ProDBuser := promptui.Prompt{
@@ -113,7 +114,7 @@ DB:
 	dbuser, err := ProDBuser.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//db pass
 	ProDBpass := promptui.Prompt{
@@ -124,7 +125,7 @@ DB:
 	dbpass, err := ProDBpass.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//switch DefaultPort
 	var DefaultPort string
@@ -144,10 +145,12 @@ DB:
 	dbport, err := ProDBport.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
+		return err
 	}
 	//db check
 	err = CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
 	if err != nil {
+		fmt.Println(err)
 		fmt.Println("Connection to database " + dbname + "  failed,please reconfigure the database connection information.")
 		goto DB
 	}
@@ -162,7 +165,7 @@ WEB:
 	zabbix_web, err := ProZbxWeb.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//zabbix username
 	ProZbxUser := promptui.Prompt{
@@ -173,7 +176,7 @@ WEB:
 	zabbix_user, err := ProZbxUser.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//zabbix Password
 	ProZbxPass := promptui.Prompt{
@@ -184,15 +187,16 @@ WEB:
 	zabbix_pass, err := ProZbxPass.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	//check zabbix connection
-	version, err := CheckZabbix(zabbix_web, zabbix_user, zabbix_pass)
+	version, err := CheckZabbixAPI(zabbix_web, zabbix_user, zabbix_pass)
 	if err != nil {
-		fmt.Println("Connection to Zabbix Web " + zabbix_web + " failed,please reconfigure the zabbix web connection information.")
+		fmt.Println(err)
+		fmt.Println("Connection to Zabbix API " + zabbix_web + " /api_jsonrpc.php failed,please reconfigure the zabbix web connection information.")
 		goto WEB
 	}
-	fmt.Println("Connected to zabbix web successfully！Zabbix version is ", version)
+	fmt.Println("Connected to Zabbix API successfully！Zabbix version is ", version)
 	fmt.Println("The configuration information is as follows:")
 	fmt.Println("ZbxTable dbtype:", dbtype)
 	fmt.Println("ZbxTable dbhost:", dbhost)
@@ -211,7 +215,7 @@ WEB:
 	_, result, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return err
 	}
 	switch result {
 	case "Yes":
@@ -221,7 +225,7 @@ WEB:
 			"", "", "", token)
 		if err != nil {
 			fmt.Printf("write config file failed %v\n", err)
-			return
+			return err
 		}
 		fmt.Println("The configuration file ./conf/app.conf is generated successfully!")
 		fmt.Println("Follow WeChat public account to get the latest news!")
@@ -229,49 +233,7 @@ WEB:
 	case "No":
 		goto DB
 	}
-}
-
-//CheckDb
-func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) error {
-	//database type
-	switch dbdriver {
-	case "mysql":
-		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
-			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		db, err := sql.Open("mysql", dburl)
-		if err != nil {
-			return err
-		}
-		err = db.Ping()
-		if err != nil {
-			return err
-		}
-	case "postgresql":
-		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		db, err := sql.Open("postgres", dburl)
-		if err != nil {
-			return err
-		}
-		err = db.Ping()
-		if err != nil {
-			return err
-		}
-	}
 	return nil
-}
-
-//CheckZabbix
-func CheckZabbix(address, user, pass string) (string, error) {
-	api := zabbix.NewAPI(address + "/api_jsonrpc.php")
-	_, err := api.Login(user, pass)
-	if err != nil {
-		return "", err
-	}
-	version, err := api.Version()
-	if err != nil {
-		return "", err
-	}
-	return version, nil
 }
 
 //Write config files
@@ -307,7 +269,11 @@ func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	cfg.Section("").NewKey("dbtype", dbtype)
 	cfg.Section("").NewKey("dbhost", dbhost)
 	cfg.Section("").NewKey("dbuser", dbuser)
-	cfg.Section("").NewKey("dbpass", dbpass)
+	var newpass string
+	if strings.Contains(dbpass, `#`) || strings.Contains(dbpass, `$`) || strings.Contains(dbpass, `!`) {
+		newpass = strings.ReplaceAll(dbpass, "'", "")
+	}
+	cfg.Section("").NewKey("dbpass", newpass)
 	cfg.Section("").NewKey("dbname", dbname)
 	cfg.Section("").NewKey("dbport", dbport)
 	//zabbix info

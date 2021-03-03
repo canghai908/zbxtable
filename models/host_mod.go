@@ -18,7 +18,7 @@ type HostGet struct {
 	ID      int    `json:"id"`
 	Jsonrpc string `json:"jsonrpc"`
 	Result  []struct {
-		Available        string        `json:"available"`
+		Available        string        `json:"available,omitempty"`
 		Description      string        `json:"description"`
 		DisableUntil     string        `json:"disable_until"`
 		Error            string        `json:"error"`

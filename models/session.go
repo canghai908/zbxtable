@@ -2,6 +2,8 @@ package models
 
 import (
 	"compress/gzip"
+	"crypto/tls"
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"io/ioutil"
@@ -9,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/astaxie/beego"
 )
 
 //Jar struct
@@ -31,19 +31,18 @@ func (jar *Jar) Cookies(u *url.URL) []*http.Cookie {
 //JAR st
 var JAR = new(Jar)
 
-//Intt a
-func Intt() {
+//LoginZabbixWeb a
+func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	v := url.Values{}
-	ZabbixWeb := beego.AppConfig.String("zabbix_web")
-	ZabbixUser := beego.AppConfig.String("zabbix_user")
-	ZabbixPass := beego.AppConfig.String("zabbix_pass")
 	v.Set("name", ZabbixUser)
 	v.Add("password", ZabbixPass)
 	v.Add("autologin", "1")
 	v.Add("enter", "Sign in")
-
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client := &http.Client{
-		nil, nil, JAR, 99999999999999}
+		tr, nil, JAR, 99999999999999}
 	reqest, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		logs.Error("Fatal error ", err.Error())

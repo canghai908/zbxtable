@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/signintech/gopdf"
 )
 
@@ -19,14 +19,16 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	pdf := gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{PageSize: gopdf.Rect{W: 595.28, H: 841.89}})
 	pdf.AddPage()
-	err = pdf.AddTTFFont("msty", "./msty.ttf")
+	err := pdf.AddTTFFont("msty", "./msty.ttf")
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error(err)
+		return []byte{}, err
 	}
 
 	err = pdf.SetFont("msty", "", 8)
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error(err)
+		return []byte{}, err
 	}
 	//表头配置
 	TimeStr := time.Now().Format("2006-01-02 15:04:05")
@@ -42,16 +44,19 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 		rep, err := API.CallWithError("graph.get", Params{"output": "extend",
 			"hostids": vv, "sortfiled": "name"})
 		if err != nil {
-			logs.Error(err.Error())
+			logs.Error(err)
+			return []byte{}, err
 		}
 		hba, err := json.Marshal(rep.Result)
 		if err != nil {
-			logs.Error(err.Error())
+			logs.Error(err)
+			return []byte{}, err
 		}
 		var hb []GraphInfo
 		err = json.Unmarshal(hba, &hb)
 		if err != nil {
-			logs.Error(err.Error())
+			logs.Error(err)
+			return []byte{}, err
 		}
 		//轮训图形
 		PdfResponses := make(chan gopdf.ImageHolder)
@@ -86,7 +91,8 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	var b bytes.Buffer
 	err = pdf.Write(&b)
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error(err)
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 }
@@ -95,14 +101,17 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup, pdfHolder chan<- gopdf.ImageHolder) {
 	defer wg.Done()
 	//请求图形
-	ZabbixWeb := beego.AppConfig.String("zabbix_web")
-	client1 := &http.Client{nil, nil,
+	ZabbixWeb := GetConfKey("zabbix_web")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client1 := &http.Client{tr, nil,
 		JAR, 99999999999992}
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		logs.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	data.Set("graphid", grupinfo.GraphID)
 	data.Set("from", start)
@@ -115,7 +124,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	urlPath := URL.String()
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		logs.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	reqest1.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	reqest1.Header.Add("Accept-Encoding", "gzip, deflate")
@@ -124,7 +133,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	reqest1.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response1, err := client1.Do(reqest1)
 	if err != nil {
-		beego.Error("Fatal error ", err.Error())
+		logs.Error(err)
 	}
 	defer response1.Body.Close()
 	if response1.StatusCode == 200 {
@@ -137,7 +146,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 		}
 		imgH2, err := gopdf.ImageHolderByReader(reader)
 		if err != nil {
-			logs.Error("Fatal error ", err.Error())
+			logs.Error(err)
 		}
 		pdfHolder <- imgH2
 	}

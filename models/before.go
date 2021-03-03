@@ -2,14 +2,13 @@ package models
 
 import (
 	"errors"
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/canghai908/zbxtable/utils"
 	"strings"
 )
 
 func MsAdd(token, tenantid string, message []byte) (int64, error) {
-	if token != beego.AppConfig.String("token") {
+	if token != GetConfKey("token") {
 		return 0, errors.New("Token Error!")
 	}
 	//replace "

@@ -4,22 +4,16 @@ import (
 	"math"
 	"strconv"
 	"strings"
-
-	zabbix "github.com/canghai908/zabbix-go"
 )
 
 //HostsList func
-// func HostsList() (begin, end, page, limit, string）（host []Hosts, count int64, err error) {
 func HostsList(page, limit, hosts string) ([]Hosts, int64, error) {
 	//获取主机列表
 	par := []string{"templateid", "name"}
-	var rep = zabbix.Response{}
-
-	rep, err = API.Call("host.get", Params{"selectParentTemplates": par, "selectGroups": "extend", "selectInterfaces": "extend"})
+	rep, err := API.Call("host.get", Params{"selectParentTemplates": par, "selectGroups": "extend", "selectInterfaces": "extend"})
 	if err != nil {
 		return []Hosts{}, 0, err
 	}
-
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
 		return []Hosts{}, 0, err
@@ -118,20 +112,3 @@ func HostsList(page, limit, hosts string) ([]Hosts, int64, error) {
 	return newthostlist, int64(len(dt)), err
 
 }
-
-// //HostInfoGet get
-// func HostInfoGet(hostid string) ([]Hosts, int64, error) {
-// 	//获取主机列表
-// 	//selectItems := []string{"key_", "itemid", "lastclock", "lastvalue"}
-// 	par := make(map[string]string)
-// 	par["key_"] = "system"
-// 	//var rep = zabbix.Response{}
-// 	rep, err := API.Call("host.get",
-// 		Params{"output": "extend",
-// 			"search":           par,
-// 			"selectInterfaces": "extend"})
-// 	if err != nil {
-// 		return []Hosts{}, 0, err
-// 	}
-// 	return rep., 0, nil
-// }
