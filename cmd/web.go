@@ -43,14 +43,14 @@ func runWeb(*cli.Context) error {
 	}
 	//CheckConfExist
 	CheckConfExist()
-	////PreCheckConf
-	//err = PreCheckConf(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
-	//	InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
-	//	InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"))
-	//if err != nil {
-	//	logs.Error(err)
-	//	return err
-	//}
+	//PreCheckConf
+	err = PreCheckConf(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
+		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
+		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"))
+	if err != nil {
+		logs.Error(err)
+		return err
+	}
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
