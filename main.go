@@ -36,7 +36,7 @@ func main() {
 		cmd.Web,
 		cmd.Install,
 		cmd.Init,
-		cmd.Uc,
+		//cmd.Uc,
 		cmd.Ua,
 		cmd.Un,
 	}
