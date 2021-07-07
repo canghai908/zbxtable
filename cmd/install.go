@@ -145,7 +145,7 @@ func installAagent(*cli.Context) error {
 	userpara["passwd"] = tpasswdord
 	//5.2版本 取消type字段,切换为roleid，roleid=2默认为管理员角色
 	//5.2以下版本为管理员角色type=3，5.2以上版本roleid=3，为超级管理员角色
-	if strings.HasPrefix(version, "5.2") {
+	if strings.HasPrefix(version, "5.2") || strings.HasPrefix(version, "5.4") {
 		userpara["roleid"] = "3"
 	} else {
 		userpara["type"] = "3"
