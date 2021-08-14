@@ -6,9 +6,8 @@ require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1
 	github.com/360EntSecGroup-Skylar/excelize/v2 v2.3.1
 	github.com/astaxie/beego v1.12.3
-	github.com/canghai908/jwt-beego v0.0.0-20201104081505-b5c6aa899c18
+	github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e
 	github.com/canghai908/zabbix-go v0.0.0-20210226094813-a163a0ad1bf2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/uuid v1.1.2
 	github.com/json-iterator/go v1.1.10
