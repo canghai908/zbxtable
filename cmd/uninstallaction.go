@@ -7,20 +7,16 @@ import (
 
 var (
 	// Install cli
-	Un = &cli.Command{
-		Name:   "un",
+	Uninstall = &cli.Command{
+		Name:   "uninstall",
 		Usage:  "Uninstall action",
 		Action: UninstallAction,
 	}
 )
 
 func UninstallAction(*cli.Context) error {
-	//CheckConfExist
-	CheckConfExist()
-	//login zabbix to get version
-	_, err := CheckZabbixAPI(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"))
+	err := CheckZabbix()
 	if err != nil {
-		logs.Error(err)
 		return err
 	}
 	//action delete

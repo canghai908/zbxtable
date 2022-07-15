@@ -61,7 +61,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	}
 	defer response.Body.Close()
 	if beego.BConfig.RunMode == "dev" {
-		logs.Info("Login to zabbix response.StatusCode is ", response.StatusCode)
+		logs.Info("Login to zabbix  successfully！http status code:", response.StatusCode)
 	}
 	if response.StatusCode == 200 {
 		var reader io.Reader
@@ -75,9 +75,9 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		if err != nil {
 			logs.Error("Failed to read response data: %+v", err)
 		}
-		if beego.BConfig.RunMode == "dev" {
-			logs.Info("Login to zabbix response body is:", string(data))
-		}
+		//if beego.BConfig.RunMode == "dev" {
+		//	logs.Info("Login to zabbix response body is:", string(data))
+		//}
 		if !strings.Contains(string(data), "Dashboard") {
 			logs.Error("Login to Zabbix failed!")
 			os.Exit(1)

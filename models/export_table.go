@@ -476,6 +476,78 @@ func GetHistoryDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 	return ma, nil
 }
 
+//GetHostInfo 导出主机信息获取
+func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
+	//获取主机列表
+	//OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
+	//SelectInventoryPar := []string{"model", "chassis", "contact"}
+	SelectInterfacesPar := []string{"ip", "port"}
+	SearchInventoryInventoryPar := make(map[string]string)
+	SearchInventoryInventoryPar["type"] = HostType
+	rep, err := API.CallWithError("host.get", Params{
+		"output":           "extend",
+		"searchInventory":  SearchInventoryInventoryPar,
+		"selectInventory":  "extend",
+		"selectInterfaces": SelectInterfacesPar})
+	if err != nil {
+		return []byte{}, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []byte{}, err
+	}
+	var hb ListHosts
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []byte{}, err
+	}
+	var dt []Hosts
+	var d Hosts
+	for _, v := range hb {
+		d.HostID = v.Hostid
+		d.Host = v.Host
+		d.Name = v.Name
+		d.Interfaces = v.Interfaces[0].IP
+		d.Status = v.Status
+		d.Available = v.Available
+		d.Error = v.Error
+		//物理服务器可用性为ipmi
+		d.Model = v.Inventory.Model
+		d.OS = v.Inventory.Os
+		d.NumberOfCores = v.Inventory.Software
+		d.CPUUtilization = v.Inventory.SoftwareAppA
+		d.MemoryUtilization = v.Inventory.SoftwareAppB
+		d.MemoryUsed = v.Inventory.SoftwareAppD
+		d.MemoryTotal = v.Inventory.SoftwareAppC
+		d.Uptime = v.Inventory.SoftwareAppE
+		d.Available = v.Available
+		d.Error = v.Error
+		if HostType == "HW_NET" || HostType == "HW_SRV" {
+			d.Available = v.SnmpAvailable
+			d.Error = v.SnmpError
+			d.SerialNo = v.Inventory.SerialnoA
+			d.Location = v.Inventory.LocationLon
+			d.Department = v.Inventory.SiteCity
+		}
+		if hosts != "" && strings.EqualFold(d.Name, hosts) {
+			dt = append(dt, d)
+		} else if model != "" && strings.EqualFold(d.Model, model) {
+			dt = append(dt, d)
+		} else if ip != "" && strings.EqualFold(d.Interfaces, ip) {
+			dt = append(dt, d)
+		} else if available != "" && strings.EqualFold(d.Available, available) {
+			dt = append(dt, d)
+		} else if (hosts == "") && (model == "") && (ip == "") && (available == "") {
+			dt = append(dt, d)
+		}
+	}
+	p, err := CreateHostListInfoXlsx(dt, HostType)
+	if err != nil {
+		return []byte{}, err
+	}
+	return p, nil
+}
+
 //RemoveRepeatedElement 数组去重
 func RemoveRepeatedElement(arr []string) (newArr []string) {
 	newArr = make([]string, 0)

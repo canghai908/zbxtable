@@ -1,8 +1,14 @@
 package utils
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"fmt"
+	"github.com/astaxie/beego/logs"
+	"github.com/shopspring/decimal"
+	"io"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +21,19 @@ func Md5(buf []byte) string {
 	hash := md5.New()
 	hash.Write(buf)
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+//func mkdir
+func Mkdir(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.Mkdir(path, os.ModePerm)
+		fmt.Println("aa")
+		if err != nil {
+			fmt.Println("bb")
+			return err
+		}
+	}
+	return nil
 }
 
 //ParseTime func
@@ -33,6 +52,16 @@ func ParseTime(strtime string) (end time.Time, err error) {
 func TimeFormater(timer string) string {
 	t, _ := time.Parse(TimeFormat, timer)
 	return t.String()
+}
+
+//TimeFormater a
+func UnixTimeFormater(timer string) string {
+	i, err := strconv.ParseInt(timer, 10, 64)
+	if err != nil {
+		return ""
+	}
+	tm := time.Unix(i, 0).Format(TimeFormat)
+	return tm
 }
 
 //ParTime time
@@ -83,4 +112,177 @@ func RemoveRepByMap(slc []string) []string {
 		}
 	}
 	return result
+}
+
+func FormatTraffic(traf string) (size string) {
+	traffic, err := strconv.ParseFloat(traf, 64)
+	if err != nil {
+		return "0KB"
+	}
+	switch {
+	case traffic < 1000:
+		return fmt.Sprintf("%.2fBps", float64(traffic)/float64(1))
+	case traffic < (1000 * 1000):
+		return fmt.Sprintf("%.2fKBps", float64(traffic)/float64(1000))
+	case traffic < (1000 * 1000 * 1000):
+		return fmt.Sprintf("%.2fMBps", float64(traffic)/float64(1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.2fGBps", float64(traffic)/float64(1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.2fTBps", float64(traffic)/float64(1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.2fPBps", float64(traffic)/float64(1000*1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.2fEBps", float64(traffic)/float64(1000*1000*1000*1000*1000*1000))
+	default:
+		return fmt.Sprintf("%.2fBps", float64(traffic)/float64(1))
+	}
+}
+
+func FormatTrafficXlsx(traf string) (size string) {
+	traffic, err := strconv.ParseFloat(traf, 64)
+	if err != nil {
+		return "0KB"
+	}
+	switch {
+	case traffic < 1000:
+		return fmt.Sprintf("%.6fBps", float64(traffic)/float64(1))
+	case traffic < (1000 * 1000):
+		return fmt.Sprintf("%.6fKBps", float64(traffic)/float64(1000))
+	case traffic < (1000 * 1000 * 1000):
+		return fmt.Sprintf("%.6fMBps", float64(traffic)/float64(1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.6fGBps", float64(traffic)/float64(1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.6fTBps", float64(traffic)/float64(1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.6fPBps", float64(traffic)/float64(1000*1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.6fEBps", float64(traffic)/float64(1000*1000*1000*1000*1000*1000))
+	default:
+		return fmt.Sprintf("%.2fBps", float64(traffic)/float64(1))
+	}
+}
+func FormatTrafficFloat64(traffic float64) (size string) {
+	switch {
+	case traffic < 1000:
+		return fmt.Sprintf("%.4fB", float64(traffic)/float64(1))
+	case traffic < (1000 * 1000):
+		return fmt.Sprintf("%.4fK", float64(traffic)/float64(1000))
+	case traffic < (1000 * 1000 * 1000):
+		return fmt.Sprintf("%.4fM", float64(traffic)/float64(1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.4fG", float64(traffic)/float64(1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.4fT", float64(traffic)/float64(1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.4fP", float64(traffic)/float64(1000*1000*1000*1000*1000))
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%.4fE", float64(traffic)/float64(1000*1000*1000*1000*1000*1000))
+	default:
+		return fmt.Sprintf("%.2fBps", float64(traffic)/float64(1))
+	}
+}
+
+func FormatSpeed(traf string) (size string) {
+	traffic, err := strconv.ParseInt(traf, 10, 64)
+	if err != nil {
+		return "0K"
+	}
+	switch {
+	case traffic < 1000:
+		return fmt.Sprintf("%d%s", traffic/int64(1), "B")
+	case traffic < (1000 * 1000):
+		return fmt.Sprintf("%d%s", traffic/int64(1000), "K")
+	case traffic < (1000 * 1000 * 1000):
+		return fmt.Sprintf("%d%s", traffic/int64(1000*1000), "M")
+	case traffic < (1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%d%s", traffic/int64(1000*1000*1000), "G")
+	case traffic < (1000 * 1000 * 1000 * 1000 * 1000):
+		return fmt.Sprintf("%d%s", traffic/int64(1000*1000*1000*1000), "T")
+	default:
+		return fmt.Sprintf("%d%s", "1G")
+	}
+}
+
+func InterfaceTrafficeStrTofloat64(val string) (value float64) {
+	t, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		logs.Error(err)
+		return 0
+	}
+	return t
+}
+
+func InterfaceStrToInt64(val string) (value int64) {
+	t, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		logs.Error(err)
+		return 0
+	}
+	return t
+}
+
+func Int64ToTime(t string) (val string) {
+	Tint, err := strconv.ParseInt(t, 10, 64)
+	if err != nil {
+		return "-"
+	}
+	tm := time.Unix(Tint, 0).Format(TimeFormat)
+	return tm
+}
+func DecFloat64Round2(val string) (vaule float64) {
+	Tfloat64, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return 0.00
+	}
+	vaule, _ = decimal.NewFromFloat(Tfloat64).Round(2).Float64()
+	return vaule
+}
+func Float64Round2(val float64) (vaule float64) {
+	vaule, _ = decimal.NewFromFloat(val).Round(2).Float64()
+	return vaule
+}
+
+func ZipFiles(filename string, files []string, oldform, newform string) error {
+	newZipFile, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer newZipFile.Close()
+
+	zipWriter := zip.NewWriter(newZipFile)
+	defer zipWriter.Close()
+	// 把files添加到zip中
+	for _, file := range files {
+		zipfile, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+		defer zipfile.Close()
+		info, err := zipfile.Stat()
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Name = strings.Replace(file, oldform, newform, -1)
+
+		header.Method = zip.Deflate
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		if _, err = io.Copy(writer, zipfile); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

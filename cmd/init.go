@@ -269,7 +269,11 @@ func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	cfg.Section("").NewKey("dbtype", dbtype)
 	cfg.Section("").NewKey("dbhost", dbhost)
 	cfg.Section("").NewKey("dbuser", dbuser)
-	cfg.Section("").NewKey("dbpass", dbpass)
+	var newpass string
+	if strings.Contains(dbpass, `#`) || strings.Contains(dbpass, `$`) || strings.Contains(dbpass, `!`) {
+		newpass = strings.ReplaceAll(dbpass, "'", "")
+	}
+	cfg.Section("").NewKey("dbpass", newpass)
 	cfg.Section("").NewKey("dbname", dbname)
 	cfg.Section("").NewKey("dbport", dbport)
 	//zabbix info

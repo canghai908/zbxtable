@@ -3,8 +3,8 @@ package models
 import (
 	"errors"
 	"github.com/astaxie/beego/logs"
-	"github.com/canghai908/zbxtable/utils"
 	"strings"
+	"zbxtable/utils"
 )
 
 func MsAdd(token, tenantid string, message []byte) (int64, error) {

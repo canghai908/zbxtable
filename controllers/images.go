@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
-	"github.com/canghai908/zbxtable/models"
+	"zbxtable/models"
 )
 
 // ImagesController operations for Host

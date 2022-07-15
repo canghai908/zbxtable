@@ -3,7 +3,6 @@ zbxtable
 zbxtable.exe
 zbxtable.exe~
 */vendor
-/swagger/
 .idea/
 .DS_Store
 runtime/*
@@ -18,5 +17,5 @@ runtime/*
 */test
 logs/*
 packfile/staticFile.go
-/conf/
 /web/
+/zbxtable.exe

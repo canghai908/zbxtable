@@ -5,8 +5,8 @@ type TemplateList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Items []Template `json:"items"`
-		Total int64      `json:"total"`
+		Items interface{} `json:"items"`
+		Total int64       `json:"total"`
 	} `json:"data"`
 }
 
@@ -26,4 +26,15 @@ type Template struct {
 	Graphs       string `json:"graphs"`
 	Screens      string `json:"screens"`
 	Discoveries  string `json:"discoveries"`
+}
+
+//Template struct a
+type TemplateByItemList struct {
+	Host       string `json:"host"`
+	Templateid string `json:"templateid"`
+	Name       string `json:"name"`
+	Items      []struct {
+		ItemID string `json:"itemid"`
+		Name   string `json:"name"`
+	} `json:"items"`
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	jwtbeego "github.com/canghai908/jwt-beego"
-	"github.com/canghai908/zbxtable/models"
-	"github.com/canghai908/zbxtable/utils"
+	"zbxtable/models"
+	"zbxtable/utils"
 )
 
 // BeforeUserController sd
@@ -28,10 +28,10 @@ var manager models.Manager
 //var res *models.ManagerInfo = new(models.ManagerInfo)
 var res = &models.ManagerInfo{}
 
-// Login controller
-// @Title Login
-// @Description Logs user into the system
-// @Param	body		body 	models.Userlogin	true	"body for user content"
+// BeforeUserController  dd
+// @Title 登录
+// @Description 登录
+// @Param	body	body 	models.Userlogin	true	"登录"
 // @Success 200 login success
 // @Failure 403 user not exist
 // @router /login [post]
@@ -71,8 +71,8 @@ func (u *BeforeUserController) Login() {
 }
 
 // Logout controller
-// @Title Logout
-// @Description Logs out current logged in user session
+// @Title 注销
+// @Description 注销
 // @Param	body		body 	models.Userlogin	true	"body for user content"
 // @Success 200 {string} logout success
 // @router /logout [post]

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/canghai908/zbxtable/models"
-	"github.com/canghai908/zbxtable/utils"
+	"zbxtable/models"
+	"zbxtable/utils"
 )
 
 // AlarmController 历史告警消息接口
@@ -23,6 +23,7 @@ var AnalysisRes models.AnalysisList
 func (c *AlarmController) URLMapping() {
 	c.Mapping("GetOne", c.GetOne)
 	c.Mapping("GetAll", c.GetAll)
+	c.Mapping("GetTenant()", c.GetTenant)
 	c.Mapping("Analysis", c.Analysis)
 	c.Mapping("Export", c.Export)
 }
@@ -56,11 +57,11 @@ func (c *AlarmController) GetOne() {
 // @Param	page	query	string	false	"第几页"
 // @Param	limit	query	string	false	"每页条数"
 // @Param	hosts	query	string	false	"查询主机名包含某字符的主机"
+// @Param	tenant_id	query	string	false	"租户id"
 // @Success 200 {object} models.Alarm
 // @Failure 403
 // @router / [get]
 func (c *AlarmController) GetAll() {
-
 	var Begin, End time.Time
 	var err error
 	begin := c.Ctx.Input.Query("begin")
@@ -80,19 +81,43 @@ func (c *AlarmController) GetAll() {
 	page := c.Ctx.Input.Query("page")
 	limit := c.Ctx.Input.Query("limit")
 	hosts := c.Ctx.Input.Query("hosts")
-	cnt, al, err := models.GetAllAlarm(Begin, End, page, limit, hosts)
+	tenant_id := c.Ctx.Input.Query("tenant_id")
+	status := c.Ctx.Input.Query("status")
+	level := c.Ctx.Input.Query("level")
+	cnt, al, err := models.GetAllAlarm(Begin, End, page, limit, hosts, tenant_id, status, level)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()
-		c.Data["json"] = AlarmRes
-		c.ServeJSON()
-		return
+	} else {
+		AlarmRes.Code = 200
+		AlarmRes.Message = "ok"
+		AlarmRes.Data.Items = al
+		AlarmRes.Data.Total = cnt
 	}
-	AlarmRes.Code = 200
-	AlarmRes.Message = "ok"
-	AlarmRes.Data.Items = al
-	AlarmRes.Data.Total = cnt
 	c.Data["json"] = AlarmRes
+	c.ServeJSON()
+}
+
+// GetAll ...
+// @Title 查询或获取告警接口
+// @Description get Alarm
+// @Param	X-Token		header  string			true		"x-token in header"
+// @Success 200 {object} models.Alarm
+// @Failure 403
+// @router /tenant [get]
+func (c *AlarmController) GetTenant() {
+	var TenantRes models.AlarmTendantList
+	cnt, al, err := models.GetAlarmTenant()
+	if err != nil {
+		TenantRes.Code = 200
+		TenantRes.Message = err.Error()
+	} else {
+		TenantRes.Code = 200
+		TenantRes.Message = "ok"
+		TenantRes.Data.Items = al
+		TenantRes.Data.Total = cnt
+	}
+	c.Data["json"] = TenantRes
 	c.ServeJSON()
 }
 
@@ -124,7 +149,7 @@ func (c *AlarmController) Analysis() {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	arraytitle, piee, na, va, err := models.AnalysisAlarm(Start, End)
+	arraytitle, piee, na, va, err := models.AnalysisAlarm(Start, End, v.TenantID)
 	if err != nil {
 		AnalysisRes.Code = 500
 		AnalysisRes.Message = err.Error()
@@ -166,13 +191,11 @@ func (c *AlarmController) Export() {
 		End := time.Now()
 		Start = End.Add(-168 * time.Hour)
 	}
-
 	timeLayout := "2006-01-02 15:04:05"
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-
-	cnt, err := models.ExportAlarm(Start, End, v.Hosts)
+	cnt, err := models.ExportAlarm(Start, End, v.Hosts, v.TenantID, v.Status, v.Level)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()
@@ -181,7 +204,7 @@ func (c *AlarmController) Export() {
 		return
 	}
 	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
-	c.Ctx.Output.Header("Content-Disposition", "attachment; filename=alarm_list"+".xlsx")
+	c.Ctx.Output.Header("Content-Disposition", "attachment; filename=alarm_list.xlsx")
 	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
 	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Ctx.Output.Status = 200

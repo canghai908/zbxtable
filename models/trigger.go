@@ -2,69 +2,8 @@ package models
 
 import (
 	"github.com/astaxie/beego/logs"
+	"strconv"
 )
-
-//TriggersRes rest
-type TriggersRes struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []EndTrigger `json:"items"`
-		Total int64        `json:"total"`
-	} `json:"data"`
-}
-
-//LastTriggers struct
-type LastTriggers struct {
-	Comments        string `json:"comments"`
-	CorrelationMode string `json:"correlation_mode"`
-	CorrelationTag  string `json:"correlation_tag"`
-	Description     string `json:"description"`
-	Details         string `json:"details"`
-	Error           string `json:"error"`
-	Expression      string `json:"expression"`
-	Flags           string `json:"flags"`
-	Hosts           []struct {
-		Hostid string `json:"hostid"`
-		Name   string `json:"name"`
-	} `json:"hosts"`
-	LastEvent struct {
-		Acknowledged string `json:"acknowledged"`
-		Clock        string `json:"clock"`
-		Eventid      string `json:"eventid"`
-		Name         string `json:"name"`
-		Ns           string `json:"ns"`
-		Object       string `json:"object"`
-		Objectid     string `json:"objectid"`
-		Severity     string `json:"severity"`
-		Source       string `json:"source"`
-		Value        string `json:"value"`
-	} `json:"lastEvent"`
-	Lastchange         string `json:"lastchange"`
-	ManualClose        string `json:"manual_close"`
-	Priority           string `json:"priority"`
-	RecoveryExpression string `json:"recovery_expression"`
-	RecoveryMode       string `json:"recovery_mode"`
-	State              string `json:"state"`
-	Status             string `json:"status"`
-	Templateid         string `json:"templateid"`
-	Triggerid          string `json:"triggerid"`
-	Type               string `json:"type"`
-	URL                string `json:"url"`
-	Value              string `json:"value"`
-}
-
-//EndTrigger struct
-type EndTrigger struct {
-	Acknowledged  string `json:"acknowledged"`
-	Hostid        string `json:"hostid"`
-	Name          string `json:"name"`
-	Lastchange    string `json:"lastchange"`
-	LastEventName string `json:"lasteventname"`
-	Severity      string `json:"severity"`
-	Eventid       string `json:"eventid"`
-	Objectid      string `json:"objectid"`
-}
 
 //GetTriggers get porblems
 func GetTriggers() ([]EndTrigger, int64, error) {
@@ -77,22 +16,22 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		"selectHosts":     par11,
 		"selectLastEvent": "extend",
 		"filter":          filter,
-		"maintenance":     "false",
-		"only_true":       "true",
-		"monitored":       "true"})
+		"maintenance":     false,
+		"only_true":       true,
+		"monitored":       true})
 	if err != nil {
-		logs.Error(err)
+		logs.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
-		logs.Error(err)
+		logs.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	var hb []LastTriggers
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		logs.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	var bs EndTrigger
@@ -109,4 +48,78 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		ma = append(ma, bs)
 	}
 	return ma, int64(len(ma)), nil
+}
+
+//GetTriggerList get porblems
+func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
+	//par11 := []string{"hostid", "name"}
+	//filter := make(map[string]string)
+	//filter["value"] = "1"
+	triggers, err := API.CallWithError("trigger.get", Params{"output": "extend",
+		"sortorder":         "DESC",
+		"hostids":           hostid,
+		"monitored":         true,
+		"expandDescription": true})
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	hba, err := json.Marshal(triggers.Result)
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	var hb []TriggerListStr
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
+//GetTriggerList get porblems
+func GetTriggerHostCount(hostid string) (int64, error) {
+	filter := make(map[string]string)
+	filter["value"] = "1"
+	triggers, err := API.CallWithError("trigger.get", Params{"output": "extend",
+		"hostids":     hostid,
+		"filter":      filter,
+		"maintenance": false,
+		"only_true":   true,
+		"countOutput": true,
+		"monitored":   true})
+	if err != nil {
+		logs.Debug(err)
+		return 0, err
+	}
+	CountTrigger := triggers.Result.(string)
+	count, err := strconv.ParseInt(CountTrigger, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+//GetTriggerList get porblems
+func GetTriggerValue(triggerid string) ([]TriggerListStr, error) {
+	OutputPar := []string{"value", "status", "state", "description"}
+	triggers, err := API.CallWithError("trigger.get", Params{"output": OutputPar,
+		"triggerids": triggerid})
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, err
+	}
+	hba, err := json.Marshal(triggers.Result)
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, err
+	}
+	var hb []TriggerListStr
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		logs.Debug(err)
+		return []TriggerListStr{}, err
+	}
+	return hb, nil
 }

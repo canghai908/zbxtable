@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/canghai908/zbxtable/models"
+	"zbxtable/models"
 )
 
 // TrendController operations for Trend
