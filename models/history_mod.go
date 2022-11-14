@@ -17,3 +17,10 @@ type History struct {
 	Value  string `json:"value"`
 	Ns     string `json:"ns"`
 }
+
+//ListQueryAll struct
+type HistoryQuery struct {
+	Itemids string   `json:"itemids"`
+	History string   `json:"history"`
+	Period  []string `json:"period"`
+}

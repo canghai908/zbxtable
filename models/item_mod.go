@@ -10,20 +10,30 @@ type ItemList struct {
 	} `json:"data"`
 }
 
+//ItemList struct
+type ItemRes struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Items interface{} `json:"items"`
+		Total int64       `json:"total"`
+	} `json:"data"`
+}
+
 //Item struct
 type Item struct {
 	Itemid               string        `json:"itemid"`
-	Type                 string        `json:"type,omitempty"`
+	Type                 string        `json:"type,"`
 	SnmpCommunity        string        `json:"snmp_community,omitempty"`
 	SnmpOid              string        `json:"snmp_oid,omitempty"`
-	Hostid               string        `json:"hostid,omitempty"`
-	Name                 string        `json:"name,omitempty"`
-	Key                  string        `json:"key_,omitempty"`
-	Delay                string        `json:"delay,omitempty"`
-	History              string        `json:"history,omitempty"`
-	Trends               string        `json:"trends,omitempty"`
-	Lastvalue            string        `json:"lastvalue,omitempty"`
-	Lastclock            string        `json:"lastclock,omitempty"`
+	Hostid               string        `json:"hostid,"`
+	Name                 string        `json:"name,"`
+	Key                  string        `json:"key_,"`
+	Delay                string        `json:"delay,"`
+	History              string        `json:"history"`
+	Trends               string        `json:"trends"`
+	Lastvalue            string        `json:"lastvalue"`
+	Lastclock            string        `json:"lastclock"`
 	Prevvalue            string        `json:"prevvalue,omitempty"`
 	State                string        `json:"state,omitempty"`
 	Status               string        `json:"status,omitempty"`
@@ -85,4 +95,16 @@ type Items struct {
 	Itemid string `json:"itemid"`
 	Name   string `json:"name"`
 	Key    string `json:"key_"`
+}
+
+type ValueMap struct {
+	Hostid   string `json:"hostid"`
+	Mappings []struct {
+		Newvalue string `json:"newvalue"`
+		Type     string `json:"type"`
+		Value    string `json:"value"`
+	} `json:"mappings"`
+	Name       string `json:"name"`
+	UUID       string `json:"uuid"`
+	Valuemapid string `json:"valuemapid"`
 }

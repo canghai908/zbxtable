@@ -4,14 +4,16 @@ import (
 	"github.com/astaxie/beego/logs"
 )
 
-//GetHistoryByItemID by id
-func GetHistoryByItemID(itemid, history string, limit string) ([]History, error) {
-	// par := make(map[string]string)
-	// par["key_"] = key
-	rep, err := API.Call("history.get", Params{"output": "extend",
-		"itemids": itemid, "history": history, "sortfield": "clock",
-		"sortorder": "DESC", "limit": limit})
-
+//GetHistoryByItemID
+func GetHistoryByItemID(itemid, history string, time_from, time_till int64) ([]History, error) {
+	rep, err := API.CallWithError("history.get",
+		Params{"output": "extend",
+			"itemids":   itemid,
+			"history":   history,
+			"sortfield": "clock",
+			"sortorder": "DESC",
+			"time_from": time_from,
+			"time_till": time_till})
 	if err != nil {
 		return []History{}, err
 	}
@@ -19,9 +21,32 @@ func GetHistoryByItemID(itemid, history string, limit string) ([]History, error)
 	if err != nil {
 		return []History{}, err
 	}
-
 	var hb []History
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []History{}, err
+	}
+	return hb, err
+}
 
+//GetHistoryByItemID
+func GetHistoryByItemIDTTTT(itemid, history string, time_from, time_till int64) ([]History, error) {
+	rep, err := API.CallWithError("history.get",
+		Params{"output": "extend",
+			"itemids":   itemid,
+			"history":   history,
+			"sortfield": "clock",
+			"sortorder": "ASC",
+			"time_from": time_from,
+			"time_till": time_till})
+	if err != nil {
+		return []History{}, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []History{}, err
+	}
+	var hb []History
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		return []History{}, err
@@ -49,7 +74,6 @@ func GetHistoryByItemIDNew(item Item, time_from, time_till int64) ([]History, er
 	}
 
 	var hb []History
-
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		logs.Error(err)
@@ -73,9 +97,7 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 		logs.Error(err)
 		return []History{}, err
 	}
-
 	var hb []History
-
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		logs.Error(err)

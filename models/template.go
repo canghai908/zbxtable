@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/astaxie/beego/logs"
 	"math"
 	"strconv"
@@ -131,6 +132,50 @@ func TemplateAllGet() ([]Template, int64, error) {
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		return []Template{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
+//TemplateAllGet func
+func TemplateListGet() ([]TemplateByItemList, int64, error) {
+	par := []string{"host", "name", "templateid"}
+	rep, err := API.Call("template.get", Params{"output": par})
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+
+	var hb []TemplateByItemList
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
+//TemplateAllGet func
+func TemplateByItem(templateid string) ([]TemplateByItemList, int64, error) {
+	par := []string{"host", "name", "templateid"}
+	itemParams := []string{"itemid", "name"}
+	rep, err := API.Call("template.get", Params{"output": par,
+		"templateids": templateid,
+		"selectItems": itemParams,
+	})
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	fmt.Println(string(hba))
+	var hb []TemplateByItemList
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
 	}
 	return hb, int64(len(hb)), nil
 }

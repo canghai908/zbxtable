@@ -1,9 +1,7 @@
 // routers init
 // @APIVersion 1.0.0
-// @Title beego Test API
-// @Description beego has a very cool tools to autogenerate documents for your API
-// @Contact astaxie@gmail.com
-// @TermsOfServiceUrl http://beego.me/
+// @Title ZMS API
+// @Description ZMS API
 // @License Apache 2.0
 // @LicenseUrl http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -12,12 +10,15 @@ package routers
 import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/plugins/cors"
-	"github.com/canghai908/zbxtable/controllers"
+	"zbxtable/controllers"
 )
 
 //RouterInit router
 func RouterInit() {
 	beego.SetStaticPath("/download", "download")
+	beego.Router("/debug/pprof", &controllers.ProfController{})
+	beego.Router(`/debug/pprof/:app([\w]+)`, &controllers.ProfController{})
+	beego.Router("/ws/:id", &controllers.WebSocketController{})
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -48,11 +49,6 @@ func RouterInit() {
 		beego.NSNamespace("/trigger",
 			beego.NSInclude(
 				&controllers.TriggersController{},
-			),
-		),
-		beego.NSNamespace("/manager",
-			beego.NSInclude(
-				&controllers.ManagerController{},
 			),
 		),
 		beego.NSNamespace("/export",
@@ -104,6 +100,48 @@ func RouterInit() {
 			beego.NSInclude(
 				&controllers.EchartController{},
 			),
+		),
+		beego.NSNamespace("/topology",
+			beego.NSInclude(
+				&controllers.TopologyController{},
+			),
+		),
+		beego.NSNamespace("/topodata",
+			beego.NSInclude(
+				&controllers.TopoDataController{},
+			),
+		),
+		beego.NSNamespace("/system",
+			beego.NSInclude(
+				&controllers.SystemController{},
+			),
+		),
+		beego.NSNamespace("/report",
+			beego.NSInclude(
+				&controllers.ReportController{},
+			),
+		),
+		beego.NSNamespace("/task_log",
+			beego.NSInclude(
+				&controllers.TaskLogController{},
+			),
+		),
+		beego.NSNamespace("/event_log",
+			beego.NSInclude(
+				&controllers.EventLogController{},
+			),
+		),
+		beego.NSNamespace("/rule",
+			beego.NSInclude(
+				&controllers.RuleController{}),
+		),
+		beego.NSNamespace("/user",
+			beego.NSInclude(
+				&controllers.UserController{}),
+		),
+		beego.NSNamespace("/group",
+			beego.NSInclude(
+				&controllers.GroupControllers{}),
 		),
 	)
 	beego.AddNamespace(ns)

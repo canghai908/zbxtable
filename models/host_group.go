@@ -114,6 +114,26 @@ func GetAllHostGroupsList() ([]HostTree, int64, error) {
 	return hb, int64(len(hb)), err
 }
 
+//GetAllHostGroupsList func
+func GetAllGroupsList() ([]HostTree, int64, error) {
+	rep, err := API.Call("hostgroup.get", Params{"output": "extend"})
+	if err != nil {
+		return []HostTree{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []HostTree{}, 0, err
+	}
+	var hb []HostTree
+
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		log.Println(err)
+		return []HostTree{}, 0, err
+	}
+	return hb, int64(len(hb)), err
+}
+
 //GetHostsInfoByGroupID func
 func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	output := []string{"groupid", "name"}

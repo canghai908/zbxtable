@@ -1,15 +1,28 @@
 package main
 
 import (
+	"embed"
 	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/canghai908/zbxtable/cmd"
-	_ "github.com/canghai908/zbxtable/packfile"
 	"github.com/json-iterator/go/extra"
 	"github.com/urfave/cli/v2"
+	"os"
+	"path/filepath"
+	"zbxtable/cmd"
+	"zbxtable/utils"
 )
+
+//go:embed template
+var f embed.FS
+
+const motd = `
+$$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\ 
+\____$$  |$$  __$$\ $$ |  $$ |\__$$  __|$$  __$$\ $$  __$$\ $$ |      $$  _____|
+    $$  / $$ |  $$ |\$$\ $$  |   $$ |   $$ /  $$ |$$ |  $$ |$$ |      $$ |      
+   $$  /  $$$$$$$\ | \$$$$  /    $$ |   $$$$$$$$ |$$$$$$$\ |$$ |      $$$$$\    
+  $$  /   $$  __$$\  $$  $$<     $$ |   $$  __$$ |$$  __$$\ $$ |      $$  __|   
+ $$  /    $$ |  $$ |$$  /\$$\    $$ |   $$ |  $$ |$$ |  $$ |$$ |      $$ |      
+$$$$$$$$\ $$$$$$$  |$$ /  $$ |   $$ |   $$ |  $$ |$$$$$$$  |$$$$$$$$\ $$$$$$$$\ 
+\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|`
 
 //AppVersion version
 var (
@@ -25,8 +38,11 @@ func customVersionPrinter(c *cli.Context) {
 func init() {
 	// RegisterFuzzyDecoders decode input from PHP with tolerance.
 	extra.RegisterFuzzyDecoders()
+	utils.GenTpl(f)
 }
+
 func main() {
+
 	app := cli.NewApp()
 	app.Name = "ZbxTable"
 	app.Usage = "A Zabbix Table tools"
@@ -35,10 +51,8 @@ func main() {
 	app.Commands = []*cli.Command{
 		cmd.Web,
 		cmd.Install,
-		cmd.Init,
-		//cmd.Uc,
-		cmd.Ua,
-		cmd.Un,
+		//cmd.Init,
+		cmd.Uninstall,
 	}
 	app.Run(os.Args)
 }

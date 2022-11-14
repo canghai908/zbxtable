@@ -2,11 +2,10 @@ package models
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/canghai908/zbxtable/utils"
+	"zbxtable/utils"
 )
 
 //Auth struct
@@ -92,21 +91,16 @@ func GetManagerByName(username string) (v *Manager, err error) {
 }
 
 //Chanagepwd func
-func Chanagepwd(Md *Chpwd) (err error) {
+func Chanagepwd(old, new string) (err error) {
 	o := orm.NewOrm()
-	fmt.Print(Md.Name)
-	fmt.Print("AAA")
-	v, err := GetManagerByName(Md.Name)
+	v, err := GetManagerByName("admin")
 	if err != nil {
 		return err
 	}
-	if Md.Pwd1 != Md.Pwd2 {
-		return errors.New("二次输入密码不一致")
-	}
-	if v.Username != Md.Name || v.Password != utils.Md5([]byte(Md.Oldpwd)) {
+	if v.Username != "admin" || v.Password != utils.Md5([]byte(old)) {
 		return errors.New("账号或密码错误")
 	}
-	v.Password = utils.Md5([]byte(Md.Pwd1))
+	v.Password = utils.Md5([]byte(new))
 	_, err = o.Update(v)
 	if err != nil {
 		return errors.New("更新密码出错")

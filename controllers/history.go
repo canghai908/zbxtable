@@ -1,10 +1,11 @@
 package controllers
 
 import (
-	"github.com/canghai908/zbxtable/models"
+	"time"
+	"zbxtable/models"
 )
 
-// HistoryController operations for History
+// HistoryController 监控详情数据获取
 type HistoryController struct {
 	BaseController
 }
@@ -18,25 +19,48 @@ func (c *HistoryController) URLMapping() {
 }
 
 // GetHistoryByItemID controller
-// @Title Get One
-// @Description get item by key
-// @Param	X-Token		header  string	true		"x-token in header"
-// @Param	item_id		query 	string	true		"The key for item"
-// @Param	history 	query 	string	true		"history type"
-// @Param	limit	 	query 	int		true		"The key for limit"
-// @Success 200 {object} models.Item
+// @Title 监控详情数据获取
+// @Description 根据ItemID、item类型、开始、结束时间获取监控数据
+// @Param	X-Token	header  string				true	"x-token in header"
+// @Param	body	body 	models.HistoryQuery	true    "查询"
+// @Success 200 {object} models.History
 // @Failure 403 :id is empty
-// @router / [get]
+// @router / [post]
 func (c *HistoryController) GetHistoryByItemID() {
-	itemID := c.Ctx.Input.Query("item_id")
-	history := c.Ctx.Input.Query("history")
-	limit := c.Ctx.Input.Query("limit")
-	// id, _ := strconv.Atoi(idStr)
-	v, err := models.GetHistoryByItemID(itemID, history, limit)
+	var v models.HistoryQuery
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &v)
 	if err != nil {
-		c.Data["json"] = err.Error()
-	} else {
-		c.Data["json"] = v
+		HistoryRes.Code = 500
+		HistoryRes.Message = err.Error()
+		c.Data["json"] = HistoryRes
+		c.ServeJSON()
+		return
 	}
+	var Start, End int64
+	//如果时间为空，默认为10分钟
+	if len(v.Period) == 0 || v.Period[0] == "" || v.Period[1] == "" {
+		tEnd := time.Now()
+		End = tEnd.Unix()
+		Start = tEnd.Add(-10 * time.Minute).Unix()
+	}
+	timeLayout := "2006-01-02 15:04:05"
+	loc, _ := time.LoadLocation("Local")
+	st, _ := time.ParseInLocation(timeLayout, v.Period[0], loc)
+	en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
+	Start = st.Unix()
+	End = en.Unix()
+	his, err := models.GetHistoryByItemID(v.Itemids, v.History, Start, End)
+	if err != nil {
+		HistoryRes.Code = 500
+		HistoryRes.Message = err.Error()
+		c.Data["json"] = HistoryRes
+		c.ServeJSON()
+		return
+	}
+	HistoryRes.Code = 200
+	HistoryRes.Message = "获取成功"
+	HistoryRes.Data.Items = his
+	c.Data["json"] = HistoryRes
 	c.ServeJSON()
+	return
 }

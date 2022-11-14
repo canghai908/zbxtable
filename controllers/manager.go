@@ -2,11 +2,12 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/tidwall/gjson"
 	"strconv"
 	"time"
 
 	jwtbeego "github.com/canghai908/jwt-beego"
-	"github.com/canghai908/zbxtable/models"
+	"zbxtable/models"
 )
 
 // ManagerController operations for Manager
@@ -110,32 +111,15 @@ func (c *ManagerController) Info() {
 // @Failure 403 body is empty
 // @router /chpwd [post]
 func (c *ManagerController) Chpwd() {
-	var v models.Chpwd
-	type resp struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-		Data    struct {
-			ID       int       `json:"id"`
-			Username string    `json:"username"`
-			Avatar   string    `json:"avatar"`
-			Status   int       `json:"status"`
-			Role     string    `json:"role"`
-			Created  time.Time `json:"created"`
-		} `json:"data"`
-	}
-	var res resp
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		fmt.Print(&v)
-		if err := models.Chanagepwd(&v); err == nil {
-			c.Ctx.Output.SetStatus(201)
-			res.Code = 200
-			res.Message = "修改密码成功"
-		} else {
-			res.Code = 50014
-			res.Message = err.Error()
-		}
+	old := gjson.Get(string(c.Ctx.Input.RequestBody), "old").String()
+	new := gjson.Get(string(c.Ctx.Input.RequestBody), "new").String()
+	fmt.Println(old, new)
+	if err := models.Chanagepwd(old, new); err == nil {
+		c.Ctx.Output.SetStatus(201)
+		res.Code = 200
+		res.Message = "修改密码成功"
 	} else {
-		res.Code = 50014
+		res.Code = 500
 		res.Message = err.Error()
 	}
 	c.Data["json"] = res

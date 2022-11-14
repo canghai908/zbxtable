@@ -2,12 +2,11 @@ package models
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/astaxie/beego/logs"
+	"github.com/xuri/excelize/v2"
 	"strconv"
 	"time"
-
-	"github.com/360EntSecGroup-Skylar/excelize/v2"
+	"zbxtable/utils"
 )
 
 //Crt excel table
@@ -86,11 +85,11 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		fmt.Println("创建样式失败", err)
+		logs.Error("创建样式失败", err)
 	}
 	styleleft, err := xlsx.NewStyle(`{"alignment":{"horizontal":"left"}}`)
 	if err != nil {
-		fmt.Println("创建样式失败", err)
+		logs.Error("创建样式失败", err)
 	}
 	lea := len(Filedata[0].FileSystemDataADD)
 	//设置单元格对其方式
@@ -314,6 +313,69 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 }
 
 //CreateHistoryXlsx excel table
+func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
+	itemid, itemkey, unit, cycle, start, end string) (string, error) {
+
+	xlsx := excelize.NewFile()
+	// 创建一个工作表
+	index := xlsx.NewSheet("Sheet1")
+	//设置列宽
+	xlsx.SetColWidth("Sheet1", "A", "B", 20)
+	xlsx.SetColWidth("Sheet1", "B", "B", 30)
+	//主机名
+	xlsx.SetCellValue("Sheet1", "A1", "主机名称")
+	xlsx.SetCellValue("Sheet1", "B1", hostname)
+	//指标名
+	xlsx.SetCellValue("Sheet1", "A2", "指标名称")
+	xlsx.SetCellValue("Sheet1", "B2", itemname)
+	//指标id
+	xlsx.SetCellValue("Sheet1", "A3", "指标ID")
+	xlsx.SetCellValue("Sheet1", "B3", itemid)
+	//指标key
+	xlsx.SetCellValue("Sheet1", "A4", "指标Key")
+	xlsx.SetCellValue("Sheet1", "B4", itemkey)
+	//开始时间
+	xlsx.SetCellValue("Sheet1", "A5", "开始时间")
+	xlsx.SetCellValue("Sheet1", "B5", start)
+	//结束时间
+	xlsx.SetCellValue("Sheet1", "A6", "结束时间")
+	xlsx.SetCellValue("Sheet1", "B6", end)
+	//数据样式设置
+	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	if err != nil {
+		logs.Error(err)
+	}
+	lea := len(Filedata)
+	//设置单元格对其方式
+	for i := 0; i < 5; i++ {
+		xlsx.SetCellStyle("Sheet1", "A8", "A"+strconv.Itoa(lea+9), stylecenter)
+		xlsx.SetCellStyle("Sheet1", "B8", "B"+strconv.Itoa(lea+9), stylecenter)
+		xlsx.SetCellStyle("Sheet1", "C8", "C"+strconv.Itoa(lea+9), stylecenter)
+	}
+	//遍历数据
+	xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(8), "时间")
+	xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(8), "原始数据"+"("+unit+")")
+	xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(8), "流量"+"("+unit+")")
+
+	for k, v := range Filedata {
+		loc, _ := time.LoadLocation("Asia/Shanghai")
+		timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+		TimeUnix := time.Unix(timeint64, 0).In(loc)
+		StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+9), StrTime)
+		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+9), v.Value)
+		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+9), utils.FormatTrafficXlsx(v.Value))
+	}
+	xlsx.SetActiveSheet(index)
+	StrDate := time.Now().Format("2006-01-02_15_04_05")
+	filename := "./download/" + name + "_" + cycle + "_" + hostname + "_" + itemid + "_" + StrDate + ".xlsx"
+	if err := xlsx.SaveAs(filename); err != nil {
+		return "", err
+	}
+	return filename, nil
+}
+
+//CreateHistoryXlsx excel table
 
 //CreateAlarmXlsx excel table
 func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
@@ -326,12 +388,12 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	// 创建一个工作表
 	index := xlsx.NewSheet("Sheet1")
 	//设置列宽
-	xlsx.SetColWidth("Sheet1", "A", "B", 30)
-	xlsx.SetColWidth("Sheet1", "B", "B", 20)
+	xlsx.SetColWidth("Sheet1", "B", "B", 30)
 	xlsx.SetColWidth("Sheet1", "C", "C", 20)
-	xlsx.SetColWidth("Sheet1", "E", "E", 20)
-	xlsx.SetColWidth("Sheet1", "F", "F", 40)
+	xlsx.SetColWidth("Sheet1", "D", "D", 20)
+	xlsx.SetColWidth("Sheet1", "F", "F", 20)
 	xlsx.SetColWidth("Sheet1", "G", "G", 40)
+	xlsx.SetColWidth("Sheet1", "H", "H", 40)
 
 	//表头设计
 	//主机名
@@ -343,31 +405,255 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	xlsx.SetCellValue("Sheet1", "A3", "告警共计")
 	xlsx.SetCellValue("Sheet1", "B3", cnt)
 	//指标key
-	xlsx.SetCellValue("Sheet1", "A5", "主机名")
-	xlsx.SetCellValue("Sheet1", "B5", "主机组")
-	xlsx.SetCellValue("Sheet1", "C5", "告警时间")
-	xlsx.SetCellValue("Sheet1", "D5", "告警等级")
-	xlsx.SetCellValue("Sheet1", "E5", "告警Key")
-	xlsx.SetCellValue("Sheet1", "F5", "告警摘要")
-	xlsx.SetCellValue("Sheet1", "G5", "告警详情")
-	xlsx.SetCellValue("Sheet1", "H5", "告警类型")
-	xlsx.SetCellValue("Sheet1", "I5", "事件ID")
+	xlsx.SetCellValue("Sheet1", "A5", "租户ID")
+	xlsx.SetCellValue("Sheet1", "B5", "主机名")
+	xlsx.SetCellValue("Sheet1", "C5", "主机组")
+	xlsx.SetCellValue("Sheet1", "D5", "告警时间")
+	xlsx.SetCellValue("Sheet1", "E5", "告警等级")
+	xlsx.SetCellValue("Sheet1", "F5", "告警Key")
+	xlsx.SetCellValue("Sheet1", "G5", "告警摘要")
+	xlsx.SetCellValue("Sheet1", "H5", "告警详情")
+	xlsx.SetCellValue("Sheet1", "I5", "告警类型")
+	xlsx.SetCellValue("Sheet1", "J5", "事件ID")
 	for k, v := range Filedata {
-		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.Host)
-		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+6), v.Hgroup)
-		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+6), v.Occurtime.Format("2006-01-02 15:04:05"))
-		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.Level)
-		xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+6), v.Hkey)
-		xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+6), v.Message)
-		xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+6), v.Detail)
-		xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+6), v.Status)
-		xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+6), v.EventID)
+		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.TenantID)
+		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+6), v.Host)
+		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+6), v.Hgroup)
+		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.OccurTime.Format("2006-01-02 15:04:05"))
+		xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+6), v.Level)
+		xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+6), v.Hkey)
+		xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+6), v.Message)
+		xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+6), v.Detail)
+		xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+6), v.Status)
+		xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+6), v.EventID)
 	}
 	xlsx.SetActiveSheet(index)
 	var b bytes.Buffer
 	err := xlsx.Write(&b)
 	if err != nil {
 		return []byte{}, err
+	}
+	return b.Bytes(), nil
+}
+
+//CreateHostListInfoXlsx excel table
+func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
+	xlsx := excelize.NewFile()
+	index := xlsx.NewSheet("Sheet1")
+	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	if err != nil {
+		logs.Error(err)
+	}
+	var ValueTypeStr string
+	switch HostType {
+	//根据类型输出报表
+	case "HW_SRV":
+		ValueTypeStr = "物理服务器"
+		//设置列宽
+		xlsx.SetColWidth("Sheet1", "B", "B", 20)
+		xlsx.SetColWidth("Sheet1", "C", "C", 36)
+		xlsx.SetColWidth("Sheet1", "D", "L", 20)
+		//设置表头
+		xlsx.SetCellValue("Sheet1", "A1", "编号")
+		xlsx.SetCellStyle("Sheet1", "A1", "A1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "B1", "类型")
+		xlsx.SetCellStyle("Sheet1", "B1", "B1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "C1", "名称")
+		xlsx.SetCellStyle("Sheet1", "C1", "C1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "D1", "别名")
+		xlsx.SetCellStyle("Sheet1", "D1", "D1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "E1", "IP")
+		xlsx.SetCellStyle("Sheet1", "E1", "E1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "F1", "型号")
+		xlsx.SetCellStyle("Sheet1", "F1", "F1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "G1", "位置")
+		xlsx.SetCellStyle("Sheet1", "G1", "G1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "H1", "序列号")
+		xlsx.SetCellStyle("Sheet1", "H1", "H1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "I1", "安装日期")
+		xlsx.SetCellStyle("Sheet1", "I1", "I1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "J1", "维保到期时间")
+		xlsx.SetCellStyle("Sheet1", "J1", "J1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "K1", "资产编号")
+		xlsx.SetCellStyle("Sheet1", "K1", "K1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "L1", "备注")
+		xlsx.SetCellStyle("Sheet1", "L1", "L1", stylecenter)
+		//遍历数据
+		for k, v := range Filedata {
+			//loc, _ := time.LoadLocation("Asia/Shanghai")
+			//timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+			//TimeUnix := time.Unix(timeint64, 0).In(loc)
+			//StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+			xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+2), v.HostID)
+			xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+2), ValueTypeStr)
+			xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+2), v.Name)
+			xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+2), v.Host)
+			xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+2), v.Interfaces)
+			xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+2), v.Model)
+			xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+2), v.Location)
+			xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+2), v.SerialNo)
+			xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+2), v.DateHwInstall)
+			xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+2), v.DateHwExpiry)
+			xlsx.SetCellValue("Sheet1", "K"+strconv.Itoa(k+2), v.ResourceID)
+			xlsx.SetCellValue("Sheet1", "L"+strconv.Itoa(k+2), v.Vendor)
+		}
+		//网络设备
+	case "HW_NET":
+		ValueTypeStr = "网络设备"
+		//数据样式设置
+		//设置列宽
+		xlsx.SetColWidth("Sheet1", "B", "B", 20)
+		xlsx.SetColWidth("Sheet1", "C", "C", 36)
+		xlsx.SetColWidth("Sheet1", "D", "L", 20)
+		//设置表头
+		xlsx.SetCellValue("Sheet1", "A1", "编号")
+		xlsx.SetCellStyle("Sheet1", "A1", "A1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "B1", "类型")
+		xlsx.SetCellStyle("Sheet1", "B1", "B1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "C1", "名称")
+		xlsx.SetCellStyle("Sheet1", "C1", "C1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "D1", "别名")
+		xlsx.SetCellStyle("Sheet1", "D1", "D1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "E1", "IP")
+		xlsx.SetCellStyle("Sheet1", "E1", "E1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "F1", "型号")
+		xlsx.SetCellStyle("Sheet1", "F1", "F1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "G1", "位置")
+		xlsx.SetCellStyle("Sheet1", "G1", "G1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "H1", "序列号")
+		xlsx.SetCellStyle("Sheet1", "H1", "H1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "I1", "安装日期")
+		xlsx.SetCellStyle("Sheet1", "I1", "I1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "J1", "维保到期时间")
+		xlsx.SetCellStyle("Sheet1", "J1", "J1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "K1", "资产编号")
+		xlsx.SetCellStyle("Sheet1", "K1", "K1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "L1", "部门")
+		xlsx.SetCellStyle("Sheet1", "L1", "L1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "M1", "备注")
+		xlsx.SetCellStyle("Sheet1", "M1", "M1", stylecenter)
+		//遍历数据
+		for k, v := range Filedata {
+			//loc, _ := time.LoadLocation("Asia/Shanghai")
+			//timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+			//TimeUnix := time.Unix(timeint64, 0).In(loc)
+			//StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+			xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+2), v.HostID)
+			xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+2), ValueTypeStr)
+			xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+2), v.Name)
+			xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+2), v.Host)
+			xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+2), v.Interfaces)
+			xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+2), v.Model)
+			xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+2), v.Location)
+			xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+2), v.SerialNo)
+			xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+2), v.DateHwInstall)
+			xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+2), v.DateHwExpiry)
+			xlsx.SetCellValue("Sheet1", "K"+strconv.Itoa(k+2), v.ResourceID)
+			xlsx.SetCellValue("Sheet1", "L"+strconv.Itoa(k+2), v.Department)
+			xlsx.SetCellValue("Sheet1", "M"+strconv.Itoa(k+2), v.Vendor)
+		}
+	case "VM_WIN":
+		ValueTypeStr = "Windows虚拟机"
+		//设置列宽
+		xlsx.SetColWidth("Sheet1", "B", "B", 20)
+		xlsx.SetColWidth("Sheet1", "C", "D", 36)
+		xlsx.SetColWidth("Sheet1", "E", "L", 20)
+		//设置表头
+		xlsx.SetCellValue("Sheet1", "A1", "编号")
+		xlsx.SetCellStyle("Sheet1", "A1", "A1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "B1", "类型")
+		xlsx.SetCellStyle("Sheet1", "B1", "B1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "C1", "名称")
+		xlsx.SetCellStyle("Sheet1", "C1", "C1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "D1", "别名")
+		xlsx.SetCellStyle("Sheet1", "D1", "D1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "E1", "IP")
+		xlsx.SetCellStyle("Sheet1", "E1", "E1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "F1", "操作系统")
+		xlsx.SetCellStyle("Sheet1", "F1", "F1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "G1", "CPU核心数")
+		xlsx.SetCellStyle("Sheet1", "G1", "G1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "H1", "总共内存")
+		xlsx.SetCellStyle("Sheet1", "H1", "H1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "I1", "CPU使用率")
+		xlsx.SetCellStyle("Sheet1", "I1", "I1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "J1", "内存使用率")
+		xlsx.SetCellStyle("Sheet1", "J1", "J1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "K1", "备注")
+		xlsx.SetCellStyle("Sheet1", "K1", "K1", stylecenter)
+		//遍历数据
+		for k, v := range Filedata {
+			//loc, _ := time.LoadLocation("Asia/Shanghai")
+			//timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+			//TimeUnix := time.Unix(timeint64, 0).In(loc)
+			//StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+			xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+2), v.HostID)
+			xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+2), ValueTypeStr)
+			xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+2), v.Name)
+			xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+2), v.Host)
+			xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+2), v.Interfaces)
+			xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+2), v.OS)
+			xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+2), v.NumberOfCores)
+			xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+2), v.MemoryTotal)
+			xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+2), v.CPUUtilization)
+			xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+2), v.MemoryUtilization)
+			//	xlsx.SetCellValue("Sheet1", "K"+strconv.Itoa(k+2), v.Vendor)
+		}
+	case "VM_LIN":
+		ValueTypeStr = "Linux系统"
+		//设置列宽
+		xlsx.SetColWidth("Sheet1", "B", "B", 20)
+		xlsx.SetColWidth("Sheet1", "C", "D", 36)
+		xlsx.SetColWidth("Sheet1", "E", "L", 20)
+		//设置表头
+		xlsx.SetCellValue("Sheet1", "A1", "编号")
+		xlsx.SetCellStyle("Sheet1", "A1", "A1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "B1", "类型")
+		xlsx.SetCellStyle("Sheet1", "B1", "B1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "C1", "名称")
+		xlsx.SetCellStyle("Sheet1", "C1", "C1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "D1", "昵称")
+		xlsx.SetCellStyle("Sheet1", "D1", "D1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "E1", "IP")
+		xlsx.SetCellStyle("Sheet1", "E1", "E1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "F1", "操作系统")
+		xlsx.SetCellStyle("Sheet1", "F1", "F1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "G1", "CPU核心数")
+		xlsx.SetCellStyle("Sheet1", "G1", "G1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "H1", "总共内存")
+		xlsx.SetCellStyle("Sheet1", "H1", "H1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "I1", "CPU使用率")
+		xlsx.SetCellStyle("Sheet1", "I1", "I1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "J1", "内存使用率")
+		xlsx.SetCellStyle("Sheet1", "J1", "J1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "K1", "备注")
+		xlsx.SetCellStyle("Sheet1", "K1", "K1", stylecenter)
+		//遍历数据
+		for k, v := range Filedata {
+			//loc, _ := time.LoadLocation("Asia/Shanghai")
+			//timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
+			//TimeUnix := time.Unix(timeint64, 0).In(loc)
+			//StrTime := TimeUnix.Format("2006-01-02 15:04:05")
+			xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+2), v.HostID)
+			xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+2), ValueTypeStr)
+			xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+2), v.Name)
+			xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+2), v.Host)
+			xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+2), v.Interfaces)
+			xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+2), v.OS)
+			xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+2), v.NumberOfCores)
+			xlsx.SetCellValue("Sheet1", "H"+strconv.Itoa(k+2), v.MemoryTotal)
+			xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+2), v.CPUUtilization)
+			xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+2), v.MemoryUtilization)
+			//	xlsx.SetCellValue("Sheet1", "K"+strconv.Itoa(k+2), v.Vendor)
+		}
+	default:
+		ValueTypeStr = "整型"
+	}
+	xlsx.SetActiveSheet(index)
+	var b bytes.Buffer
+	err = xlsx.Write(&b)
+	if err != nil {
+		return []byte{}, nil
 	}
 	return b.Bytes(), nil
 }

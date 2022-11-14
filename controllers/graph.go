@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/canghai908/zbxtable/models"
+	"zbxtable/models"
 )
 
 // GraphController operations for Host

@@ -21,6 +21,14 @@ type ListQueryAll struct {
 	Period []string `json:"period"`
 }
 
+type ExportHosts struct {
+	Hosttype  string `json:"hosttype"`
+	Hosts     string `json:"hosts"`
+	Model     string `json:"model"`
+	Ip        string `json:"ip"`
+	Available string `json:"available"`
+}
+
 //Itm struct
 type Itm struct {
 	Itemids  string `json:"itemids"`

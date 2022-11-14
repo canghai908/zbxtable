@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/canghai908/zbxtable/models"
+	"zbxtable/models"
 )
 
 // HostGroupsController operations for History
@@ -17,6 +17,7 @@ func (c *HostGroupsController) URLMapping() {
 	c.Mapping("GetList", c.GetList)
 	c.Mapping("GetAll", c.GetAll)
 	c.Mapping("GetHostByGroupID", c.GetHostByGroupID)
+	c.Mapping("GetGroup", c.GetGroup)
 }
 
 // GetList Gaa
@@ -29,6 +30,31 @@ func (c *HostGroupsController) URLMapping() {
 func (c *HostGroupsController) GetList() {
 	var HostGroupsRes models.HostTreeList
 	hs, cnt, err := models.GetAllHostGroupsList()
+
+	if err != nil {
+		HostGroupsRes.Code = 401
+		HostGroupsRes.Message = err.Error()
+		c.Data["json"] = HostGroupsRes
+	} else {
+		HostGroupsRes.Code = 200
+		HostGroupsRes.Message = "获取数据成功"
+		HostGroupsRes.Data.Items = hs
+		HostGroupsRes.Data.Total = cnt
+		c.Data["json"] = HostGroupsRes
+	}
+	c.ServeJSON()
+}
+
+// GetList Gaa
+// @Title Get All groups
+// @Description get groups
+// @Param	X-Token		header  string			true		"x-token in header"
+// @Success 200 {object} models.Alarm
+// @Failure 403
+// @router /all [get]
+func (c *HostGroupsController) GetGroup() {
+	var HostGroupsRes models.HostTreeList
+	hs, cnt, err := models.GetAllGroupsList()
 
 	if err != nil {
 		HostGroupsRes.Code = 401

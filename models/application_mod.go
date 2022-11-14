@@ -24,3 +24,27 @@ type ApplicationItem struct {
 	ValutType string `json:"value_type"`
 	Units     string `json:"units"`
 }
+
+type MonIts struct {
+	Itemid    string `json:"itemid"`
+	Key       string `json:"key_"`
+	Lastclock string `json:"lastclock"`
+	Lastvalue string `json:"lastvalue"`
+	Name      string `json:"name"`
+	Tags      []struct {
+		Tag   string `json:"tag"`
+		Value string `json:"value"`
+	} `json:"tags"`
+	ValutType  string `json:"value_type"`
+	Trends     string `json:"trends"`
+	Units      string `json:"units"`
+	ValueType  string `json:"value_type"`
+	Delay      string `json:"delay"`
+	ValuemapID string `json:"valuemapid"`
+}
+
+//Application struct
+type TagsItems struct {
+	Name  string   `json:"name"`
+	Items []MonIts `json:"items"`
+}
