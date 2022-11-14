@@ -55,6 +55,15 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.MemoryTotal = v.Inventory.SoftwareAppC
 			d.Uptime = v.Inventory.SoftwareAppE
+			d.DateHwInstall = v.Inventory.DateHwInstall
+			d.DateHwExpiry = v.Inventory.DateHwExpiry
+			d.MAC = v.Inventory.MacaddressA
+			d.ResourceID = v.Inventory.SerialnoB
+			d.SerialNo = v.Inventory.SerialnoA
+			d.Location = v.Inventory.Location
+			d.Department = v.Inventory.SiteCity
+			d.Vendor = v.Inventory.Vendor
+			d.Department = v.Inventory.SiteCity
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				if len(v.Interfaces) != 0 {
 					d.SerialNo = v.Inventory.SerialnoA
@@ -95,6 +104,15 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.MemoryTotal = v.Inventory.SoftwareAppC
 			d.Uptime = v.Inventory.SoftwareAppE
+			d.DateHwInstall = v.Inventory.DateHwInstall
+			d.DateHwExpiry = v.Inventory.DateHwExpiry
+			d.MAC = v.Inventory.MacaddressA
+			d.ResourceID = v.Inventory.SerialnoB
+			d.SerialNo = v.Inventory.SerialnoA
+			d.Location = v.Inventory.Location
+			d.Department = v.Inventory.SiteCity
+			d.Vendor = v.Inventory.Vendor
+			d.Department = v.Inventory.SiteCity
 			d.Error = v.Error
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				d.Available = v.SnmpAvailable
@@ -173,6 +191,9 @@ func GetNetHostByName(name string) ([]Hosts, error) {
 	var list []Hosts
 	err = json.Unmarshal([]byte(val), &list)
 	var newlist []Hosts
+	if name == "" {
+		return list, nil
+	}
 	for _, v := range list {
 		if strings.ContainsAny(strings.ToLower(v.Name), strings.ToLower(name)) {
 			newlist = append(newlist, v)

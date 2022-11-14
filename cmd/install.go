@@ -17,40 +17,65 @@ func init() {
 
 //tpl t
 type EventTpl struct {
-	HostsID      string `json:"host_id"`
-	HostHost     string `json:"host_host"`
-	Hostname     string `json:"hostname"`
-	HostsIP      string `json:"host_ip"`
-	HostGroup    string `json:"host_group"`
-	EventTime    string `json:"event_time"`
-	Severity     string `json:"severity"`
-	TriggerID    string `json:"trigger_id"`
-	TriggerName  string `json:"trigger_name"`
-	TriggerKey   string `json:"trigger_key"`
-	TriggerValue string `json:"trigger_value"`
-	ItemID       string `json:"item_id"`
-	ItemName     string `json:"item_name"`
-	ItemValue    string `json:"item_value"`
-	EventID      string `json:"event_id"`
+	HostsID       string `json:"host_id"`
+	HostHost      string `json:"host_host"`
+	Hostname      string `json:"hostname"`
+	HostsIP       string `json:"host_ip"`
+	HostGroup     string `json:"host_group"`
+	EventTime     string `json:"event_time"`
+	Severity      string `json:"severity"`
+	TriggerID     string `json:"trigger_id"`
+	TriggerName   string `json:"trigger_name"`
+	TriggerKey    string `json:"trigger_key"`
+	TriggerValue  string `json:"trigger_value"`
+	ItemID        string `json:"item_id"`
+	ItemName      string `json:"item_name"`
+	ItemValue     string `json:"item_value"`
+	EventID       string `json:"event_id"`
+	EventDuration string `json:"event_duration"`
 }
 
-func CreateEventTpl() string {
+func CreateProblemTpl() string {
 	var tpl = EventTpl{
-		HostsID:      "{HOST.ID}",
-		HostHost:     "{HOST.HOST}",
-		Hostname:     "{HOST.NAME}",
-		HostsIP:      "{HOST.IP}",
-		HostGroup:    "{TRIGGER.HOSTGROUP.NAME}",
-		EventTime:    "{EVENT.DATE} {EVENT.TIME}",
-		Severity:     "{TRIGGER.NSEVERITY}",
-		TriggerID:    "{TRIGGER.ID}",
-		TriggerName:  "{TRIGGER.NAME}",
-		TriggerKey:   "{TRIGGER.KEY}",
-		TriggerValue: "{TRIGGER.VALUE}",
-		ItemID:       "{ITEM.ID}",
-		ItemName:     "{ITEM.NAME}",
-		ItemValue:    "{ITEM.VALUE}",
-		EventID:      "{EVENT.ID}",
+		HostsID:       "{HOST.ID}",
+		HostHost:      "{HOST.HOST}",
+		Hostname:      "{HOST.NAME}",
+		HostsIP:       "{HOST.IP}",
+		HostGroup:     "{TRIGGER.HOSTGROUP.NAME}",
+		EventTime:     "{EVENT.DATE} {EVENT.TIME}",
+		Severity:      "{TRIGGER.NSEVERITY}",
+		TriggerID:     "{TRIGGER.ID}",
+		TriggerName:   "{TRIGGER.NAME}",
+		TriggerKey:    "{TRIGGER.KEY}",
+		TriggerValue:  "{TRIGGER.VALUE}",
+		ItemID:        "{ITEM.ID}",
+		ItemName:      "{ITEM.NAME}",
+		ItemValue:     "{ITEM.VALUE}",
+		EventID:       "{EVENT.ID}",
+		EventDuration: "{EVENT.DURATION}",
+	}
+	TPl, _ := json.MarshalIndent(tpl, "", "    ")
+	tp := strings.ReplaceAll(string(TPl), `"`, `¦`)
+	return tp
+}
+func CreateRecoveryTpl() string {
+	var tpl = EventTpl{
+		HostsID:       "{HOST.ID}",
+		HostHost:      "{HOST.HOST}",
+		Hostname:      "{HOST.NAME}",
+		HostsIP:       "{HOST.IP}",
+		HostGroup:     "{TRIGGER.HOSTGROUP.NAME}",
+		EventTime:     "{EVENT.RECOVERY.DATE} {EVENT.RECOVERY.TIME}",
+		Severity:      "{TRIGGER.NSEVERITY}",
+		TriggerID:     "{TRIGGER.ID}",
+		TriggerName:   "{TRIGGER.NAME}",
+		TriggerKey:    "{TRIGGER.KEY}",
+		TriggerValue:  "{TRIGGER.VALUE}",
+		ItemID:        "{ITEM.ID}",
+		ItemName:      "{ITEM.NAME}",
+		ItemValue:     "{ITEM.VALUE}",
+		EventID:       "{EVENT.ID}",
+		EventDuration: "{EVENT.DURATION}",
 	}
 	TPl, _ := json.MarshalIndent(tpl, "", "    ")
 	tp := strings.ReplaceAll(string(TPl), `"`, `¦`)
@@ -188,9 +213,9 @@ func installAagent(*cli.Context) error {
 	actpara["status"] = "0"
 	actpara["esc_period"] = "60"
 	if !ZBV {
-		actpara["def_longdata"] = CreateEventTpl()
+		actpara["def_longdata"] = CreateProblemTpl()
 		actpara["def_shortdata"] = "{TRIGGER.STATUS}"
-		actpara["r_longdata"] = CreateEventTpl()
+		actpara["r_longdata"] = CreateRecoveryTpl()
 		actpara["r_shortdata"] = "{TRIGGER.STATUS}"
 		actpara["recovery_msg"] = "1"
 	}
@@ -207,7 +232,7 @@ func installAagent(*cli.Context) error {
 	if ZBV {
 		opm["default_msg"] = "0"
 		opm["subject"] = "{TRIGGER.STATUS}"
-		opm["message"] = CreateEventTpl()
+		opm["message"] = CreateProblemTpl()
 	} else {
 		opm["default_msg"] = "1"
 	}
@@ -226,7 +251,7 @@ func installAagent(*cli.Context) error {
 	if ZBV {
 		opm1["default_msg"] = "0"
 		opm1["subject"] = "{TRIGGER.STATUS}"
-		opm1["message"] = CreateEventTpl()
+		opm1["message"] = CreateRecoveryTpl()
 	} else {
 		opm1["default_msg"] = "1"
 	}

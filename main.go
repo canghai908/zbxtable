@@ -1,13 +1,18 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"github.com/json-iterator/go/extra"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"zbxtable/cmd"
+	"zbxtable/utils"
 )
+
+//go:embed template
+var f embed.FS
 
 const motd = `
 $$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\ 
@@ -33,10 +38,11 @@ func customVersionPrinter(c *cli.Context) {
 func init() {
 	// RegisterFuzzyDecoders decode input from PHP with tolerance.
 	extra.RegisterFuzzyDecoders()
-
+	utils.GenTpl(f)
 }
 
 func main() {
+
 	app := cli.NewApp()
 	app.Name = "ZbxTable"
 	app.Usage = "A Zabbix Table tools"

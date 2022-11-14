@@ -9,15 +9,16 @@ import (
 	zabbix "github.com/canghai908/zabbix-go"
 	redis "github.com/go-redis/redis/v8"
 	_ "github.com/go-sql-driver/mysql"
+	workwx "github.com/xen0n/go-workwx"
 	ini "gopkg.in/ini.v1"
 	"strconv"
 	"strings"
+	"zbxtable/utils"
 
 	jsoniter "github.com/json-iterator/go"
 	_ "github.com/lib/pq"
 	"os"
 	"time"
-	"zbxtable/utils"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	ZBX_VER    string
 	ZBX_V      bool
 	AssetsHost string
+	WeApp      = &workwx.WorkwxApp{}
 )
 
 //TableName 表名前缀
@@ -79,7 +81,8 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	orm.RegisterModel(
 		new(Alarm), new(Manager), new(Topology),
 		new(System), new(Report), new(Egress),
-		new(TaskLog))
+		new(TaskLog), new(Rule), new(UserGroup),
+		new(EventLog))
 	err := orm.RunSyncdb("default", false, true)
 	if err != nil {
 		logs.Error(err)
@@ -130,7 +133,7 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	logs.Info("Zabbix API connected！Zabbix version:", version)
 
 	//zabbix web login
-	//LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
+	//	LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
 
 	//redis
 	res_db, err := strconv.Atoi(redis_db)
@@ -150,6 +153,18 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		os.Exit(1)
 	}
 	logs.Info("Redis connected!")
+	//gen tpl
+
+	//
+	agentid, err := beego.AppConfig.Int64("wechat_agentid")
+	if err != nil {
+		logs.Error(err)
+		os.Exit(1)
+	}
+	client := workwx.New(beego.AppConfig.String("wechat_corpid"))
+	WeApp = client.WithApp(beego.AppConfig.String("wechat_secret"), agentid)
+	WeApp.SpawnAccessTokenRefresher()
+	logs.Info("WeChat inited!")
 }
 
 //DatabaseInit 数据初始化
@@ -163,9 +178,10 @@ func DatabaseInit() {
 		logs.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
 		manager.Username = "admin"
-		manager.Password = utils.Md5([]byte("Zbxtable"))
+		manager.Password, _ = utils.PasswordHash("Zbxtable")
 		manager.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
 		manager.Role = "admin"
+		manager.Operation = "['add', 'edit', 'delete','update']"
 		manager.Status = 0
 		manager.Created = time.Now()
 		id, err := o.Insert(&manager)
@@ -192,10 +208,10 @@ func DatabaseInit() {
 		}
 		_, err := o.InsertMulti(len(sys), sys)
 		if err != nil {
-			logs.Info("Inited system info error！")
+			logs.Info("Init system info error！")
 			return
 		}
-		logs.Info("Inited system data successfully!")
+		logs.Info("Init system data successfully!")
 	}
 	//出口
 	//初始化系统数据
@@ -212,10 +228,30 @@ func DatabaseInit() {
 		}
 		_, err := o.InsertMulti(len(egre), egre)
 		if err != nil {
-			logs.Info("Inited egress info error！")
+			logs.Info("Init egress info error！")
 			return
 		}
-		logs.Info("Inited egress data successfully!")
+		logs.Info("Init egress data successfully!")
+	}
+	//init default rule
+	var cRule []Rule
+	allRule := new(Rule)
+	_, err = o.QueryTable(allRule).Filter("MType", "2").All(&cRule)
+	if err != nil {
+		logs.Info(err)
+		return
+	}
+	if len(cRule) == 0 {
+		defaultRule := []Rule{
+			{Name: "默认规则", TenantID: "zabbix01", MType: "2",
+				Channel: "wechat", UserIds: "1", Status: "0"},
+		}
+		_, err := o.InsertMulti(len(defaultRule), defaultRule)
+		if err != nil {
+			logs.Info("Init default rule error！")
+			return
+		}
+		logs.Info("Init default rule successfully!")
 	}
 }
 

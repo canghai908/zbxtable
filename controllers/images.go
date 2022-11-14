@@ -62,7 +62,7 @@ func (c *ImagesController) GetOne() {
 	data.Set("from", StartTime)
 	data.Set("to", EndTime)
 	data.Set("profileIdx", "web.graphs.filter")
-	data.Set("profileIdx2", "200")
+	data.Set("height", "200")
 	data.Set("width", "400")
 	//Encode rul
 	URL.RawQuery = data.Encode()

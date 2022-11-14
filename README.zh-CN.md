@@ -26,7 +26,7 @@ MS-Agent: 安装在 Zabbix Server 上, 用于接收 Zabbix Server 产生的告�
 
 ## 在线体验
 
-账号：admin 密码：Zbxtable
+直接点击登录即可
 
 [https://zbx.cactifans.com](https://zbx.cactifans.com)
 
@@ -67,6 +67,17 @@ cd zbxtable
 ./control build
 ./control pack
 ```
+
+## Team
+
+后端
+
+[canghai908](https://github.com/canghai908)
+
+前端
+
+[ahyiru](https://github.com/ahyiru)
+
 ## License
 
 <img alt="Apache-2.0 license" src="https://s3-gz01.didistatic.com/n9e-pub/image/apache.jpeg" width="128">

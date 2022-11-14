@@ -1,10 +1,13 @@
 package models
 
 import (
+	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
 	"strconv"
+	"strings"
 	"time"
+	"zbxtable/utils"
 )
 
 //TableName alarm
@@ -45,7 +48,8 @@ func GetAllReportsLimt(page, limit, name string) (cnt int64, topo []Report, err 
 	limits, _ := strconv.Atoi(limit)
 	//count topology
 	_, err = o.QueryTable(al).Filter("name__contains", name).All(&CountTopologys)
-	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").Filter("name__contains", name).All(&topologys)
+	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").
+		Filter("name__contains", name).All(&topologys)
 	if err != nil {
 		logs.Debug(err)
 		return 0, []Report{}, err
@@ -58,6 +62,9 @@ func GetAllReportsLimt(page, limit, name string) (cnt int64, topo []Report, err 
 // last inserted Id on success.
 func AddReport(m *Report) (id int64, err error) {
 	o := orm.NewOrm()
+	m.Items = utils.VAarToStr(m.Items)
+	m.Cycle = utils.VAarToStr(m.Cycle)
+	fmt.Println(m.Items, m.Cycle)
 	id, err = o.Insert(m)
 	if err != nil {
 		logs.Debug(err)
@@ -71,19 +78,16 @@ func UpdateReportByID(m *Report) (err error) {
 	o := orm.NewOrm()
 	v := Report{ID: m.ID}
 	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		v.Name = m.Name
-		v.Emails = m.Emails
-		v.Items = m.Items
-		v.LinkBandWidth = m.LinkBandWidth
-		v.Cycle = m.Cycle
-		v.Status = m.Status
-		v.Desc = m.Desc
-		_, err = o.Update(m, "Name", "Emails", "Items",
-			"LinkBandWidth", "Cycle", "Status", "Desc")
-		if err != nil {
-			return err
-		}
+	err = o.Read(&v)
+	if err != nil {
+		return err
+	}
+	m.Items = utils.VAarToStr(m.Items)
+	m.Cycle = utils.VAarToStr(m.Cycle)
+	_, err = o.Update(m, "Name", "Emails", "Items",
+		"LinkBandWidth", "Cycle", "Status", "Desc")
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -98,11 +102,7 @@ func CheckNowByID(m *Report) (err error) {
 		return err
 	}
 	if len(v.Cycle) != 0 {
-		var cycle []string
-		if err := json.Unmarshal([]byte(v.Cycle), &cycle); err != nil {
-			logs.Error(err)
-			return err
-		}
+		cycle := strings.Split(v.Cycle, ",")
 		for _, vv := range cycle {
 			//week
 			if vv == "week" {
@@ -110,6 +110,7 @@ func CheckNowByID(m *Report) (err error) {
 				err := TaskWeekReport(v)
 				if err != nil {
 					logs.Error(err)
+					return err
 				}
 				//更新report状态
 				v.ExecStatus = strconv.Itoa(Success)
@@ -118,6 +119,7 @@ func CheckNowByID(m *Report) (err error) {
 				err = UpdateReportExecStatusByID(&v)
 				if err != nil {
 					logs.Error(err)
+					return err
 				}
 			}
 			//day
@@ -126,6 +128,7 @@ func CheckNowByID(m *Report) (err error) {
 				err := TaskDayReport(v)
 				if err != nil {
 					logs.Error(err)
+					return err
 				}
 				//更新report状态
 				v.ExecStatus = strconv.Itoa(Success)
@@ -134,6 +137,7 @@ func CheckNowByID(m *Report) (err error) {
 				err = UpdateReportExecStatusByID(&v)
 				if err != nil {
 					logs.Error(err)
+					return err
 				}
 			}
 		}

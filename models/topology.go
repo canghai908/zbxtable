@@ -9,11 +9,6 @@ import (
 	"strings"
 )
 
-//TableName Topology
-func (t *Topology) TableName() string {
-	return TableName("topology")
-}
-
 // GetZmsTopologyById retrieves ZmsTopology by Id. Returns error if
 // Id doesn't exist
 func GetTopologyById(id int) (v *Topology, err error) {
@@ -37,7 +32,6 @@ func GetAllTopology(page, limit, name string) (cnt int64, topo []Topology, err e
 	_, err = o.QueryTable(al).Filter("topology__contains", name).All(&CountTopologys)
 	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").Filter("topology__contains", name).All(&topologys)
 	if err != nil {
-		logs.Debug(err)
 		return 0, []Topology{}, err
 	}
 	cnt = int64(len(CountTopologys))
@@ -45,24 +39,15 @@ func GetAllTopology(page, limit, name string) (cnt int64, topo []Topology, err e
 }
 
 // GetAllTopology t
-func GetDeployTopoly() (cnt int64, topo []Topology, err error) {
+func GetDeployTopoly() (topo []*Topology, err error) {
 	o := orm.NewOrm()
-	var topologys []Topology
-	var CountTopologys []Topology
-	al := new(Topology)
-	//count topology
-	_, err = o.QueryTable(al).Filter("status", "1").All(&CountTopologys)
+	var list []*Topology
+	topology := new(Topology)
+	_, err = o.QueryTable(topology).Filter("Status", "1").All(&list)
 	if err != nil {
-		logs.Debug(err)
-		return 0, []Topology{}, err
+		return []*Topology{}, err
 	}
-	_, err = o.QueryTable(al).OrderBy("-created_at").Filter("status", "1").All(&topologys)
-	if err != nil {
-		logs.Debug(err)
-		return 0, []Topology{}, err
-	}
-	cnt = int64(len(CountTopologys))
-	return cnt, topologys, nil
+	return list, nil
 }
 
 // AddTopology insert a new ZmsTopology into database and returns
@@ -88,8 +73,9 @@ func UpdateTopologyByID(m *Topology) (err error) {
 		if err != nil {
 			return err
 		}
+		return nil
 	}
-	return
+	return err
 }
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
@@ -102,8 +88,9 @@ func UpdateTopologyEdgesByID(m *Topology) (err error) {
 		if err != nil {
 			return err
 		}
+		return nil
 	}
-	return
+	return err
 }
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
@@ -117,8 +104,9 @@ func UpdateTopologyNodesByID(m *Topology) (err error) {
 		if err != nil {
 			return err
 		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if

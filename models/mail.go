@@ -11,7 +11,7 @@ import (
 	"html/template"
 	"net/smtp"
 	"os"
-	"zbxtable/utils"
+	template2 "zbxtable/utils"
 )
 
 func Sendmail(To []string, Subject, attach string, temp []byte) error {
@@ -84,9 +84,9 @@ func CreateMailTable(m Report, chartdata []ChartData) ([]byte, error) {
 		one.ItemName = v.Name
 		one.IP = v.IP
 		one.Host = v.Host
-		one.LinkBinWith = utils.FormatTrafficFloat64(v.LinkBandWidth[0].Value.(float64))
+		one.LinkBinWith = template2.FormatTrafficFloat64(v.LinkBandWidth[0].Value.(float64))
 		ttt := Avg(v.Data)
-		one.Avg = utils.FormatTrafficFloat64(Avg(v.Data))
+		one.Avg = template2.FormatTrafficFloat64(Avg(v.Data))
 		one.AVgPre = AvgPer(ttt, v.LinkBandWidth[0].Value.(float64)) + "%"
 		plist = append(plist, one)
 	}

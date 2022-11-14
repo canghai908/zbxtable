@@ -12,6 +12,11 @@ type Topology struct {
 	UpdatedAt time.Time `orm:"column(updated_at);auto_now;type(datetime)" json:"updated_at"`
 }
 
+//TableName Topology
+func (t *Topology) TableName() string {
+	return TableName("topology")
+}
+
 //TopologyList struct
 type TopologyList struct {
 	Code    int    `json:"code"`

@@ -190,7 +190,7 @@ func (c *ReportController) Delete() {
 }
 
 // checknow report..
-// @Title 测试报表
+// @Title test report
 // @Description 测试报表
 // @Param	X-Token	header  string	true	"X-Token"
 // @Param	body	body 	models.Topology  true	"body for Topology content"
@@ -202,14 +202,16 @@ func (c *ReportController) CheckNow() {
 	idStr := gjson.Get(string(c.Ctx.Input.RequestBody), "id").String()
 	id, _ := strconv.Atoi(idStr)
 	v := models.Report{ID: id}
-	if err := models.CheckNowByID(&v); err == nil {
+	err := models.CheckNowByID(&v)
+	if err == nil {
 		ReportRes.Code = 200
 		ReportRes.Message = "生成成功"
-		c.Data["json"] = "OK"
 	} else {
 		ReportRes.Code = 500
 		ReportRes.Message = err.Error()
 	}
+	ReportRes.Data.Items = nil
+	ReportRes.Data.Total = 0
 	c.Data["json"] = ReportRes
 	c.ServeJSON()
 }

@@ -22,11 +22,35 @@ var (
 //URLMapping beego
 func (c *IndexController) URLMapping() {
 	c.Mapping("Get", c.GetInfo)
+	c.Mapping("Router", c.Router)
 	c.Mapping("GetResrouceTop", c.GetResrouceTop)
 	c.Mapping("Inventory", c.GetInventory)
 	c.Mapping("GetOverview", c.GetOverview)
 	c.Mapping("GerVersion", c.GerVersion)
 	c.Mapping("GetEgress", c.GetEgress)
+}
+
+// routers ...
+// @Title 获取异步路由
+// @Description 获取异步路由
+// @Param	X-Token		header  string			true		"x-token in header"
+// @Success 200 {object} models.Manager
+// @Failure 403 :id is empty
+// @router /routers [get]
+func (c *IndexController) Router() {
+	var routeRes models.RouRes
+	info, err := models.GetRouter(Tuser)
+	if err != nil {
+		routeRes.Code = 500
+		routeRes.Message = "获取失败"
+		routeRes.Data.Items = info
+	} else {
+		routeRes.Code = 200
+		routeRes.Message = "获取成功"
+		routeRes.Data.Items = info
+	}
+	c.Data["json"] = routeRes
+	c.ServeJSON()
 }
 
 // GetInfo ...

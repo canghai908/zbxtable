@@ -54,6 +54,9 @@ func runWeb(*cli.Context) error {
 	models.InitTask()
 	toolbox.StartTask()
 	defer toolbox.StopTask()
+	models.InitSenderWorker()
+	go models.ConsumeMail()
+	go models.ConsumeWechat()
 	beego.Run()
 	return nil
 }

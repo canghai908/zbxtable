@@ -3,9 +3,9 @@ package controllers
 import (
 	"strconv"
 	"time"
+	"zbxtable/utils"
 
 	"zbxtable/models"
-	"zbxtable/utils"
 )
 
 // AlarmController 历史告警消息接口
@@ -23,7 +23,7 @@ var AnalysisRes models.AnalysisList
 func (c *AlarmController) URLMapping() {
 	c.Mapping("GetOne", c.GetOne)
 	c.Mapping("GetAll", c.GetAll)
-	c.Mapping("GetTenant()", c.GetTenant)
+	c.Mapping("GetTenant", c.GetTenant)
 	c.Mapping("Analysis", c.Analysis)
 	c.Mapping("Export", c.Export)
 }
@@ -111,6 +111,8 @@ func (c *AlarmController) GetTenant() {
 	if err != nil {
 		TenantRes.Code = 200
 		TenantRes.Message = err.Error()
+		TenantRes.Data.Items = nil
+		TenantRes.Data.Total = 0
 	} else {
 		TenantRes.Code = 200
 		TenantRes.Message = "ok"

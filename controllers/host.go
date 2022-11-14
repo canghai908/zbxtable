@@ -138,6 +138,8 @@ func (c *HostController) Search() {
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()
+		HostRes.Data.Items = nil
+		HostRes.Data.Total = 0
 	} else {
 		HostRes.Code = 200
 		HostRes.Message = "获取数据成功"

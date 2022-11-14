@@ -7,170 +7,6 @@ import (
 	"github.com/astaxie/beego/orm"
 )
 
-//Alarm struct
-type Alarm struct {
-	ID int `orm:"column(id);auto" json:"id"`
-	//v2 add begin
-	TenantID  string `orm:"column(tenant_id);size(255)" json:"tenant_id"`
-	HostID    string `orm:"column(host_id);size(255)" json:"host_id"`
-	Hostname  string `orm:"column(hostname);size(200)" json:"hostname"`
-	Host      string `orm:"column(host);size(200)" json:"host"`
-	HostsIP   string `orm:"column(host_ip);size(200)" json:"host_ip"`
-	TriggerID int64  `orm:"column(trigger_id);size(200)" json:"trigger_id"`
-	ItemID    int64  `orm:"column(item_id);size(200)" json:"item_id"`
-	ItemName  string `orm:"column(item_name);size(200)" json:"item_name"`
-	ItemValue string `orm:"column(item_value);size(200)" json:"item_value"`
-	//v2 add endss
-	Hgroup    string    `orm:"column(hgroup);size(200)" json:"hgroup"`
-	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(200)" json:"level"`
-	Message   string    `orm:"column(message);size(200)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(200)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(200)" json:"detail"`
-	Status    string    `orm:"column(status);size(200)" json:"status"`
-	EventID   int64     `orm:"column(event_id);size(200)" json:"eventid"`
-}
-type EventTpl struct {
-	HostsID      string `json:"host_id"`
-	HostHost     string `json:"host_host"`
-	Hostname     string `json:"hostname"`
-	HostsIP      string `json:"host_ip"`
-	HostGroup    string `json:"host_group"`
-	EventTime    string `json:"event_time"`
-	Severity     string `json:"severity"`
-	TriggerID    int64  `json:"trigger_id"`
-	TriggerName  string `json:"trigger_name"`
-	TriggerKey   string `json:"trigger_key"`
-	TriggerValue string `json:"trigger_value"`
-	ItemID       int64  `json:"item_id"`
-	ItemName     string `json:"item_name"`
-	ItemValue    string `json:"item_value"`
-	EventID      int64  `json:"event_id"`
-}
-
-//ListQueryAlarm query
-type ListQueryAlarm struct {
-	Host   string   `json:"host"`
-	Period []string `json:"period"`
-}
-
-//ListExportAlarm struct
-type ListExportAlarm struct {
-	Begin    string `json:"begin"`
-	End      string `json:"end"`
-	Hosts    string `json:"hosts"`
-	TenantID string `json:"tenant_id"`
-	Status   string `json:"status"`
-	Level    string `json:"level"`
-}
-
-//ListAnalysisAlarm qu
-type ListAnalysisAlarm struct {
-	Begin    string `json:"begin"`
-	End      string `json:"end"`
-	TenantID string `json:"tenant_id"`
-}
-
-//SendALarm struct
-type SendALarm struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Host      string    `orm:"column(host);size(255)" json:"host"`
-	Hgroup    string    `orm:"column(hgroup);size(255)" json:"hgroup"`
-	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(255)" json:"level"`
-	Message   string    `orm:"column(message);size(255)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(255)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(255)" json:"detail"`
-	Status    string    `orm:"column(status);size(255)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(255)" json:"eventid"`
-	Mail      []string  `orm:"column(event_id);size(255)" json:"mail"`
-	Weixin    []string  `orm:"column(event_id);size(255)" json:"weixin"`
-	Sms       []string  `orm:"column(event_id);size(255)" json:"sms"`
-}
-
-//WeixinMessage struct
-type WeixinMessage struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Host      string    `orm:"column(host);size(255)" json:"host"`
-	Hgroup    string    `orm:"column(hgroup);size(255)" json:"hgroup"`
-	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(255)" json:"level"`
-	Message   string    `orm:"column(message);size(255)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(255)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(255)" json:"detail"`
-	Status    string    `orm:"column(status);size(255)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(255)" json:"eventid"`
-	Weixin    string    `orm:"column(event_id);size(255)" json:"weixin"`
-}
-
-//MailMessage struct
-type MailMessage struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Host      string    `orm:"column(host);size(255)" json:"host"`
-	Hgroup    string    `orm:"column(hgroup);size(255)" json:"hgroup"`
-	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(255)" json:"level"`
-	Message   string    `orm:"column(message);size(255)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(255)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(255)" json:"detail"`
-	Status    string    `orm:"column(status);size(255)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(255)" json:"eventid"`
-	Mail      string    `orm:"column(event_id);size(255)" json:"mail"`
-}
-
-//SmsMessage struct
-type SmsMessage struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Host      string    `orm:"column(host);size(255)" json:"host"`
-	Hgroup    string    `orm:"column(hgroup);size(255)" json:"hgroup"`
-	Occurtime time.Time `orm:"column(occurtime);type(datetime)" json:"occurtime"`
-	Level     string    `orm:"column(level);size(255)" json:"level"`
-	Message   string    `orm:"column(message);size(255)" json:"message"`
-	Hkey      string    `orm:"column(hkey);size(255)" json:"hkey"`
-	Detail    string    `orm:"column(detail);size(255)" json:"detail"`
-	Status    string    `orm:"column(status);size(255)" json:"status"`
-	EventID   string    `orm:"column(event_id);size(255)" json:"eventid"`
-	Sms       string    `orm:"column(event_id);size(255)" json:"sms"`
-}
-
-//Pie struct
-type Pie struct {
-	Value int    `json:"value"`
-	Name  string `json:"name"`
-}
-
-//AlarmList struct
-type AlarmList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []Alarm `json:"items"`
-		Total int64   `json:"total"`
-	} `json:"data"`
-}
-
-//AlarmList struct
-type AlarmTendantList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items interface{} `json:"items"`
-		Total int64       `json:"total"`
-	} `json:"data"`
-}
-
-//AnalysisList struct
-type AnalysisList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Level      []string `json:"level"`
-		LevelCount []Pie    `json:"level_count"`
-		Host       []string `json:"host"`
-		HostCount  []int    `json:"host_count"`
-	} `json:"data"`
-}
-
 //TableName alarm
 func (t *Alarm) TableName() string {
 	return TableName("alarm")
@@ -181,7 +17,27 @@ func (t *Alarm) TableName() string {
 func AddAlarm(m *Alarm) (id int64, err error) {
 	o := orm.NewOrm()
 	id, err = o.Insert(m)
-	return
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+////update alarm notifystatus
+func UpdateAlarmStatus(m *Alarm) (id int64, err error) {
+	o := orm.NewOrm()
+	//user
+	v := Alarm{ID: m.ID}
+	err = o.Read(&v)
+	if err != nil {
+		return 0, err
+	}
+	v.NotifyStatus = m.NotifyStatus
+	id, err = o.Update(m, "NotifyStatus")
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // GetAlarmByID retrieves Alarm by Id. Returns error if

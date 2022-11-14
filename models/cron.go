@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
@@ -21,44 +22,52 @@ func InitTask() {
 	//每天执行一次
 	DayReport := toolbox.NewTask("DayReport", "0 55 23 * * *", CreateDayReport)
 	WeekReport := toolbox.NewTask("DayReport", "0 55 17 * * 5", CreateWeekReport)
-	updatetopologydata := toolbox.NewTask("updatetopologydata", "0/30 * * * * *", UpdateTopoByStatus)
+	//拓朴图数据更新
+	UpdateTopoData := toolbox.NewTask("UpdateTopoData", "0/30 * * * * *", UpdateTopoData)
 	hostTypeHostList := toolbox.NewTask("hostTypeHostList", "0 */5 * * * *", GetTypeHostList)
 	Egress := toolbox.NewTask("EgressCache", "0/30 * * * * *", EgressCache)
 
 	toolbox.AddTask("top", top)
-	toolbox.AddTask("updatetopologydata", updatetopologydata)
+	toolbox.AddTask("UpdateTopoData", UpdateTopoData)
 	toolbox.AddTask("hostTypeHostList", hostTypeHostList)
 	toolbox.AddTask("Egress", Egress)
 	toolbox.AddTask("DayReport", DayReport)
 	toolbox.AddTask("WeekReport", WeekReport)
-
 }
 func CreateWeekReport() error {
-	_, p, err := GetALlReport()
+	_, list, err := GetALlReport()
 	if err != nil {
 		logs.Error(err)
+		return err
 	}
-	for _, v := range p {
+	for _, v := range list {
 		if v.Status == "1" {
 			if len(v.Cycle) != 0 {
-				var cycle []string
-				if err := json.Unmarshal([]byte(v.Cycle), &cycle); err != nil {
-					logs.Error(err)
-				}
-				for _, vv := range cycle {
+				cycList := strings.Split(v.Cycle, ",")
+				for _, vv := range cycList {
 					if vv == "week" {
 						start := time.Now()
 						err := TaskWeekReport(v)
 						if err != nil {
 							logs.Error(err)
+							///update status failed
+							v.ExecStatus = strconv.Itoa(Failed)
+							v.StartAt = start
+							v.EndAt = time.Now()
+							err = UpdateReportExecStatusByID(&v)
+							if err != nil {
+								logs.Error(err)
+							}
+							continue
 						}
-						//更新report状态
+						//update status success
 						v.ExecStatus = strconv.Itoa(Success)
 						v.StartAt = start
 						v.EndAt = time.Now()
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logs.Error(err)
+							continue
 						}
 					}
 				}
@@ -68,23 +77,30 @@ func CreateWeekReport() error {
 	return nil
 }
 func CreateDayReport() error {
-	_, p, err := GetALlReport()
+	_, list, err := GetALlReport()
 	if err != nil {
 		logs.Error(err)
+		return err
 	}
-	for _, v := range p {
+	for _, v := range list {
 		if v.Status == "1" {
 			if len(v.Cycle) != 0 {
-				var cycle []string
-				if err := json.Unmarshal([]byte(v.Cycle), &cycle); err != nil {
-					logs.Error(err)
-				}
-				for _, vv := range cycle {
+				cycList := strings.Split(v.Cycle, ",")
+				for _, vv := range cycList {
 					if vv == "day" {
 						start := time.Now()
 						err := TaskDayReport(v)
 						if err != nil {
 							logs.Error(err)
+							//更新report状态
+							v.ExecStatus = strconv.Itoa(Failed)
+							v.StartAt = start
+							v.EndAt = time.Now()
+							err = UpdateReportExecStatusByID(&v)
+							if err != nil {
+								logs.Error(err)
+							}
+							continue
 						}
 						//更新report状态
 						v.ExecStatus = strconv.Itoa(Success)
@@ -93,6 +109,7 @@ func CreateDayReport() error {
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logs.Error(err)
+							continue
 						}
 					}
 				}
@@ -141,11 +158,17 @@ func TOP() error {
 	var ctx = context.Background()
 	//var dt []Hosts
 	var d Hosts
+	if len(hb) == 0 {
+		logs.Error(errors.New("host list is null"))
+		return errors.New("host list is null")
+	}
 	for _, v := range hb {
 		d.HostID = v.Hostid
 		d.Host = v.Host
 		d.Name = v.Name
-		d.Interfaces = v.Interfaces[0].IP
+		if len(v.Interfaces) != 0 {
+			d.Interfaces = v.Interfaces[0].IP
+		}
 		d.Status = v.Status
 		d.Available = v.Available
 		d.Error = v.Error
@@ -236,20 +259,23 @@ func TOP() error {
 }
 
 //by topology status update data
-func UpdateTopoByStatus() error {
-	_, topo, err := GetDeployTopoly()
+func UpdateTopoData() error {
+	List, err := GetDeployTopoly()
 	if err != nil {
 		logs.Debug(err)
 		return err
 	}
-	for _, v := range topo {
-		UpdateTopologyData(v)
+	for _, v := range List {
+		//fmt.Println(k, v)
+		//UpdateNodeData(v)
+		UpdateEdgeData(v)
+
 	}
 	return nil
 }
 
 //update topology data
-func UpdateTopologyData(v Topology) error {
+func UpdateEdgeData(v *Topology) error {
 	var alledges AllEdge
 	err := json.Unmarshal([]byte(v.Edges), &alledges)
 	if err != nil {
@@ -257,68 +283,76 @@ func UpdateTopologyData(v Topology) error {
 		return err
 	}
 	var wg sync.WaitGroup
-	trigger := make(chan string)
-	flow := make(chan string)
+	ch := make(chan struct{}, 10)
 	var aedge []AEdge
 	for _, v := range alledges {
-		wg.Add(2)
-		//labels attr
-		v.Labels[0].Attrs.Label.Text = ""
-		v.Labels[0].Position.Angle = 0
-		v.Labels[0].Position.Offset = 20
-		v.Labels[0].Position.Options.EnsureLegibility = true
-		v.Labels[0].Position.Options.KeepGradient = true
-		//line attrs
-		v.Attrs.Line.StrokeWidth = 4
-		v.Attrs.Line.Stroke = "#A4A4A4"
-		v.Attrs.Line.StrokeDasharray = 0
-		if v.Attrs.Line.FlowID != "" {
-			go GetFlowByFlowID(v.Attrs.Line.FlowID, &wg, flow)
-			v.Labels[0].Attrs.Label.Text = <-flow
-		}
-		//trigger get
-		if v.Attrs.Line.TriggerID != "" {
-			go GetTriggerValueByTriggerID(v.Attrs.Line.TriggerID, &wg, trigger)
-			status := <-trigger
-			switch {
-			//trigger正常 未告警
-			case status == "0":
-				v.Attrs.Line.Stroke = "#00FF00"
-				v.Attrs.Line.StrokeDasharray = 5
-				v.Attrs.Line.Style.Animation = "ant-line 30s infinite linear"
-				//trigger 告警
-			case status == "1":
-				v.Attrs.Line.Stroke = "#FF0000"
-			case status == "2":
-				v.Attrs.Line.Stroke = "#A4A4A4"
-			default:
-				v.Attrs.Line.Stroke = "#A4A4A4"
+		ch <- struct{}{}
+		wg.Add(1)
+		go func(v AEdge) {
+			defer wg.Done()
+			//labels attr
+			v.Labels[0].Attrs.Label.Text = ""
+			v.Labels[0].Position.Angle = 0
+			v.Labels[0].Position.Offset = 20
+			v.Labels[0].Position.Options.EnsureLegibility = true
+			v.Labels[0].Position.Options.KeepGradient = true
+			//line attrs
+			v.Attrs.Line.StrokeWidth = 4
+			v.Attrs.Line.Stroke = "#A4A4A4"
+			v.Attrs.Line.StrokeDasharray = 0
+			if v.Attrs.Line.FlowID != "" {
+				flow, err := GetFlowByFlowID(v.Attrs.Line.FlowID)
+				if err != nil {
+					logs.Error(err)
+				}
+				v.Labels[0].Attrs.Label.Text = flow
 			}
-		}
-		aedge = append(aedge, v)
-	}
-	go func() {
+			//trigger get
+			if v.Attrs.Line.TriggerID != "" {
+				status, err := GetTriggerValueByTriggerID(v.Attrs.Line.TriggerID)
+				if err != nil {
+					logs.Error(err)
+				}
+				switch {
+				//trigger正常 未告警
+				case status == "0":
+					v.Attrs.Line.Stroke = "#00FF00"
+					v.Attrs.Line.StrokeDasharray = 5
+					v.Attrs.Line.Style.Animation = "ant-line 30s infinite linear"
+					//trigger 告警
+				case status == "1":
+					v.Attrs.Line.Stroke = "#FF0000"
+				case status == "2":
+					v.Attrs.Line.Stroke = "#A4A4A4"
+				default:
+					v.Attrs.Line.Stroke = "#A4A4A4"
+				}
+			}
+			aedge = append(aedge, v)
+			<-ch
+		}(v)
 		wg.Wait()
-		close(trigger)
-		close(flow)
-	}()
-	aedgestr, err := json.Marshal(aedge)
+	}
+	edgeStr, err := json.Marshal(aedge)
 	if err != nil {
 		logs.Debug(err)
 		return err
 	}
 	var Topo Topology
 	Topo.ID = v.ID
-	Topo.Edges = string(aedgestr)
+	Topo.Edges = string(edgeStr)
 	err = UpdateTopologyEdgesByID(&Topo)
 	if err != nil {
 		logs.Debug(err)
 		return err
 	}
+	return nil
+}
 
+func UpdateNodeData(v *Topology) error {
 	//update nodes data
 	var allnodes AllNodes
-	err = json.Unmarshal([]byte(v.Nodes), &allnodes)
+	err := json.Unmarshal([]byte(v.Nodes), &allnodes)
 	if err != nil {
 		logs.Debug(err)
 		return err
@@ -326,7 +360,7 @@ func UpdateTopologyData(v Topology) error {
 	var wg2 sync.WaitGroup
 	var nodes []PNodes
 	for _, v := range allnodes {
-		info := make(chan string)
+		info := make(chan string, 3)
 		wg2.Add(1)
 		if v.Attrs.Label.HostID != "" {
 			go GetHostInfoByID(v.Attrs.Label.HostID, &wg2, info)

@@ -27,7 +27,6 @@ func TaskWeekReport(m Report) error {
 	end := Tend.Unix()
 	StrStart := tstart.Format("2006-01-02 15:04:05")
 	StrEnd := Tend.Format("2006-01-02 15:04:05")
-	var itemlist []string
 	err := utils.Mkdir(DowloadPath)
 	if err != nil {
 		taskend := time.Now()
@@ -43,9 +42,7 @@ func TaskWeekReport(m Report) error {
 		logs.Error(err)
 		return err
 	}
-	err = json.Unmarshal([]byte(m.Items), &itemlist)
-	if err != nil {
-		//写入日志
+	if len(m.Items) == 0 {
 		taskend := time.Now()
 		task.EndTime = taskend
 		task.Status = Failed
@@ -53,32 +50,36 @@ func TaskWeekReport(m Report) error {
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
+			logs.Error(err)
 			return err
 		}
+		logs.Error(err)
 		return err
 	}
+	itemsList := strings.Split(m.Items, ",")
+	//获取bandwith 列表
 	var bindlist []string
+	//为空，全部填充为0
 	if len(m.LinkBandWidth) == 0 {
-		for i := 0; i < len(itemlist); i++ {
+		for i := 0; i < len(itemsList); {
 			bindlist = append(bindlist, "0")
+			i++
 		}
-	}
-	if strings.Contains(m.LinkBandWidth, ",") {
-		bindlist = strings.Split(m.LinkBandWidth, ",")
 	} else {
-		bindlist = append(bindlist, m.LinkBandWidth)
-	}
-	if len(bindlist) < len(itemlist) {
-		for i := 0; i < len(itemlist)-len(bindlist); i++ {
-			//bindlist[k] = "0"
-			bindlist = append(bindlist, "0")
+		bindlist = strings.Split(m.LinkBandWidth, ",")
+		//少于
+		if len(bindlist) < len(itemsList) {
+			for i := 0; i <= len(itemsList)-len(bindlist)+1; {
+				//bindlist[k] = "0"
+				bindlist = append(bindlist, "0")
+				i++
+			}
 		}
 	}
 	var filelist []string
 	var ChartList []ChartData
 	var OneChartData ChartData
-	//plist := make(map[][]opts.LineData)
-	for k, v := range itemlist {
+	for k, v := range itemsList {
 		var bind float64
 		var err error
 		bind, err = strconv.ParseFloat(bindlist[k], 64)

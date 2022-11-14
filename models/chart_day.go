@@ -56,43 +56,31 @@ func TaskDayReport(m Report) error {
 		logs.Error(err)
 		return err
 	}
-	var itemlist []string
-	err = json.Unmarshal([]byte(m.Items), &itemlist)
-	if err != nil {
-		//写入日志
-		taskend := time.Now()
-		task.EndTime = taskend
-		task.Status = Failed
-		task.TotalTime = taskend.Unix() - Tend.Unix()
-		task.Result = err.Error()
-		_, err = task.Create()
-		if err != nil {
-			return err
-		}
-		return err
-	}
+	itemsList := strings.Split(m.Items, ",")
+	//获取bandwith 列表
 	var bindlist []string
+	//为空，全部填充为0
 	if len(m.LinkBandWidth) == 0 {
-		for i := 0; i < len(itemlist); i++ {
+		for i := 0; i < len(itemsList); {
 			bindlist = append(bindlist, "0")
+			i++
 		}
-	}
-	if strings.Contains(m.LinkBandWidth, ",") {
-		bindlist = strings.Split(m.LinkBandWidth, ",")
 	} else {
-		bindlist = append(bindlist, m.LinkBandWidth)
-	}
-	if len(bindlist) < len(itemlist) {
-		for i := 0; i < len(itemlist)-len(bindlist); i++ {
-			//bindlist[k] = "0"
-			bindlist = append(bindlist, "0")
+		bindlist = strings.Split(m.LinkBandWidth, ",")
+		//少于
+		if len(bindlist) < len(itemsList) {
+			for i := 0; i <= len(itemsList)-len(bindlist)+1; {
+				//bindlist[k] = "0"
+				bindlist = append(bindlist, "0")
+				i++
+			}
 		}
 	}
 	var filelist []string
 	var ChartList []ChartData
 	var OneChartData ChartData
 	//plist := make(map[][]opts.LineData)
-	for k, v := range itemlist {
+	for k, v := range itemsList {
 		var bind float64
 		var err error
 		bind, err = strconv.ParseFloat(bindlist[k], 64)
@@ -102,7 +90,7 @@ func TaskDayReport(m Report) error {
 		//获取item信息
 		ItemInfo, _ := GetItemByID(v)
 		//	fmt.Println(ItemInfo[0])
-		hostinfo, err := GetHost(ItemInfo[0].Hostid)
+		hostInfo, err := GetHost(ItemInfo[0].Hostid)
 		if err != nil {
 			//写入日志
 			taskend := time.Now()
@@ -115,8 +103,8 @@ func TaskDayReport(m Report) error {
 				return err
 			}
 		}
-		OneChartData.Host = hostinfo.Name
-		OneChartData.IP = hostinfo.Interfaces
+		OneChartData.Host = hostInfo.Name
+		OneChartData.IP = hostInfo.Interfaces
 		OneChartData.Name = ItemInfo[0].Name
 		OneChartData.Units = ItemInfo[0].Units
 		p, err := GetHistoryByItemIDTTTT(ItemInfo[0].Itemid, ItemInfo[0].ValueType, start, end)
@@ -134,7 +122,7 @@ func TaskDayReport(m Report) error {
 			return err
 		}
 		//生成xlsx文件
-		xlsfilename, err := CreateHistoryReportXlsx(p, m.Name, hostinfo.Name, ItemInfo[0].Name,
+		xlsfilename, err := CreateHistoryReportXlsx(p, m.Name, hostInfo.Name, ItemInfo[0].Name,
 			ItemInfo[0].Itemid, ItemInfo[0].Key, ItemInfo[0].Units, "day", StrStart, StrEnd)
 		if err != nil {
 			//写入日志

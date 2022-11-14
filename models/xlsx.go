@@ -419,7 +419,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.TenantID)
 		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+6), v.Host)
 		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+6), v.Hgroup)
-		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.Occurtime.Format("2006-01-02 15:04:05"))
+		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.OccurTime.Format("2006-01-02 15:04:05"))
 		xlsx.SetCellValue("Sheet1", "E"+strconv.Itoa(k+6), v.Level)
 		xlsx.SetCellValue("Sheet1", "F"+strconv.Itoa(k+6), v.Hkey)
 		xlsx.SetCellValue("Sheet1", "G"+strconv.Itoa(k+6), v.Message)

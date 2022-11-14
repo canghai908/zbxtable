@@ -13,6 +13,50 @@ type IndexInfo struct {
 	SRVCount int64 `json:"srv_count"` //硬件服务器
 }
 
+type RouRes struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Items interface{} `json:"items"`
+	} `json:"data"`
+}
+type RouterRes struct {
+	Router   string      `json:"router"`
+	Children []RChildren `json:"children"`
+}
+type RChildren struct {
+	Router    string            `json:"router"`
+	Meta      Meta              `json:"meta"`
+	Children  []TRouterChildren `json:"children"`
+	Name      string            `json:"name"`
+	Path      string            `json:"path"`
+	Icon      string            `json:"icon"`
+	Link      string            `json:"link"`
+	Authority string            `json:"authority,omitempty"`
+}
+type TRouterChildren struct {
+	Router    string    `json:"router"`
+	Children  string    `json:"children"`
+	Name      string    `json:"name"`
+	Meta      Meta      `json:"meta"`
+	Path      string    `json:"path"`
+	Icon      string    `json:"icon"`
+	Link      string    `json:"link"`
+	Authority Authority `json:"authority,omitempty"`
+}
+type Authority struct {
+	Role       string `json:"role,omitempty"`
+	Permission string `json:"permission,omitempty"`
+}
+type Meta struct {
+	Highlight string `json:"highlight"`
+	Invisible bool   `json:"invisible"`
+	Page      Page   `json:"page"`
+}
+type Page struct {
+	CacheAble bool `json:"cacheAble"`
+}
+
 type InfoRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -53,9 +97,9 @@ type Treeinventory struct {
 	TwoChildren []TwoChildren `json:"children"`
 }
 type TwoChildren struct {
-	ID           int64          `json:"id"`
-	Name         string         `json:"name"`
-	TreeChildren []TreeChildren `json:"children"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	//TreeChildren []TreeChildren `json:"children"`
 }
 type TreeChildren struct {
 	ID   int64  `json:"id"`
