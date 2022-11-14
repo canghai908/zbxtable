@@ -156,13 +156,13 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	//gen tpl
 
 	//
-	agentid, err := beego.AppConfig.Int64("wechat_agentid")
+	AgentId, err := beego.AppConfig.Int64("wechat_agentid")
 	if err != nil {
 		logs.Error(err)
 		os.Exit(1)
 	}
 	client := workwx.New(beego.AppConfig.String("wechat_corpid"))
-	WeApp = client.WithApp(beego.AppConfig.String("wechat_secret"), agentid)
+	WeApp = client.WithApp(beego.AppConfig.String("wechat_secret"), AgentId)
 	WeApp.SpawnAccessTokenRefresher()
 	logs.Info("WeChat inited!")
 }
@@ -170,10 +170,22 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 //DatabaseInit 数据初始化
 func DatabaseInit() {
 	//数据初始化操作
-	//添加管理员账号
 	o := orm.NewOrm()
 	v := &Manager{Username: "admin"}
-	err := o.Read(v, "Username")
+	err := o.Read(v, "username")
+	//检查权限
+	if err == nil && v.Operation == "" {
+		var manager Manager
+		manager.ID = v.ID
+		manager.Operation = "['add', 'edit', 'delete','update']"
+		_, err := o.Update(&manager, "Operation")
+		if err != nil {
+			logs.Info(err)
+			return
+		}
+		logs.Info("update admin operation successfully")
+	}
+	//添加管理员账号
 	if err == orm.ErrNoRows {
 		logs.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
