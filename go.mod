@@ -25,7 +25,7 @@ require (
 	github.com/urfave/cli/v2 v2.11.2
 	github.com/xen0n/go-workwx v1.2.0
 	github.com/xuri/excelize/v2 v2.4.1
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/crypto v0.1.0
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/ini.v1 v1.63.2
