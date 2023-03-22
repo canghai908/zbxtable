@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/astaxie/beego/logs"
+	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"math/rand"
 	"strconv"
@@ -110,7 +111,7 @@ var (
 	Install = &cli.Command{
 		Name:   "install",
 		Usage:  "Install ms-agent tools to Zabbix Server",
-		Action: installAagent,
+		Action: installAgent,
 	}
 	ZBV bool
 )
@@ -136,7 +137,7 @@ func CheckZabbix() error {
 }
 
 //installAagent
-func installAagent(*cli.Context) error {
+func installAgent(*cli.Context) error {
 	err := CheckZabbix()
 	if err != nil {
 		return err
@@ -183,10 +184,14 @@ func installAagent(*cli.Context) error {
 	usermepara["period"] = "1-7,00:00-24:00"
 	b := make(map[int]interface{}, 0)
 	b[0] = usermepara
-	userpara["alias"] = MSUser
-	userpara["name"] = MSUser
-	tpasswdord := RandStringRunes()
-	userpara["passwd"] = tpasswdord
+	if ZBV {
+		userpara["username"] = MSUser
+	} else {
+		userpara["alias"] = MSUser
+		userpara["name"] = MSUser
+	}
+	tPassword := RandStringRunes()
+	userpara["passwd"] = tPassword
 	//5.2版本 取消type字段,切换为roleid，roleid=2默认为管理员角色
 	//5.2以下版本为管理员角色type=3，5.2以上版本roleid=3，为超级管理员角色
 	if ZBV {
@@ -195,7 +200,11 @@ func installAagent(*cli.Context) error {
 		userpara["type"] = "3"
 	}
 	userpara["usrgrps"] = a
-	userpara["user_medias"] = b
+	if ZBV {
+		userpara["medias"] = b
+	} else {
+		userpara["user_medias"] = b
+	}
 	user, err := API.CallWithError("user.create", userpara)
 	if err != nil {
 		logs.Error(err)
@@ -206,20 +215,19 @@ func installAagent(*cli.Context) error {
 	userid := userids[0].(string)
 	logs.Info("Create alarm user successfully!")
 	logs.Info("Username :", MSUser)
-	logs.Info("Password :", tpasswdord)
+	logs.Info("Password :", tPassword)
 	actpara := make(map[string]interface{}, 0)
 	actpara["name"] = MSAction
 	actpara["eventsource"] = "0"
 	actpara["status"] = "0"
 	actpara["esc_period"] = "60"
 	if !ZBV {
-		actpara["def_longdata"] = CreateProblemTpl()
 		actpara["def_shortdata"] = "{TRIGGER.STATUS}"
-		actpara["r_longdata"] = CreateRecoveryTpl()
+		actpara["def_longdata"] = CreateProblemTpl()
 		actpara["r_shortdata"] = "{TRIGGER.STATUS}"
+		actpara["r_longdata"] = CreateRecoveryTpl()
 		actpara["recovery_msg"] = "1"
 	}
-
 	//operations
 	operpara := make(map[string]interface{}, 0)
 	operpara["operationtype"] = "0"
@@ -229,13 +237,9 @@ func installAagent(*cli.Context) error {
 	v[0] = use
 	opm := make(map[string]string, 0)
 	//新版本
-	if ZBV {
-		opm["default_msg"] = "0"
-		opm["subject"] = "{TRIGGER.STATUS}"
-		opm["message"] = CreateProblemTpl()
-	} else {
-		opm["default_msg"] = "1"
-	}
+	opm["default_msg"] = "0"
+	opm["subject"] = "{TRIGGER.STATUS}"
+	opm["message"] = CreateProblemTpl()
 	opm["mediatypeid"] = mediaid
 	operpara["opmessage_usr"] = v
 	operpara["opmessage"] = opm
@@ -248,13 +252,9 @@ func installAagent(*cli.Context) error {
 	v2 := make(map[int]interface{})
 	v2[0] = use2
 	opm1 := make(map[string]string, 0)
-	if ZBV {
-		opm1["default_msg"] = "0"
-		opm1["subject"] = "{TRIGGER.STATUS}"
-		opm1["message"] = CreateRecoveryTpl()
-	} else {
-		opm1["default_msg"] = "1"
-	}
+	opm1["default_msg"] = "0"
+	opm1["subject"] = "{TRIGGER.STATUS}"
+	opm1["message"] = CreateRecoveryTpl()
 	opm1["mediatypeid"] = mediaid
 	recovpara["opmessage_usr"] = v2
 	recovpara["opmessage"] = opm1
@@ -275,7 +275,7 @@ func installAagent(*cli.Context) error {
 	}
 	logs.Info("Create alarm action successfully!")
 	logs.Info("MS-Agent plugin configured successfully!")
-	logs.Info("MS-Agent token is", InitConfig("token"))
+	logs.Info("MS-Agent token is", strings.ReplaceAll(uuid.New().String(), "-", ""))
 	return nil
 }
 
@@ -325,7 +325,11 @@ type UserInfo struct {
 func GetUserID(Username string) (userinfo UserInfo, err error) {
 	Params := make(map[string]interface{}, 0)
 	FilterParams := make(map[string]string)
-	FilterParams["name"] = Username
+	if ZBV {
+		FilterParams["username"] = Username
+	} else {
+		FilterParams["name"] = Username
+	}
 	Params["selectUsrgrps"] = "usrgrpid"
 	Params["selectMediatypes"] = "mediatypeid"
 	Params["filter"] = FilterParams
