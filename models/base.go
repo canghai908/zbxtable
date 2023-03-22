@@ -3,10 +3,6 @@ package models
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-	"zbxtable/utils"
-
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
@@ -15,11 +11,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	workwx "github.com/xen0n/go-workwx"
 	ini "gopkg.in/ini.v1"
-
-	"os"
+	"strconv"
+	"strings"
+	"zbxtable/utils"
 
 	jsoniter "github.com/json-iterator/go"
 	_ "github.com/lib/pq"
+	"os"
 )
 
 var (
@@ -274,7 +272,6 @@ func GetConfKey(v string) string {
 		logs.Error(err)
 		logs.Error("Please run 'zbxtable init' to create app.conf")
 		return ""
-
 	}
 	p, err := cfg.Section("").GetKey(v)
 	if err != nil {
