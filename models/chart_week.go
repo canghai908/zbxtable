@@ -29,24 +29,9 @@ func TaskWeekReport(m Report) error {
 	StrEnd := Tend.Format("2006-01-02 15:04:05")
 	err := utils.Mkdir(DowloadPath)
 	if err != nil {
-		taskend := time.Now()
-		task.EndTime = taskend
+		task.EndTime = time.Now()
 		task.Status = Failed
-		task.TotalTime = taskend.Unix() - Tend.Unix()
-		task.Result = err.Error()
-		_, err = task.Create()
-		if err != nil {
-			logs.Error(err)
-			return err
-		}
-		logs.Error(err)
-		return err
-	}
-	if len(m.Items) == 0 {
-		taskend := time.Now()
-		task.EndTime = taskend
-		task.Status = Failed
-		task.TotalTime = taskend.Unix() - Tend.Unix()
+		task.TotalTime = time.Now().Unix() - Tend.Unix()
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
@@ -57,6 +42,20 @@ func TaskWeekReport(m Report) error {
 		return err
 	}
 	itemsList := strings.Split(m.Items, ",")
+	//空返回
+	if len(itemsList) == 0 {
+		task.EndTime = time.Now()
+		task.Status = Failed
+		task.TotalTime = time.Now().Unix() - Tend.Unix()
+		task.Result = "监控项为空"
+		_, err = task.Create()
+		if err != nil {
+			logs.Error(err)
+			return err
+		}
+		logs.Error(err)
+		return err
+	}
 	//获取bandwith 列表
 	var bindlist []string
 	//为空，全部填充为0

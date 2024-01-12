@@ -4,12 +4,12 @@ import (
 	"zbxtable/models"
 )
 
-//IndexController 首页数据获取
+// IndexController 首页数据获取
 type IndexController struct {
 	BaseController
 }
 
-//InfoRes resp
+// InfoRes resp
 var (
 	InfoRes models.InfoRes
 	TopRes  models.TopRes
@@ -19,14 +19,14 @@ var (
 	EgrRes  models.EgressRes
 )
 
-//URLMapping beego
+// URLMapping beego
 func (c *IndexController) URLMapping() {
 	c.Mapping("Get", c.GetInfo)
 	c.Mapping("Router", c.Router)
 	c.Mapping("GetResrouceTop", c.GetResrouceTop)
 	c.Mapping("Inventory", c.GetInventory)
 	c.Mapping("GetOverview", c.GetOverview)
-	c.Mapping("GerVersion", c.GerVersion)
+	c.Mapping("GetVersion", c.GetVersion)
 	c.Mapping("GetEgress", c.GetEgress)
 }
 
@@ -186,17 +186,20 @@ func (c *IndexController) GetEgress() {
 	c.ServeJSON()
 }
 
-// GetResrouceTop ...
+// GetVersion 获取版本
 // @Title 获取版本
 // @Description 获取版本
 // @Param	X-Token			header  string	true	"x-token in header"
 // @Success 200 {object} models.TopRes
 // @Failure 403 :id is empty
-// @router /zbx [get]
-func (c *IndexController) GerVersion() {
+// @router /version [get]
+func (c *IndexController) GetVersion() {
 	VerRes.Code = 200
 	VerRes.Message = "获取成功"
-	VerRes.Data.Items = models.ZBX_V
+	VerRes.Data.Items.ZabbixVersion = models.ZBX_VER
+	VerRes.Data.Items.Version = models.Version
+	VerRes.Data.Items.GitHash = models.GitHash
+	VerRes.Data.Items.BuildTime = models.BuildTime
 	c.Data["json"] = VerRes
 	c.ServeJSON()
 }

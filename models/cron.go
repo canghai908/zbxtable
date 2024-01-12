@@ -15,7 +15,7 @@ import (
 	"zbxtable/utils"
 )
 
-//top
+// top
 func InitTask() {
 	top := toolbox.NewTask("top", "0/30 * * * * *", TOP)
 	//history := toolbox.NewTask("history", "0/59 * * * * *", Histroy)
@@ -23,12 +23,13 @@ func InitTask() {
 	DayReport := toolbox.NewTask("DayReport", "0 55 23 * * *", CreateDayReport)
 	WeekReport := toolbox.NewTask("DayReport", "0 55 17 * * 5", CreateWeekReport)
 	//拓朴图数据更新
-	UpdateTopoData := toolbox.NewTask("UpdateTopoData", "0/30 * * * * *", UpdateTopoData)
+	//UpdateTopoData := toolbox.NewTask("UpdateTopoData", "0/30 * * * * *", UpdateTopoData)
 	hostTypeHostList := toolbox.NewTask("hostTypeHostList", "0 */5 * * * *", GetTypeHostList)
+	//出口带宽流量获取
 	Egress := toolbox.NewTask("EgressCache", "0/30 * * * * *", EgressCache)
 
 	toolbox.AddTask("top", top)
-	toolbox.AddTask("UpdateTopoData", UpdateTopoData)
+	//toolbox.AddTask("UpdateTopoData", UpdateTopoData)
 	toolbox.AddTask("hostTypeHostList", hostTypeHostList)
 	toolbox.AddTask("Egress", Egress)
 	toolbox.AddTask("DayReport", DayReport)
@@ -40,35 +41,36 @@ func CreateWeekReport() error {
 		logs.Error(err)
 		return err
 	}
+	//遍历周报
 	for _, v := range list {
-		if v.Status == "1" {
-			if len(v.Cycle) != 0 {
-				cycList := strings.Split(v.Cycle, ",")
-				for _, vv := range cycList {
-					if vv == "week" {
-						start := time.Now()
-						err := TaskWeekReport(v)
-						if err != nil {
-							logs.Error(err)
-							///update status failed
-							v.ExecStatus = strconv.Itoa(Failed)
-							v.StartAt = start
-							v.EndAt = time.Now()
-							err = UpdateReportExecStatusByID(&v)
-							if err != nil {
-								logs.Error(err)
-							}
-							continue
-						}
-						//update status success
-						v.ExecStatus = strconv.Itoa(Success)
+		//启用周报
+		if v.Status == "1" && len(v.Cycle) != 0 && len(v.Items) != 0 {
+			cycList := strings.Split(v.Cycle, ",")
+			for _, vv := range cycList {
+				if vv == "week" {
+					start := time.Now()
+					//周报生成
+					err := TaskWeekReport(v)
+					if err != nil {
+						logs.Error(err)
+						///update status failed
+						v.ExecStatus = strconv.Itoa(Failed)
 						v.StartAt = start
 						v.EndAt = time.Now()
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logs.Error(err)
-							continue
 						}
+						continue
+					}
+					//update status success
+					v.ExecStatus = strconv.Itoa(Success)
+					v.StartAt = start
+					v.EndAt = time.Now()
+					err = UpdateReportExecStatusByID(&v)
+					if err != nil {
+						logs.Error(err)
+						continue
 					}
 				}
 			}
@@ -83,34 +85,32 @@ func CreateDayReport() error {
 		return err
 	}
 	for _, v := range list {
-		if v.Status == "1" {
-			if len(v.Cycle) != 0 {
-				cycList := strings.Split(v.Cycle, ",")
-				for _, vv := range cycList {
-					if vv == "day" {
-						start := time.Now()
-						err := TaskDayReport(v)
-						if err != nil {
-							logs.Error(err)
-							//更新report状态
-							v.ExecStatus = strconv.Itoa(Failed)
-							v.StartAt = start
-							v.EndAt = time.Now()
-							err = UpdateReportExecStatusByID(&v)
-							if err != nil {
-								logs.Error(err)
-							}
-							continue
-						}
+		if v.Status == "1" && len(v.Cycle) != 0 && len(v.Items) != 0 {
+			cycList := strings.Split(v.Cycle, ",")
+			for _, vv := range cycList {
+				if vv == "day" {
+					start := time.Now()
+					err := TaskDayReport(v)
+					if err != nil {
+						logs.Error(err)
 						//更新report状态
-						v.ExecStatus = strconv.Itoa(Success)
+						v.ExecStatus = strconv.Itoa(Failed)
 						v.StartAt = start
 						v.EndAt = time.Now()
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logs.Error(err)
-							continue
 						}
+						continue
+					}
+					//更新report状态
+					v.ExecStatus = strconv.Itoa(Success)
+					v.StartAt = start
+					v.EndAt = time.Now()
+					err = UpdateReportExecStatusByID(&v)
+					if err != nil {
+						logs.Error(err)
+						continue
 					}
 				}
 			}
@@ -118,16 +118,8 @@ func CreateDayReport() error {
 	}
 	return nil
 }
-func Week() error {
-	fmt.Println("week")
-	return nil
-}
-func Day() error {
-	fmt.Println("day")
-	return nil
-}
 
-//linux windows top data to redis
+// linux windows top data to redis
 func TOP() error {
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
@@ -258,34 +250,25 @@ func TOP() error {
 	return err
 }
 
-//by topology status update data
-func UpdateTopoData() error {
-	List, err := GetDeployTopoly()
+// update topology data
+func UpdateEdgeDataById(id int) error {
+	//get topodata
+	p, err := GetTopologyById(id)
 	if err != nil {
 		logs.Debug(err)
 		return err
 	}
-	for _, v := range List {
-		//fmt.Println(k, v)
-		//UpdateNodeData(v)
-		UpdateEdgeData(v)
-
-	}
-	return nil
-}
-
-//update topology data
-func UpdateEdgeData(v *Topology) error {
-	var alledges AllEdge
-	err := json.Unmarshal([]byte(v.Edges), &alledges)
+	var allEdges AllEdge
+	err = json.Unmarshal([]byte(p.Edges), &allEdges)
 	if err != nil {
 		logs.Debug(err)
 		return err
 	}
+	fmt.Println(allEdges)
 	var wg sync.WaitGroup
 	ch := make(chan struct{}, 10)
 	var aedge []AEdge
-	for _, v := range alledges {
+	for _, v := range allEdges {
 		ch <- struct{}{}
 		wg.Add(1)
 		go func(v AEdge) {
@@ -339,7 +322,7 @@ func UpdateEdgeData(v *Topology) error {
 		return err
 	}
 	var Topo Topology
-	Topo.ID = v.ID
+	Topo.ID = id
 	Topo.Edges = string(edgeStr)
 	err = UpdateTopologyEdgesByID(&Topo)
 	if err != nil {
@@ -349,56 +332,7 @@ func UpdateEdgeData(v *Topology) error {
 	return nil
 }
 
-func UpdateNodeData(v *Topology) error {
-	//update nodes data
-	var allnodes AllNodes
-	err := json.Unmarshal([]byte(v.Nodes), &allnodes)
-	if err != nil {
-		logs.Debug(err)
-		return err
-	}
-	var wg2 sync.WaitGroup
-	var nodes []PNodes
-	for _, v := range allnodes {
-		info := make(chan string, 3)
-		wg2.Add(1)
-		if v.Attrs.Label.HostID != "" {
-			go GetHostInfoByID(v.Attrs.Label.HostID, &wg2, info)
-			var NewHost Hosts
-			err := json.Unmarshal([]byte(<-info), &NewHost)
-			if err != nil {
-				logs.Debug(err)
-				return err
-			}
-			v.Attrs.Label.Text = NewHost.Name
-			v.Attrs.Label.HostAlarm = NewHost.Alarm
-			v.Attrs.Label.HostCPU = NewHost.CPUUtilization
-			v.Attrs.Label.HostMem = NewHost.MemoryUtilization
-			v.Attrs.Label.HostClock = time.Now().Format("2006-01-02 15:04:05")
-			v.Attrs.Label.HostStatus = NewHost.Status
-			v.Attrs.Label.HostError = NewHost.Error
-			nodes = append(nodes, v)
-		}
-		close(info)
-	}
-	wg2.Wait()
-	alnodes, err := json.Marshal(nodes)
-	if err != nil {
-		logs.Debug(err)
-		return err
-	}
-	var Topoly Topology
-	Topoly.ID = v.ID
-	Topoly.Nodes = string(alnodes)
-	err = UpdateTopologyNodesByID(&Topoly)
-	if err != nil {
-		logs.Debug(err)
-		return err
-	}
-	return nil
-}
-
-//机器列表缓存
+// 机器列表缓存
 func GetTypeHostList() error {
 	//func GetHostByType(htype string) ([]TreeChildren, int, error) {
 	var list = []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
@@ -450,7 +384,7 @@ func GetTypeHostList() error {
 	return nil
 }
 
-//出口带宽流量获取
+// 出口带宽流量获取
 func EgressCache() error {
 	o := orm.NewOrm()
 	v := &Egress{ID: 1}

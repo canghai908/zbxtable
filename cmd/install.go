@@ -7,16 +7,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-//tpl t
+// tpl t
 type EventTpl struct {
 	HostsID       string `json:"host_id"`
 	HostHost      string `json:"host_host"`
@@ -83,21 +80,29 @@ func CreateRecoveryTpl() string {
 	return tp
 }
 
-//RandStringRunes 随机密码生成
-func RandStringRunes() string {
-	b := make([]rune, 10)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+// GetStrongPasswordString 强密码生成
+func GetStrongPasswordString(l int) string {
+	//~!@#$%^&*()_+{}":?><;.,
+	str := "123456789ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnpqrstuvwxyz!@#$%&*"
+	bytes := []byte(str)
+	result := []byte{}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < l; i++ {
+		result = append(result, bytes[r.Intn(len(bytes))])
 	}
-	return string(b)
+
+	ok1, _ := regexp.MatchString(".[1|2|3|4|5|6|7|8|9]", string(result))
+	ok2, _ := regexp.MatchString(".[Z|X|C|V|B|N|M|A|S|D|F|G|H|J|K|L|Q|W|E|R|T|Y|U|I|P]", string(result))
+	ok3, _ := regexp.MatchString(".[z|x|c|v|b|n|m|a|s|d|f|g|h|j|k|l|q|w|e|r|t|y|u|i|p]", string(result))
+	ok4, _ := regexp.MatchString(".[!|@|#|$|%|&|*]", string(result))
+	if ok1 && ok2 && ok3 && ok4 {
+		return string(result)
+	} else {
+		return GetStrongPasswordString(l)
+	}
 }
 
-//const
-var (
-	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-)
-
-//ms-aget const
+// ms-aget const
 var (
 	MSName   = "ms-agent"
 	MSUser   = "ms-agent"
@@ -136,7 +141,7 @@ func CheckZabbix() error {
 	return nil
 }
 
-//installAagent
+// installAagent
 func installAgent(*cli.Context) error {
 	err := CheckZabbix()
 	if err != nil {
@@ -190,7 +195,8 @@ func installAgent(*cli.Context) error {
 		userpara["alias"] = MSUser
 		userpara["name"] = MSUser
 	}
-	tPassword := RandStringRunes()
+	//10位随机密码生成
+	tPassword := GetStrongPasswordString(10)
 	userpara["passwd"] = tPassword
 	//5.2版本 取消type字段,切换为roleid，roleid=2默认为管理员角色
 	//5.2以下版本为管理员角色type=3，5.2以上版本roleid=3，为超级管理员角色
@@ -279,7 +285,7 @@ func installAgent(*cli.Context) error {
 	return nil
 }
 
-//GetActionID by actionname
+// GetActionID by actionname
 func GetActionID(ActionName string) (string, error) {
 	//action get
 	Params := make(map[string]interface{}, 0)
@@ -310,7 +316,7 @@ func GetActionID(ActionName string) (string, error) {
 	return hb[0].ActionID, nil
 }
 
-//UserGrpInfo st
+// UserGrpInfo st
 type UserInfo struct {
 	Mediatypes []struct {
 		Mediatypeid string `json:"mediatypeid"`
@@ -321,7 +327,7 @@ type UserInfo struct {
 	} `json:"usrgrps"`
 }
 
-//GetUserID by username
+// GetUserID by username
 func GetUserID(Username string) (userinfo UserInfo, err error) {
 	Params := make(map[string]interface{}, 0)
 	FilterParams := make(map[string]string)

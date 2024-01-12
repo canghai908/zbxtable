@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"github.com/astaxie/beego/logs"
-	"io/ioutil"
+	"io"
 	"net/http/pprof"
+
+	//
 	"strconv"
 	"time"
 	"zbxtable/utils"
@@ -19,13 +21,11 @@ type BeforeUserController struct {
 	beego.Controller
 }
 
-//Manager var
+// Manager var
 var Manager = new(models.Manager)
 
-//manager var
+// manager var
 var manager models.Manager
-
-var res models.Auth
 
 // BeforeUserController  dd
 // @Title 登录
@@ -150,7 +150,7 @@ func (u *BeforeUserController) Receive() {
 	tenantid := u.Ctx.Request.Header.Get("ZBX-TenantID")
 	mess := u.Ctx.Request.Body
 	defer mess.Close()
-	body, err := ioutil.ReadAll(mess)
+	body, err := io.ReadAll(mess)
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()
@@ -190,7 +190,7 @@ func (u *BeforeUserController) Webhook() {
 	}
 	mess := u.Ctx.Request.Body
 	defer mess.Close()
-	body, err := ioutil.ReadAll(mess)
+	body, err := io.ReadAll(mess)
 	if err != nil {
 		u.Data["json"] = err.Error()
 		u.ServeJSON()

@@ -26,16 +26,19 @@ var (
 	RDB        = &redis.Client{}
 	ZBX_VER    string
 	ZBX_V      bool
+	Version    string
+	GitHash    string
+	BuildTime  string
 	AssetsHost string
 	WeApp      = &workwx.WorkwxApp{}
 )
 
-//TableName 表名前缀
+// TableName 表名前缀
 func TableName(str string) string {
 	return fmt.Sprintf("%s%s", "zbxtable_", str)
 }
 
-//GetAssetsHost
+// GetAssetsHost
 func GetAssetsHost() string {
 	AssetsHost = beego.AppConfig.String("AssetsHost")
 	if AssetsHost == "" {
@@ -44,7 +47,7 @@ func GetAssetsHost() string {
 	return AssetsHost
 }
 
-//ModelsInit  p
+// ModelsInit  p
 func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
 	redis_host, redis_port, redis_pass, redis_db string) {
@@ -166,7 +169,7 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	logs.Info("WeChat inited!")
 }
 
-//DatabaseInit 数据初始化
+// DatabaseInit 数据初始化
 func DatabaseInit() {
 	//数据初始化操作
 	o := orm.NewOrm()
@@ -265,7 +268,6 @@ func DatabaseInit() {
 	}
 }
 
-//
 func GetConfKey(v string) string {
 	cfg, err := ini.Load("./conf/app.conf")
 	if err != nil {

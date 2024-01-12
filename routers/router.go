@@ -13,11 +13,15 @@ import (
 	"zbxtable/controllers"
 )
 
-//RouterInit router
+// RouterInit router
 func RouterInit() {
 	beego.SetStaticPath("/download", "download")
-	beego.Router("/debug/pprof", &controllers.ProfController{})
-	beego.Router(`/debug/pprof/:app([\w]+)`, &controllers.ProfController{})
+	//dev mod
+	if beego.BConfig.RunMode == "dev" {
+		beego.BConfig.WebConfig.DirectoryIndex = true
+		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
+		beego.SetStaticPath("/static", "static")
+	}
 	beego.Router("/ws/:id", &controllers.WebSocketController{})
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowAllOrigins:  true,
