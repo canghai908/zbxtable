@@ -14,12 +14,9 @@ usage()
 
 build()
 {
-  export GOPROXY=https://proxy.golang.com.cn,direct
   export CGO_ENABLED=0
 	#go generate -tags=packfile ./packfile/usePackFile.go
-  go install github.com/sanbornm/go-selfupdate/cmd/go-selfupdate
 	go build -a -v -ldflags "-X main.version=${version} -X main.buildTime=`date -u '+%Y-%m-%d_%I:%M:%S%p'` -X main.gitHash=`git rev-parse HEAD`" -o zbxtable main.go
-	go-selfupdate zbxtable ${version}
 }
 
 pack()
@@ -31,7 +28,6 @@ pack()
 	cp zbxtable.init zbxtable-${version}/
 	cp conf/app.conf zbxtable-${version}/conf
 	tar zcvf zbxtable-${version}.tar.gz zbxtable-${version}/
-	tar zcvf public.tar.gz public/
 }
 
 case "$1" in
