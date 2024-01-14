@@ -17,6 +17,7 @@ import (
 )
 
 const motd = `
+
 $$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\ 
 \____$$  |$$  __$$\ $$ |  $$ |\__$$  __|$$  __$$\ $$  __$$\ $$ |      $$  _____|
     $$  / $$ |  $$ |\$$\ $$  |   $$ |   $$ /  $$ |$$ |  $$ |$$ |      $$ |      
@@ -24,7 +25,8 @@ $$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\
   $$  /   $$  __$$\  $$  $$<     $$ |   $$  __$$ |$$  __$$\ $$ |      $$  __|   
  $$  /    $$ |  $$ |$$  /\$$\    $$ |   $$ |  $$ |$$ |  $$ |$$ |      $$ |      
 $$$$$$$$\ $$$$$$$  |$$ /  $$ |   $$ |   $$ |  $$ |$$$$$$$  |$$$$$$$$\ $$$$$$$$\ 
-\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|`
+\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|
+`
 
 var (
 	//Web 配置
@@ -35,11 +37,11 @@ var (
 	}
 )
 
-//runWeb 启动web
+// runWeb 启动web
 func runWeb(*cli.Context) error {
+	Initlogger()
 	logs.Info(motd)
 	CheckConfExist()
-	Initlogger()
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
@@ -61,7 +63,7 @@ func runWeb(*cli.Context) error {
 	return nil
 }
 
-//CheckDb
+// CheckDb
 func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) error {
 	//database type
 	switch dbdriver {
@@ -90,7 +92,7 @@ func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) err
 	return nil
 }
 
-//LoginZabbixAPI Check
+// LoginZabbixAPI Check
 func CheckZabbixAPI(args ...string) (string, error) {
 	address := args[0]
 	user := args[1]
@@ -127,7 +129,7 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	return version, nil
 }
 
-//CheckConfExist config
+// CheckConfExist config
 func CheckConfExist() {
 	_, err := os.Stat("./conf/app.conf")
 	if err != nil {
@@ -143,13 +145,12 @@ func CheckConfExist() {
 	}
 }
 
-//init config files
+// init config files
 func InitConfig(v string) string {
 	p, err := Cfg.Section("").GetKey(v)
 	if err != nil {
 		logs.Error(err)
 		return ""
-		os.Exit(1)
 	}
 	return p.String()
 }

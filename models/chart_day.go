@@ -13,7 +13,6 @@ import (
 	"zbxtable/utils"
 )
 
-//
 const DowloadPath = "./download/"
 
 type ChartData struct {
@@ -57,6 +56,20 @@ func TaskDayReport(m Report) error {
 		return err
 	}
 	itemsList := strings.Split(m.Items, ",")
+	if len(itemsList) == 0 {
+		taskend := time.Now()
+		task.EndTime = taskend
+		task.Status = Failed
+		task.TotalTime = taskend.Unix() - Tend.Unix()
+		task.Result = "监控项为空"
+		_, err = task.Create()
+		if err != nil {
+			logs.Error(err)
+			return err
+		}
+		logs.Error(err)
+		return err
+	}
 	//获取bandwith 列表
 	var bindlist []string
 	//为空，全部填充为0

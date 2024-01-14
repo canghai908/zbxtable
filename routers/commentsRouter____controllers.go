@@ -396,8 +396,8 @@ func init() {
 
 	beego.GlobalControllerRouter["zbxtable/controllers:IndexController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:IndexController"],
 		beego.ControllerComments{
-			Method:           "GerVersion",
-			Router:           "/zbx",
+			Method:           "GetVersion",
+			Router:           "/version",
 			AllowHTTPMethods: []string{"get"},
 			MethodParams:     param.Make(),
 			Filters:          nil,

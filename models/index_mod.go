@@ -1,7 +1,7 @@
 package models
 
-//TrendRes resp
-//IndexInfo struct
+// TrendRes resp
+// IndexInfo struct
 type IndexInfo struct {
 	Hosts    int64 `json:"hosts"`
 	Items    int64 `json:"items"`
@@ -68,8 +68,14 @@ type VerRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Items bool `json:"items"`
+		Items version `json:"items"`
 	} `json:"data"`
+}
+type version struct {
+	ZabbixVersion string `json:"zabbixVersion"`
+	Version       string `json:"version"`
+	GitHash       string `json:"gitHash"`
+	BuildTime     string `json:"buildTime"`
 }
 
 type TopRes struct {

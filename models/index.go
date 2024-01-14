@@ -68,6 +68,7 @@ func GetRouter(username string) ([]RouterRes, error) {
 					{Name: "指标映射", Router: "sysInit", Path: "init", Icon: "interaction"},
 					{Name: "映射编辑", Router: "sysInitEdit", Path: "init-edit", Meta: Meta{Highlight: "/system", Invisible: true}},
 					{Name: "出口配置", Router: "systemBandwidth", Path: "bandwidth", Icon: "api"},
+					{Name: "版本信息", Router: "version", Path: "version", Icon: "info"},
 				}},
 		}
 		tree := make([]RouterRes, 1)
@@ -125,6 +126,7 @@ func GetRouter(username string) ([]RouterRes, error) {
 				Children: []TRouterChildren{
 					{Name: "用户管理", Router: "systemUsers", Path: "users", Icon: "meh", Authority: Authority{Role: "user",
 						Permission: "['add','edit','delete','update']"}},
+					{Name: "版本信息", Router: "version", Path: "version", Icon: "info"},
 				}},
 		}
 		tree := make([]RouterRes, 1)
@@ -135,7 +137,7 @@ func GetRouter(username string) ([]RouterRes, error) {
 	return []RouterRes{}, nil
 }
 
-//GetCountHost func
+// GetCountHost func
 func GetCountHost() (info IndexInfo, err error) {
 	hosts, err := API.CallWithError("host.get", Params{"output": "extend",
 		"countOutput": true})
@@ -218,7 +220,7 @@ func GetCountHost() (info IndexInfo, err error) {
 	return d, nil
 }
 
-//GetTopList top数据获取
+// GetTopList top数据获取
 func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err error) {
 	var MetType1, MetType2 string
 	switch host_type {
