@@ -18,7 +18,7 @@ steps:
         from_secret: username
       password:
         from_secret: password
-      command_timeout: 2m
+      command_timeout: 10m
       target:
         - /home/wwwroot/downloads/dev
       source:
