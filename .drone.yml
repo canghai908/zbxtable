@@ -11,13 +11,13 @@ steps:
     image: appleboy/drone-scp
     settings:
       host:
-        from_secret: host
+        from_secret: 222_host
       port:
         from_secret: port
       username:
         from_secret: username
       password:
-        from_secret: password
+        from_secret: 222_password
       command_timeout: 10m
       target:
         - /home/wwwroot/downloads/dev
@@ -30,14 +30,14 @@ steps:
     image: appleboy/drone-scp
     settings:
       host:
-        from_secret: host
+        from_secret: 222_host
       port:
         from_secret: port
       username:
         from_secret: username
       password:
-        from_secret: password
-      command_timeout: 2m
+        from_secret: 222_password
+      command_timeout: 10m
       target:
         - /home/wwwroot/downloads/zbxtable
       source:
@@ -56,7 +56,7 @@ steps:
         from_secret: demo_username
       password:
         from_secret: demo_password
-      command_timeout: 2m
+      command_timeout: 10m
       target:
         - /tmp/zbxtable
       source:
@@ -76,7 +76,7 @@ steps:
         from_secret: demo_password
       port:
         from_secret: demo_port
-      command_timeout: 2m
+      command_timeout: 10m
       script:
         - systemctl stop zbxtable
         - rm -rf /usr/local/zbxtable/zbxtable
