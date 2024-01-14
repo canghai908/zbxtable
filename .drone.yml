@@ -39,12 +39,12 @@ steps:
         from_secret: 222_password
       command_timeout: 10m
       target:
-        - /home/wwwroot/downloads/zbxtable
+        - /home/wwwroot/downloads/stable
       source:
         - ./*.tar.gz
     when:
       branch:
-        - master
+        - 2.1
   - name: scp demo
     image: appleboy/drone-scp
     settings:
