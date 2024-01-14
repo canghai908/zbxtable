@@ -1,0 +1,87 @@
+kind: pipeline
+name: zbxtable
+steps:
+  - name: build
+    image: golang:1.18.6
+    commands:
+      - chmod a+x ./control
+      - ./control build
+      - ./control pack
+  - name: scp dev
+    image: appleboy/drone-scp
+    settings:
+      host:
+        from_secret: host
+      port:
+        from_secret: port
+      username:
+        from_secret: username
+      password:
+        from_secret: password
+      command_timeout: 2m
+      target:
+        - /home/wwwroot/downloads/dev
+      source:
+        - ./*.tar.gz
+    when:
+      branch:
+        - dev
+  - name: scp prod
+    image: appleboy/drone-scp
+    settings:
+      host:
+        from_secret: host
+      port:
+        from_secret: port
+      username:
+        from_secret: username
+      password:
+        from_secret: password
+      command_timeout: 2m
+      target:
+        - /home/wwwroot/downloads/zbxtable
+      source:
+        - ./*.tar.gz
+    when:
+      branch:
+        - master
+  - name: scp demo
+    image: appleboy/drone-scp
+    settings:
+      host:
+        from_secret: demo_host
+      port:
+        from_secret: demo_port
+      username:
+        from_secret: demo_username
+      password:
+        from_secret: demo_password
+      command_timeout: 2m
+      target:
+        - /tmp/zbxtable
+      source:
+        - zbxtable
+      rm: true
+    when:
+      branch:
+        - demo
+  - name: ssh restart
+    image: appleboy/drone-ssh
+    settings:
+      host:
+        from_secret: demo_host
+      username:
+        from_secret: demo_username
+      password:
+        from_secret: demo_password
+      port:
+        from_secret: demo_port
+      command_timeout: 2m
+      script:
+        - systemctl stop zbxtable
+        - rm -rf /usr/local/zbxtable/zbxtable
+        - mv /tmp/zbxtable/zbxtable /usr/local/zbxtable/
+        - systemctl start zbxtable
+    when:
+      branch:
+        - demo
