@@ -2,6 +2,8 @@
 
 # ZbxTable
 
+[![Build Status](https://drone.cactifans.org/api/badges/canghai908/zbxtable/status.svg?ref=refs/heads/2.1)](https://drone.cactifans.org/canghai908/zbxtable)
+
 ZbxTable 是使用 Go 语言开发的一个 Zabbix 报表系统。
 
 ## 主要功能：

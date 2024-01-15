@@ -2,6 +2,8 @@ English | [简体中文](./README.zh-CN.md)
 
 # ZbxTable
 
+[![Build Status](https://drone.cactifans.org/api/badges/canghai908/zbxtable/status.svg?ref=refs/heads/2.1)](https://drone.cactifans.org/canghai908/zbxtable)
+
 ZbxTable is a Zabbix report system developed using Go language.
 
 ## Features
