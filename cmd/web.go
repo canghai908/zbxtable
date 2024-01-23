@@ -15,6 +15,7 @@ import (
 	"zbxtable/models"
 	"zbxtable/packfile"
 	"zbxtable/routers"
+	"zbxtable/utils"
 )
 
 const motd = `
@@ -71,12 +72,18 @@ func runWeb(*cli.Context) error {
 
 // checkWeb 是否需要释放web资源目录
 func restoreAssets() error {
-	files := []string{"web", "template"} // 设置需要释放的目录
+	//判断静态资源目录是否存在，不存在则释放
+	files := []string{"web", "template", "conf"} // 设置需要释放的目录
 	for _, file := range files {
-		// 解压目录到当前目录
-		if err := packfile.RestoreAssets("./", file); err != nil {
-			logs.Error(err)
-			break
+		// 判断目录是否存在
+		ex, err := utils.PathExists("./" + file)
+		//目录不存在释放静态资源
+		if !ex && err == nil {
+			// 解压目录到当前目录
+			if err := packfile.RestoreAssets("./", file); err != nil {
+				logs.Error(err)
+				break
+			}
 		}
 	}
 	return nil
