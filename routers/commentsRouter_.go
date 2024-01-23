@@ -108,7 +108,7 @@ func init() {
 
 	beego.GlobalControllerRouter["zbxtable/controllers:ExpController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:ExpController"],
 		beego.ControllerComments{
-			Method:           "GetHostList",
+			Method:           "ExpHostList",
 			Router:           "/hosts",
 			AllowHTTPMethods: []string{"post"},
 			MethodParams:     param.Make(),

@@ -61,13 +61,15 @@ MS-Agent: 安装在 Zabbix Server 上, 用于接收 Zabbix Server 产生的告�
 
 ## 编译
 
-环境：go >=1.18
+环境：go >=1.21
 
 ```
 mkdir -p $GOPATH/src/github.com/canghai908
 cd $GOPATH/src/github.com/canghai908
 git clone github.com/canghai908/zbxtable.git
 cd zbxtable
+wget -q -c https://dl.cactifans.com/stable/zbxtable/web-latest.tar.gz && tar xf web-latest.tar.gz
+go install github.com/go-bindata/go-bindata/go-bindata@latest
 ./control build
 ./control pack
 ```
@@ -83,7 +85,5 @@ cd zbxtable
 [ahyiru](https://github.com/ahyiru)
 
 ## License
-
-<img alt="Apache-2.0 license" src="https://s3-gz01.didistatic.com/n9e-pub/image/apache.jpeg" width="128">
 
 Nightingale is available under the Apache-2.0 license. See the [LICENSE](LICENSE) file for more info.

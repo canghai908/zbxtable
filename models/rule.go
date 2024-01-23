@@ -27,7 +27,7 @@ func AddRule(m *Rule) (id int64, err error) {
 	return id, nil
 }
 
-//GetRuleByID one
+// GetRuleByID one
 func GetRuleByID(id int) (v *Rule, err error) {
 	o := orm.NewOrm()
 	v = &Rule{ID: id}
@@ -73,7 +73,7 @@ func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, us
 	return cnt, rules, nil
 }
 
-//UpdateRuleStatus rule
+// UpdateRuleStatus rule
 func UpdateRuleStatus(m *Rule, tuser string) error {
 	o := orm.NewOrm()
 	//role检查
@@ -100,7 +100,7 @@ func UpdateRuleStatus(m *Rule, tuser string) error {
 	return nil
 }
 
-//UpdateRule rule
+// UpdateRule rule
 func UpdateRule(m *Rule, tuser string) error {
 	o := orm.NewOrm()
 	//role检查
@@ -133,7 +133,7 @@ func UpdateRule(m *Rule, tuser string) error {
 	return nil
 }
 
-//DeleteRule status
+// DeleteRule status
 func DeleteRule(id int, tuser string) (err error) {
 	o := orm.NewOrm()
 	//role检查

@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 	"zbxtable/utils"
@@ -10,7 +9,7 @@ import (
 	"github.com/astaxie/beego/orm"
 )
 
-//Auth struct
+// Auth struct
 type Auth struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -35,7 +34,7 @@ type Roles struct {
 	Operation string `json:"operation"`
 }
 
-//Chpwd struct aa
+// Chpwd struct aa
 type Chpwd struct {
 	Name   string `json:"name"`
 	Oldpwd string `json:"oldpwd"`
@@ -43,7 +42,7 @@ type Chpwd struct {
 	Pwd2   string `json:"pwd2"`
 }
 
-//ManagerInfo struct
+// ManagerInfo struct
 type UserResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -53,7 +52,7 @@ type UserResp struct {
 	} `json:"data"`
 }
 
-//ManagerInfo struct
+// ManagerInfo struct
 type ManagerInfo struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -68,12 +67,12 @@ type ManagerInfo struct {
 	} `json:"data"`
 }
 
-//Token struct
+// Token struct
 type Token struct {
 	Token string `json:"token"`
 }
 
-//Manager struct
+// Manager struct
 type Manager struct {
 	ID        int       `orm:"column(id);auto" json:"id"`
 	Username  string    `orm:"column(username);size(255)" json:"username"`
@@ -90,7 +89,7 @@ type Manager struct {
 	Updated   time.Time `orm:"column(updated);type(datetime);auto_now" json:"updated_at"`
 }
 
-//TableName string
+// TableName string
 func (t *Manager) TableName() string {
 	return TableName("manager")
 }
@@ -113,7 +112,7 @@ func AddUser(m *Manager) (id int64, err error) {
 	return
 }
 
-//udpate user
+// UpdateUser 更新用户信息
 func UpdateUser(m *Manager, tuser string) error {
 	o := orm.NewOrm()
 	//role检查
@@ -125,7 +124,6 @@ func UpdateUser(m *Manager, tuser string) error {
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-	fmt.Println(p)
 	//
 	v := Manager{ID: m.ID}
 	err = o.Read(&v)
@@ -161,7 +159,7 @@ func UpdateUser(m *Manager, tuser string) error {
 	return nil
 }
 
-//udpate user
+// udpate user
 func UpdateUserStatus(m *Manager, tuser string) error {
 	o := orm.NewOrm()
 	//user
@@ -247,7 +245,7 @@ func GetManagerByName(username string) (v *Manager, err error) {
 	return nil, err
 }
 
-//Chanagepwd func
+// Chanagepwd func
 func Chanagepwd(old, new string) (err error) {
 	o := orm.NewOrm()
 	v, err := GetManagerByName("admin")

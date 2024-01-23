@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"log"
 	"math"
 	"strconv"
@@ -8,8 +9,8 @@ import (
 	"time"
 )
 
-//GetHostData func
-//根据hostid获取主机信息和item相关信息并返回
+// GetHostData func
+// 根据hostid获取主机信息和item相关信息并返回
 func GetHostData(hostid string) (hostd []HostsData, err error) {
 	output := []string{"hostid", "host"}
 	//log.Println(hostid)
@@ -34,8 +35,8 @@ func GetHostData(hostid string) (hostd []HostsData, err error) {
 	return hb, nil
 }
 
-//GetExpTrendData func
-//根据主机信息数据和报表指标类型，找出需要的item列表
+// GetExpTrendData func
+// 根据主机信息数据和报表指标类型，找出需要的item列表
 func GetExpTrendData(hostdata []HostsData, itemtype string) ([]Itm, string, string, error) {
 	//hosttype string
 	var hosttype, itemkey string
@@ -85,8 +86,8 @@ func GetExpTrendData(hostdata []HostsData, itemtype string) ([]Itm, string, stri
 
 }
 
-//GetTrenDataTable funcitemtype
-//获取主机数据信息并输出到[]bytes
+// GetTrenDataTable funcitemtype
+// 获取主机数据信息并输出到[]bytes
 func GetTrenDataTable(itd []Itm, itemkey, host, ItemType string, start, end int64) ([]FileSystemDataALL, []byte, error) {
 	var filesystem []string
 	var fileall []FileSystemDataALL
@@ -423,8 +424,8 @@ func GetTrenDataTable(itd []Itm, itemkey, host, ItemType string, start, end int6
 	return []FileSystemDataALL{}, []byte{}, nil
 }
 
-//GetTrenDataFileName trend data
-//获取趋势数据并输出为[]bytes
+// GetTrenDataFileName trend data
+// 获取趋势数据并输出为[]bytes
 func GetTrenDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 
 	rep, err := GetTrendDataByItemid(v.Item, start, end)
@@ -450,8 +451,8 @@ func GetTrenDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 	return ma, nil
 }
 
-//GetHistoryDataFileName trend data
-//获取详情数据并输出到excel文件，返回[]byte
+// GetHistoryDataFileName trend data
+// 获取详情数据并输出到excel文件，返回[]byte
 func GetHistoryDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 	rep, err := GetHistoryByItemIDNew(v.Item, start, end)
 	if err != nil {
@@ -476,7 +477,7 @@ func GetHistoryDataFileName(v ListQueryAll, start, end int64) ([]byte, error) {
 	return ma, nil
 }
 
-//GetHostInfo 导出主机信息获取
+// GetHostInfo 导出主机信息获取
 func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 	//获取主机列表
 	//OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
@@ -548,7 +549,25 @@ func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 	return p, nil
 }
 
-//RemoveRepeatedElement 数组去重
+// GetInventoryInfo 导出主机信息获取
+func GetInventoryInfo(HostType string) ([]byte, error) {
+	//获取主机列表
+	hs, count, err := HostsList(HostType, "1", "10000", "", "", "", "")
+	if err != nil {
+		return []byte{}, err
+	}
+	//空列表
+	if count == 0 {
+		return []byte{}, errors.New("列表为空")
+	}
+	p, err := CreateHostListInfoXlsx(hs, HostType)
+	if err != nil {
+		return []byte{}, err
+	}
+	return p, nil
+}
+
+// RemoveRepeatedElement 数组去重
 func RemoveRepeatedElement(arr []string) (newArr []string) {
 	newArr = make([]string, 0)
 	for i := 0; i < len(arr); i++ {
@@ -566,7 +585,7 @@ func RemoveRepeatedElement(arr []string) (newArr []string) {
 	return
 }
 
-//Round floa
+// Round floa
 func Round(f float64, n int) float64 {
 	n10 := math.Pow10(n)
 	return math.Trunc((f+0.5/n10)*n10) / n10

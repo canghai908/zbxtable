@@ -15,13 +15,14 @@ type ExpController struct {
 }
 
 // ExpRes is used
-//var GroupRes models.GroupList
-//var ExpRes list
+// var GroupRes models.GroupList
+// var ExpRes list
 var ExpRes models.ExpList
 
 // URLMapping ...
 func (c *ExpController) URLMapping() {
-	c.Mapping("GetHostInfo", c.GetHostList)
+	c.Mapping("ExpHostList", c.ExpHostList)
+	c.Mapping("ExpInventory", c.ExpInventory)
 	c.Mapping("GetItemTrend", c.GetItemTrend)
 	c.Mapping("GetItemHistory", c.GetItemHistory)
 	c.Mapping("Inspect", c.Inspect)
@@ -242,7 +243,7 @@ func (c *ExpController) Inspect() {
 	return
 }
 
-// GetHostInfo ...
+// ExpHostList ...
 // @Title 导出设备列表
 // @Description 根据设备类型导出设备列表到excel
 // @Param	X-Token		header  string	true	"X-Token"
@@ -250,7 +251,7 @@ func (c *ExpController) Inspect() {
 // @Success 200 {object} models.Alarm
 // @Failure 403
 // @router /hosts [post]
-func (c *ExpController) GetHostList() {
+func (c *ExpController) ExpHostList() {
 	var v models.ExportHosts
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &v)
 	if err != nil {
@@ -272,6 +273,42 @@ func (c *ExpController) GetHostList() {
 	//filename := url.QueryEscape(oldfilename)
 	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
 	c.Ctx.Output.Header("Content-Disposition", "attachment; filename=host_list.xlsx")
+	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
+	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
+	c.Ctx.Output.Status = 200
+	c.Ctx.Output.EnableGzip = true
+	c.Ctx.Output.Context.Output.Body(hs)
+	return
+}
+
+// ExpInventory ...
+// @Title 导出资产列表
+// @Description 根据设备类型导出导出资产列表excel
+// @Param	X-Token		header  string	true	"X-Token"
+// @Param	body		body 	models.ExportInventory	true "导出条件或周期""
+// @Success 200 {object}
+// @Failure 403
+// @router /inventory [post]
+func (c *ExpController) ExpInventory() {
+	var v models.ExportInventory
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &v)
+	if err != nil {
+		HostRes.Code = 500
+		HostRes.Message = err.Error()
+		c.Data["json"] = HostRes
+		c.ServeJSON()
+		return
+	}
+	hs, err := models.GetInventoryInfo(v.HostType)
+	if err != nil {
+		HostRes.Code = 500
+		HostRes.Message = err.Error()
+		c.Data["json"] = HostRes
+		c.ServeJSON()
+		return
+	}
+	c.Ctx.Output.Header("Content-Type", "application/octet-stream")
+	c.Ctx.Output.Header("Content-Disposition", "attachment; filename=inventoryExport.xlsx")
 	c.Ctx.Output.Header("Content-Transfer-Encoding", "binary")
 	c.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Ctx.Output.Status = 200

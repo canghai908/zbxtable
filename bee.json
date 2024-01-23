@@ -1,0 +1,18 @@
+{
+  "version": 0,
+  "go_install": false,
+  "watch_ext": [".go"],
+  "watch_ext_static": [".html", ".tpl", ".js", ".css"],
+  "dir_structure": {
+    "watch_all": false,
+    "controllers": "",
+    "models": "",
+    "others": []
+  },
+  "cmd_args": ["web"],
+  "envs": [],
+  "database": {
+    "driver": "mysql"
+  },
+  "enable_reload": false
+}

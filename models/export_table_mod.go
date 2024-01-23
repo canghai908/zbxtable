@@ -1,20 +1,20 @@
 package models
 
-//ListQuery struct
+// ListQuery struct
 type ListQuery struct {
 	HostID   string   `json:"hostid"`
 	ItemType string   `json:"itemtype"`
 	Period   []string `json:"period"`
 }
 
-//ListQueryNew struct
+// ListQueryNew struct
 type ListQueryNew struct {
 	HostID string   `json:"hostid"`
 	Item   Item     `json:"item"`
 	Period []string `json:"period"`
 }
 
-//ListQueryAll struct
+// ListQueryAll struct
 type ListQueryAll struct {
 	Host   Host     `json:"host"`
 	Item   Item     `json:"item"`
@@ -29,7 +29,11 @@ type ExportHosts struct {
 	Available string `json:"available"`
 }
 
-//Itm struct
+type ExportInventory struct {
+	HostType string `json:"hostType"`
+}
+
+// Itm struct
 type Itm struct {
 	Itemids  string `json:"itemids"`
 	ItemName string `json:"itemname"`
@@ -38,7 +42,7 @@ type Itm struct {
 	State    string `json:"state"`
 }
 
-//ExpList struct
+// ExpList struct
 type ExpList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -49,7 +53,7 @@ type ExpList struct {
 	} `json:"data"`
 }
 
-//FileSystemInfo data
+// FileSystemInfo data
 type FileSystemInfo struct {
 	MountPoint string `json:"mountpoint"`
 	ItemID     string `json:"itemid"`
@@ -57,18 +61,18 @@ type FileSystemInfo struct {
 	ItemKey    string `json:"itemkey"`
 }
 
-//FileSystemDataVue struct
+// FileSystemDataVue struct
 type FileSystemDataVue struct {
 	FileSystemDataADD []FileSystemData `json:"filesystemdata"`
 }
 
-//FileSystemDataALL struct
+// FileSystemDataALL struct
 type FileSystemDataALL struct {
 	MountPoint        string           `json:"mountpoint"`
 	FileSystemDataADD []FileSystemData `json:"filesystemdata"`
 }
 
-//FileSystemData data
+// FileSystemData data
 type FileSystemData struct {
 	MountPoint string `json:"mountpoint"`
 	ItemID     string `json:"itemid"`
@@ -81,14 +85,14 @@ type FileSystemData struct {
 	ValueMax   string `json:"value_max"`
 }
 
-//Insp a
+// Insp a
 type Insp struct {
 	HostName string  `json:"hostname"`
 	CPULoad  float64 `json:"cpuload"`
 	MemPct   float64 `json:"mempct"`
 }
 
-//HostsData strunct
+// HostsData strunct
 type HostsData struct {
 	Hostid string `json:"hostid"`
 	Host   string `json:"host"`

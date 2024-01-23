@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
 	"github.com/astaxie/beego/toolbox"
@@ -264,7 +263,6 @@ func UpdateEdgeDataById(id int) error {
 		logs.Debug(err)
 		return err
 	}
-	fmt.Println(allEdges)
 	var wg sync.WaitGroup
 	ch := make(chan struct{}, 10)
 	var aedge []AEdge
@@ -332,7 +330,7 @@ func UpdateEdgeDataById(id int) error {
 	return nil
 }
 
-// 机器列表缓存
+// GetTypeHostList 机器列表缓存
 func GetTypeHostList() error {
 	//func GetHostByType(htype string) ([]TreeChildren, int, error) {
 	var list = []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
@@ -384,7 +382,7 @@ func GetTypeHostList() error {
 	return nil
 }
 
-// 出口带宽流量获取
+// EgressCache 出口带宽流量获取并写入redis
 func EgressCache() error {
 	o := orm.NewOrm()
 	v := &Egress{ID: 1}
@@ -395,15 +393,15 @@ func EgressCache() error {
 	var itemlist []string
 	//空返回
 	if v.InOne == "" || v.OutOne == "" || v.InTwo == "" || v.OutTwo == "" {
-		var dlist EgressList
-		dlist.NameOne = v.NameOne
-		dlist.InOne = "0Kb/s"
-		dlist.OutOne = "0Kb/s"
-		dlist.NameTwo = v.NameTwo
-		dlist.InTwo = "0Kb/s"
-		dlist.OutTwo = "0Kb/s"
-		dlist.Date = time.Now().Format(utils.TimeFormat)
-		p1, _ := json.Marshal(&dlist)
+		var dList EgressList
+		dList.NameOne = v.NameOne
+		dList.InOne = "0Kb/s"
+		dList.OutOne = "0Kb/s"
+		dList.NameTwo = v.NameTwo
+		dList.InTwo = "0Kb/s"
+		dList.OutTwo = "0Kb/s"
+		dList.Date = time.Now().Format(utils.TimeFormat)
+		p1, _ := json.Marshal(&dList)
 		var ctx = context.Background()
 		err = RDB.Set(ctx, "Egress", string(p1), -1*time.Second).Err()
 		if err != nil {
@@ -415,20 +413,21 @@ func EgressCache() error {
 	list, err := GetItemByIDS(itemlist)
 	//数据异常返回
 	if len(list) != 4 {
-		return nil
+		logs.Error("出口Item数据获取异常")
+		return errors.New("出口Item数据获取异常")
 	}
 	if err != nil {
 		return err
 	}
-	var dlist EgressList
-	dlist.NameOne = v.NameOne
-	dlist.InOne = utils.FormatTraffic(list[0].Lastvalue)
-	dlist.OutOne = utils.FormatTraffic(list[1].Lastvalue)
-	dlist.NameTwo = v.NameTwo
-	dlist.InTwo = utils.FormatTraffic(list[2].Lastvalue)
-	dlist.OutTwo = utils.FormatTraffic(list[3].Lastvalue)
-	dlist.Date = utils.UnixTimeFormater(list[0].Lastclock)
-	p1, _ := json.Marshal(&dlist)
+	var dList EgressList
+	dList.NameOne = v.NameOne
+	dList.InOne = utils.FormatTraffic(list[0].Lastvalue)
+	dList.OutOne = utils.FormatTraffic(list[1].Lastvalue)
+	dList.NameTwo = v.NameTwo
+	dList.InTwo = utils.FormatTraffic(list[2].Lastvalue)
+	dList.OutTwo = utils.FormatTraffic(list[3].Lastvalue)
+	dList.Date = utils.UnixTimeFormater(list[0].Lastclock)
+	p1, _ := json.Marshal(&dList)
 	var ctx = context.Background()
 	err = RDB.Set(ctx, "Egress", string(p1), -1*time.Second).Err()
 	if err != nil {
