@@ -2,12 +2,14 @@ kind: pipeline
 name: zbxtable
 steps:
   - name: build
-    image: golang:1.21.4
+    image: canhgia809/go:1.21.4-upx
     commands:
       - wget -q -c https://dl.cactifans.com/stable/zbxtable/web-latest.tar.gz && tar xf web-latest.tar.gz
       - go install github.com/go-bindata/go-bindata/go-bindata@latest
       - chmod a+x ./control
       - ./control build
+      - mv zbxtable zbxtable-`git describe --tags`
+      - upx -9 -o zbxtable zbxtable-`git describe --tags`
       - ./control pack
   - name: scp dev
     image: appleboy/drone-scp
