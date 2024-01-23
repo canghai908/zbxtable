@@ -71,7 +71,7 @@ func runWeb(*cli.Context) error {
 
 // checkWeb 是否需要释放web资源目录
 func restoreAssets() error {
-	files := []string{"web", "template", "conf"} // 设置需要释放的目录
+	files := []string{"web", "template"} // 设置需要释放的目录
 	for _, file := range files {
 		// 解压目录到当前目录
 		if err := packfile.RestoreAssets("./", file); err != nil {
