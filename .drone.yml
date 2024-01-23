@@ -4,7 +4,7 @@ steps:
   - name: build
     image: canhgia809/go:1.21.4-upx
     commands:
-      - wget -q -c https://dl.cactifans.com/stable/zbxtable/web-late.st.tar.gz && tar xf web-latest.tar.gz
+      - wget -q -c https://dl.cactifans.com/stable/zbxtable/web-latest.tar.gz && tar xf web-latest.tar.gz
       - go install github.com/go-bindata/go-bindata/go-bindata@latest
       - chmod a+x ./control
       - ./control build
