@@ -7,7 +7,7 @@ import (
 	"github.com/astaxie/beego/orm"
 )
 
-//TableName alarm
+// TableName alarm
 func (t *Alarm) TableName() string {
 	return TableName("alarm")
 }
@@ -23,7 +23,7 @@ func AddAlarm(m *Alarm) (id int64, err error) {
 	return id, nil
 }
 
-////update alarm notifystatus
+// //update alarm notifystatus
 func UpdateAlarmStatus(m *Alarm) (id int64, err error) {
 	o := orm.NewOrm()
 	//user
@@ -88,7 +88,7 @@ func GetAllAlarm(begin, end time.Time, page, limit,
 	return cnt, alarms, nil
 }
 
-//get alarm tenant list
+// get alarm tenant list
 func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	o := orm.NewOrm()
 	var maps []orm.Params
@@ -112,7 +112,7 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	return num, ss, nil
 }
 
-//ExportAlarm export
+// ExportAlarm export
 func ExportAlarm(begin, end time.Time,
 	hosts, tenant_id, status, level string) ([]byte, error) {
 	o := orm.NewOrm()
@@ -148,7 +148,7 @@ func ExportAlarm(begin, end time.Time,
 	return pbye, nil
 }
 
-//AnalysisAlarm all alarm
+// AnalysisAlarm all alarm
 func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, pie []Pie, na []string, va []int, err error) {
 	o := orm.NewOrm()
 	strbeing := begin.Format("2006-01-02 15:04:05")
@@ -160,11 +160,15 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	var num int64
 	if tenant_id == "" {
 		num, err = o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-			strbeing + "' and occurtime <='" + strend + "' AND (STATUS='故障' or  STATUS='1') GROUP BY level;").Values(&maps)
+			strbeing + "' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or  STATUS='1') GROUP BY level;").
+			Values(&maps)
 	} else {
 		num, err = o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-			strbeing + "' and occurtime <='" + strend + "' AND (STATUS='故障' or  STATUS='1') AND tenant_id ='" +
-			tenant_id + "' GROUP BY level;").Values(&maps)
+			strbeing + "' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or  STATUS='1') AND tenant_id ='" +
+			tenant_id + "' GROUP BY level;").
+			Values(&maps)
 	}
 	if err == nil && num > 0 {
 		for i := 0; i < len(maps); i++ {
@@ -178,13 +182,20 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	var map1s []orm.Params
 	var name []string
 	var values []int
+	// mysql8 sql_mode 取消 ONLY_FULL_GROUP_BY
 	if tenant_id == "" {
 		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing + "' and occurtime <='" + strend + "' AND (STATUS='故障' or STATUS='1') GROUP BY host order by host_count desc limit 10;").Values(&map1s)
+			strbeing +
+			"' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or STATUS='1') GROUP BY host order by host_count asc limit 10;").
+			Values(&map1s)
 	} else {
 		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing + "' and occurtime <='" + strend + "' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
-			tenant_id + "' GROUP BY host order by host_count desc limit 10;").Values(&map1s)
+			strbeing +
+			"' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
+			tenant_id + "' GROUP BY host order by host_count asc limit 10;").
+			Values(&map1s)
 	}
 	if err == nil && num > 0 {
 		if len(map1s) <= 10 {

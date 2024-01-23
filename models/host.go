@@ -10,7 +10,7 @@ import (
 	"zbxtable/utils"
 )
 
-//HostsList func
+// HostsList func
 func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
 	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
 	SearchInventoryInventoryPar := make(map[string]string)
@@ -181,7 +181,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 
 }
 
-//get net host by name
+// get net host by name
 func GetNetHostByName(name string) ([]Hosts, error) {
 	var ctx = context.Background()
 	val, err := RDB.Get(ctx, "HW_NET_OVERVIEW").Result()
@@ -202,7 +202,7 @@ func GetNetHostByName(name string) ([]Hosts, error) {
 	return newlist, nil
 }
 
-//host get
+// host get
 func GetHost(hostid string) (Hosts, error) {
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	//SelectInventoryPar := []string{"model", "chassis", "contact", "asset_tag", "location", "hardware"}
@@ -252,7 +252,7 @@ func GetHost(hostid string) (Hosts, error) {
 	return d, nil
 }
 
-//host get
+// host get
 func GetHostInfoTopology(hostid string) (Hosts, error) {
 	//获取基本信息
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
@@ -312,7 +312,7 @@ func GetHostInfoTopology(hostid string) (Hosts, error) {
 	return d, nil
 }
 
-//GetMonItem 获取主机cpu、内存、磁盘、网卡流量itemid
+// GetMonItem 获取主机cpu、内存、磁盘、网卡流量itemid
 func GetMonItem(hostid string) (MonItemList, error) {
 	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
 	Key2Par := []string{"CPU", "Memory", "Filesystem ", "Interface "}
@@ -340,8 +340,8 @@ func GetMonItem(hostid string) (MonItemList, error) {
 	return ApplicationRes, nil
 }
 
-//GetInterfaceItem 网络设备接口获取
-//func GetInterfaceItem(hostid string) ([]InterfaceData, error) {
+// GetInterfaceItem 网络设备接口获取
+// func GetInterfaceItem(hostid string) ([]InterfaceData, error) {
 func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	//zabbix 5.4以后版本处理
 	if ZBX_V {
@@ -481,7 +481,7 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	return list, nil
 }
 
-//UpdateHost 主机信息更新
+// UpdateHost 主机信息更新
 func UpdateHost(Host *Hosts) (MonItemList, error) {
 	InventoryPar := make(map[string]string)
 	InventoryPar["location"] = Host.Location
@@ -500,7 +500,7 @@ func UpdateHost(Host *Hosts) (MonItemList, error) {
 	return MonItemList{}, nil
 }
 
-//HostsList func
+// HostsList func
 func GetHostsList(HostType string) ([]Hosts, int64, error) {
 	//获取主机列表
 	//OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
@@ -599,7 +599,7 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 	return dt, int64(len(dt)), err
 }
 
-//GetLinFileSystemItem linux文件系统
+// GetLinFileSystemItem linux文件系统
 func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 	if ZBX_V {
 		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
@@ -725,7 +725,7 @@ func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 
 }
 
-//GetLinFileSystemItem 网络设备接口获取
+// GetLinFileSystemItem 网络设备接口获取
 func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
 	//大于等于5.4版本处理
 	if ZBX_V {

@@ -3,7 +3,7 @@ package cmd
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/config"
 	"github.com/astaxie/beego/logs"
@@ -13,6 +13,7 @@ import (
 	"gopkg.in/ini.v1"
 	"os"
 	"zbxtable/models"
+	"zbxtable/packfile"
 	"zbxtable/routers"
 )
 
@@ -39,9 +40,14 @@ var (
 
 // runWeb 启动web
 func runWeb(*cli.Context) error {
-	Initlogger()
+	// 日志初始化
+	InitLogger()
 	logs.Info(motd)
+	// 释放静态资源目录
+	restoreAssets()
+	//检查配置文件是否存在
 	CheckConfExist()
+	//dev模式下开启swagger
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
@@ -60,6 +66,19 @@ func runWeb(*cli.Context) error {
 	go models.ConsumeMail()
 	go models.ConsumeWechat()
 	beego.Run()
+	return nil
+}
+
+// checkWeb 是否需要释放web资源目录
+func restoreAssets() error {
+	files := []string{"web", "template", "conf"} // 设置需要释放的目录
+	for _, file := range files {
+		// 解压目录到当前目录
+		if err := packfile.RestoreAssets("./", file); err != nil {
+			logs.Error(err)
+			break
+		}
+	}
 	return nil
 }
 
@@ -154,11 +173,10 @@ func InitConfig(v string) string {
 	}
 	return p.String()
 }
-func Initlogger() (err error) {
+func InitLogger() (err error) {
 	BConfig, err := config.NewConfig("ini", "conf/app.conf")
 	if err != nil {
-		fmt.Println("config init error:", err)
-		return
+		return errors.New("config init error:" + err.Error())
 	}
 	logConf := make(map[string]interface{})
 	logConf["filename"] = BConfig.String("log_path")
@@ -175,8 +193,7 @@ func Initlogger() (err error) {
 	logConf["perm"] = "0755"
 	confStr, err := json.Marshal(logConf)
 	if err != nil {
-		fmt.Println("marshal failed,err:", err)
-		return
+		return errors.New("marshal failed,err:" + err.Error())
 	}
 	logs.SetLogger(logs.AdapterFile, string(confStr))
 	logs.SetLogFuncCall(true)

@@ -1,20 +1,18 @@
+//go:generate go-bindata -o=packfile/staticFile.go -pkg=packfile ./web/... ./template/... ./conf/...
 package main
 
 import (
-	"embed"
 	"fmt"
 	"github.com/json-iterator/go/extra"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"zbxtable/cmd"
-	"zbxtable/utils"
 )
 
-//go:embed template
-var f embed.FS
-
 // AppVersion version
+//
+
 var (
 	version   = "No Version Provided"
 	gitHash   = "No GitHash Provided"
@@ -28,7 +26,6 @@ func customVersionPrinter(c *cli.Context) {
 func init() {
 	// RegisterFuzzyDecoders decode input from PHP with tolerance.
 	extra.RegisterFuzzyDecoders()
-	utils.GenTpl(f)
 }
 
 func main() {

@@ -3,7 +3,6 @@ package utils
 import (
 	"archive/zip"
 	"crypto/md5"
-	"embed"
 	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/shopspring/decimal"
@@ -15,11 +14,10 @@ import (
 	"time"
 )
 
-//TimeFormat a
+// TimeFormat a
 const TimeFormat = "2006-01-02 15:04:05"
-const TplDir = "./template"
 
-//Md5 string
+// Md5 string
 func Md5(buf []byte) string {
 	hash := md5.New()
 	hash.Write(buf)
@@ -32,7 +30,7 @@ func VAarToStr(str string) string {
 	return strings.TrimSuffix(strings.Replace(new3, `"`, ``, -1), `,`)
 }
 
-//func mkdir
+// func mkdir
 func Mkdir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.Mkdir(path, os.ModePerm)
@@ -43,30 +41,6 @@ func Mkdir(path string) error {
 	return nil
 }
 
-func GenTpl(f embed.FS) {
-	fileList := []string{"mail_problem.tpl", "mail_recovery.tpl",
-		"wechat_problem.tpl", "wechat_recovery.tpl"}
-	MakeDirectoryIfNotExists(TplDir)
-	for _, v := range fileList {
-		if TemplateExist(TplDir + "/" + v) {
-			fs, _ := os.Create(TplDir + "/" + v)
-			helloFile, _ := f.Open("template" + "/" + v)
-			io.Copy(fs, helloFile)
-		}
-	}
-}
-
-func MakeDirectoryIfNotExists(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return os.Mkdir(path, os.ModeDir|0755)
-	}
-	return nil
-}
-func TemplateExist(filename string) bool {
-	_, err := os.Stat(filename)
-	return os.IsNotExist(err)
-}
-
 func ComparePass(encodePW, passwordOK string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(encodePW), []byte(passwordOK))
 	if err != nil {
@@ -75,7 +49,7 @@ func ComparePass(encodePW, passwordOK string) error {
 	return nil
 }
 
-//PasswordHash
+// PasswordHash
 func PasswordHash(pwd string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 	if err != nil {
@@ -84,7 +58,7 @@ func PasswordHash(pwd string) (string, error) {
 	return string(bytes), err
 }
 
-//ParseTime func
+// ParseTime func
 func ParseTime(strtime string) (end time.Time, err error) {
 	timeLayout := "2006-01-02 15:04:05"
 	loc, _ := time.LoadLocation("Asia/Shanghai")
@@ -96,13 +70,7 @@ func ParseTime(strtime string) (end time.Time, err error) {
 	return etime, nil
 }
 
-//TimeFormater a
-func TimeFormater(timer string) string {
-	t, _ := time.Parse(TimeFormat, timer)
-	return t.String()
-}
-
-//TimeFormater a
+// TimeFormater a
 func UnixTimeFormater(timer string) string {
 	i, err := strconv.ParseInt(timer, 10, 64)
 	if err != nil {
@@ -112,7 +80,7 @@ func UnixTimeFormater(timer string) string {
 	return tm
 }
 
-//ParTime time
+// ParTime time
 func ParTime(dataStr string) (timer time.Time, err error) {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	layout := "2006-01-02 15:04:05"
@@ -161,7 +129,7 @@ func RemoveRepByMap(slc []string) []string {
 	return result
 }
 
-//合并
+// 合并
 func MergeArr(a, b []string) []string {
 	var arr []string
 	for _, i := range a {
@@ -359,7 +327,7 @@ func ZipFiles(filename string, files []string, oldform, newform string) error {
 	return nil
 }
 
-//AlertSeverity
+// AlertSeverity
 func AlertSeverityTo(v string) string {
 	switch v {
 	case "0":

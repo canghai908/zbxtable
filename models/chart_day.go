@@ -101,7 +101,16 @@ func TaskDayReport(m Report) error {
 			bind = 0
 		}
 		//获取item信息
-		ItemInfo, _ := GetItemByID(v)
+		ItemInfo, err := GetItemByID(v)
+		if err != nil {
+			logs.Error(err)
+			continue
+		}
+		//判断是否为空
+		if len(ItemInfo) == 0 {
+			logs.Error(err)
+			continue
+		}
 		//	fmt.Println(ItemInfo[0])
 		hostInfo, err := GetHost(ItemInfo[0].Hostid)
 		if err != nil {

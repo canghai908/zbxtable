@@ -1,14 +1,13 @@
 package models
 
 import (
-	"fmt"
 	"github.com/astaxie/beego/logs"
 	"math"
 	"strconv"
 	"strings"
 )
 
-//TemplateGet func
+// TemplateGet func
 func TemplateGet(page, limit, templates string) ([]Template, int64, error) {
 	par := []string{"host", "name", "templateid"}
 	hostspar := []string{"host", "name", "hostid"}
@@ -111,7 +110,7 @@ func TemplateGet(page, limit, templates string) ([]Template, int64, error) {
 	return newtemplates, int64(len(dt)), err
 }
 
-//TemplateAllGet func
+// TemplateAllGet func
 func TemplateAllGet() ([]Template, int64, error) {
 	par := []string{"host", "name", "templateid"}
 	hostspar := []string{"host", "name", "hostid"}
@@ -136,7 +135,7 @@ func TemplateAllGet() ([]Template, int64, error) {
 	return hb, int64(len(hb)), nil
 }
 
-//TemplateAllGet func
+// TemplateAllGet func
 func TemplateListGet() ([]TemplateByItemList, int64, error) {
 	par := []string{"host", "name", "templateid"}
 	rep, err := API.Call("template.get", Params{"output": par})
@@ -156,7 +155,7 @@ func TemplateListGet() ([]TemplateByItemList, int64, error) {
 	return hb, int64(len(hb)), nil
 }
 
-//TemplateAllGet func
+// TemplateAllGet func
 func TemplateByItem(templateid string) ([]TemplateByItemList, int64, error) {
 	par := []string{"host", "name", "templateid"}
 	itemParams := []string{"itemid", "name"}
@@ -171,7 +170,6 @@ func TemplateByItem(templateid string) ([]TemplateByItemList, int64, error) {
 	if err != nil {
 		return []TemplateByItemList{}, 0, err
 	}
-	fmt.Println(string(hba))
 	var hb []TemplateByItemList
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {

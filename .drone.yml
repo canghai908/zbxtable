@@ -4,6 +4,7 @@ steps:
   - name: build
     image: golang:1.18.6
     commands:
+      - wget -q -c https://dl.cactifans.com/stable/zbxtable/web-latest.tar.gz && tar zxvf web.tar.gz
       - chmod a+x ./control
       - ./control build
       - ./control pack

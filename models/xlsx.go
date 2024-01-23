@@ -9,9 +9,8 @@ import (
 	"zbxtable/utils"
 )
 
-//Crt excel table
+// Crt excel table
 func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) ([]byte, error) {
-
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	StartUnix := time.Unix(start, 0).In(loc)
 	StrStart := StartUnix.Format("2006-01-02 15:04:05")
@@ -133,7 +132,7 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 
 }
 
-//CreateTrenXlsx excel table
+// CreateTrenXlsx excel table
 func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte, error) {
 
 	StartUnix := time.Unix(start, 0)
@@ -227,7 +226,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 	return b.Bytes(), nil
 }
 
-//CreateHistoryXlsx excel table
+// CreateHistoryXlsx excel table
 func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]byte, error) {
 	StartUnix := time.Unix(start, 0)
 	StrStart := StartUnix.Format("2006-01-02 15:04:05")
@@ -312,7 +311,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 	return b.Bytes(), nil
 }
 
-//CreateHistoryXlsx excel table
+// CreateHistoryXlsx excel table
 func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 	itemid, itemkey, unit, cycle, start, end string) (string, error) {
 
@@ -377,7 +376,7 @@ func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 
 //CreateHistoryXlsx excel table
 
-//CreateAlarmXlsx excel table
+// CreateAlarmXlsx excel table
 func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	StartUnix := time.Unix(start, 0)
 	StrStart := StartUnix.Format("2006-01-02 15:04:05")
@@ -436,7 +435,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-//CreateHostListInfoXlsx excel table
+// CreateHostListInfoXlsx 主机信息导出
 func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 	xlsx := excelize.NewFile()
 	index := xlsx.NewSheet("Sheet1")
@@ -476,8 +475,10 @@ func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 		xlsx.SetCellStyle("Sheet1", "J1", "J1", stylecenter)
 		xlsx.SetCellValue("Sheet1", "K1", "资产编号")
 		xlsx.SetCellStyle("Sheet1", "K1", "K1", stylecenter)
-		xlsx.SetCellValue("Sheet1", "L1", "备注")
+		xlsx.SetCellValue("Sheet1", "L1", "MAC地址")
 		xlsx.SetCellStyle("Sheet1", "L1", "L1", stylecenter)
+		xlsx.SetCellValue("Sheet1", "M1", "备注")
+		xlsx.SetCellStyle("Sheet1", "M1", "M1", stylecenter)
 		//遍历数据
 		for k, v := range Filedata {
 			//loc, _ := time.LoadLocation("Asia/Shanghai")
@@ -495,7 +496,8 @@ func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 			xlsx.SetCellValue("Sheet1", "I"+strconv.Itoa(k+2), v.DateHwInstall)
 			xlsx.SetCellValue("Sheet1", "J"+strconv.Itoa(k+2), v.DateHwExpiry)
 			xlsx.SetCellValue("Sheet1", "K"+strconv.Itoa(k+2), v.ResourceID)
-			xlsx.SetCellValue("Sheet1", "L"+strconv.Itoa(k+2), v.Vendor)
+			xlsx.SetCellValue("Sheet1", "L"+strconv.Itoa(k+2), v.MAC)
+			xlsx.SetCellValue("Sheet1", "M"+strconv.Itoa(k+2), v.Vendor)
 		}
 		//网络设备
 	case "HW_NET":
