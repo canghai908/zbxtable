@@ -10,7 +10,7 @@ type HostController struct {
 	BaseController
 }
 
-//HostRes restp
+// HostRes restp
 var HostRes models.HostList
 var HostInfoRes models.HostInfo
 var HostInterfaceRes models.HostInterfaceInfo
@@ -21,6 +21,7 @@ func (c *HostController) URLMapping() {
 	c.Mapping("GetOne", c.GetOne)
 	c.Mapping("GetMonItem", c.GetMonItem)
 	c.Mapping("GetMonInterface", c.GetMonInterface)
+	c.Mapping("getOneInterface", c.GetOneInterface)
 	c.Mapping("GetMonWinFileSystem", c.GetMonWinFileSystem)
 	c.Mapping("GetMonLinFileSystem", c.GetMonLinFileSystem)
 }
@@ -54,9 +55,6 @@ func (c *HostController) Post() {
 	}
 	c.ServeJSON()
 }
-
-//ApplicationRes str
-var ApplicationRes models.ApplicationList
 
 // GetOne ...
 // @Title 获取单个设备信息
@@ -184,12 +182,34 @@ func (c *HostController) GetMonInterface() {
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
+	} else {
+		HostInterfaceRes.Code = 200
+		HostInterfaceRes.Message = "获取数据成功"
+		HostInterfaceRes.Data.Items = hs
+		HostInterfaceRes.Data.Total = int64(len(hs))
 	}
-	HostInterfaceRes.Code = 200
-	HostInterfaceRes.Message = "获取数据成功"
-	HostInterfaceRes.Data.Items = hs
-	HostInterfaceRes.Data.Total = int64(len(hs))
 	c.Data["json"] = HostInterfaceRes
+	c.ServeJSON()
+}
+
+// GetOneInterface
+// @Title 获取网络设备接口流量详情图标数据
+// @Description 获取网络设备接口流量
+// @Param	X-Token	header  string	true	"x-token in header"
+// @Param	body		body 	models.InterfaceData	true		"hosts info"
+// @Success 200 {object} models.MonItemList
+// @Failure 403
+// @router /interface/data [post]
+func (c *HostController) GetOneInterface() {
+	var v models.InterfaceData
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		b, err := models.GetInterfaceGraphData(v)
+		if err != nil {
+			c.Data["json"] = b
+			c.ServeJSON()
+		}
+		c.Data["json"] = b
+	}
 	c.ServeJSON()
 }
 

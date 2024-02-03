@@ -46,7 +46,7 @@ func (c *SystemController) GetOne() {
 	c.ServeJSON()
 }
 
-// GetOne ...
+// PutOne 更新初始化数据 ...
 // @Title Get One
 // @Description get Alarm by id
 // @Param	X-Token		header  string			true		"x-token in header"
@@ -58,18 +58,19 @@ func (c *SystemController) GetOne() {
 func (c *SystemController) PutOne() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
-	cpu_core := gjson.Get(string(c.Ctx.Input.RequestBody), "cpu_core").String()
-	uptime_id := gjson.Get(string(c.Ctx.Input.RequestBody), "uptime_id").String()
-	cpu_utilization_id := gjson.Get(string(c.Ctx.Input.RequestBody), "cpu_utilization_id").String()
-	group_id := gjson.Get(string(c.Ctx.Input.RequestBody), "group_id").String()
-	memory_total_id := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_total_id").String()
-	memory_used_id := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_used_id").String()
-	memory_utilization_id := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_utilization_id").String()
+	cpuCore := gjson.Get(string(c.Ctx.Input.RequestBody), "cpu_core").String()
+	uptimeId := gjson.Get(string(c.Ctx.Input.RequestBody), "uptime_id").String()
+	cpuUtilizationId := gjson.Get(string(c.Ctx.Input.RequestBody), "cpu_utilization_id").String()
+	groupId := gjson.Get(string(c.Ctx.Input.RequestBody), "group_id").String()
+	memoryTotalId := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_total_id").String()
+	memoryUsedId := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_used_id").String()
+	memoryUtilizationId := gjson.Get(string(c.Ctx.Input.RequestBody), "memory_utilization_id").String()
 	model := gjson.Get(string(c.Ctx.Input.RequestBody), "model").String()
-	v := models.System{ID: int64(id), CPUCore: cpu_core, CPUUtilizationID: cpu_utilization_id,
-		GroupID: group_id, MemoryTotalID: memory_total_id, UptimeID: uptime_id, Model: model,
-		MemoryUsedID: memory_used_id, MemoryUtilizationID: memory_utilization_id,
-	}
+	pingTemplateId := gjson.Get(string(c.Ctx.Input.RequestBody), "ping_template_id").String()
+	v := models.System{ID: int64(id), CPUCore: cpuCore, CPUUtilizationID: cpuUtilizationId,
+		GroupID: groupId, MemoryTotalID: memoryTotalId, UptimeID: uptimeId, Model: model,
+		MemoryUsedID: memoryUsedId, MemoryUtilizationID: memoryUtilizationId,
+		PingTemplateID: pingTemplateId}
 	err := models.UpdateSystem(&v)
 	if err != nil {
 		SystemRes.Code = 500

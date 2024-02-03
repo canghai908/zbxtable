@@ -1,6 +1,6 @@
 package models
 
-//ApplicationList struct
+// ApplicationList struct
 type ApplicationList struct {
 	Code    int    `json:"code"`
 	Message string `json:"mess age"`
@@ -10,14 +10,14 @@ type ApplicationList struct {
 	} `json:"data"`
 }
 
-//Application struct
+// Application struct
 type Application struct {
 	Applicationid string            `json:"applicationid"`
 	Name          string            `json:"name"`
 	Items         []ApplicationItem `json:"items"`
 }
 
-//ApplicationItem struct
+// ApplicationItem struct
 type ApplicationItem struct {
 	ItemID    string `json:"itemid"`
 	Name      string `json:"name"`
@@ -35,7 +35,7 @@ type MonIts struct {
 		Tag   string `json:"tag"`
 		Value string `json:"value"`
 	} `json:"tags"`
-	ValutType  string `json:"value_type"`
+	SNMPOid    string `json:"snmp_oid"`
 	Trends     string `json:"trends"`
 	Units      string `json:"units"`
 	ValueType  string `json:"value_type"`
@@ -43,7 +43,7 @@ type MonIts struct {
 	ValuemapID string `json:"valuemapid"`
 }
 
-//Application struct
+// Application struct
 type TagsItems struct {
 	Name  string   `json:"name"`
 	Items []MonIts `json:"items"`

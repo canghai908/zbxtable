@@ -1,29 +1,45 @@
 package models
 
 import (
-	"fmt"
 	"github.com/astaxie/beego/orm"
 	"strings"
 	"time"
 )
 
-//item link to inventory
-//link https://www.zabbix.com/documentation/current/en/manual/api/reference/host/object#host-inventory
+// item link to inventory
+// link https://www.zabbix.com/documentation/current/en/manual/api/reference/host/object#host-inventory
 const (
+	Type                = 1
 	CPUCore             = 16
 	CPUUtilizationID    = 18
 	MemoryUtilizationID = 19
 	MemoryTotalID       = 20
 	UptimeID            = 22
 	Model               = 29
+	//Add 20240221
+	Ping     = 57
+	PingLoss = 58
+	PingSec  = 59
+
+	//inventory
+	OS            = 5
+	MemoryUsedID  = 21
+	DateHwInstall = 45
+	DateHwExpiry  = 46
+	MACAddress    = 12
+	SerialNo      = 8
+	ResourceID    = 9
+	Location      = 24
+	Department    = 51
+	Vendor        = 31
 )
 
-//TableName alarm
+// TableName alarm
 func (t *System) TableName() string {
 	return TableName("system")
 }
 
-//get id
+// get id
 func GetSystemByID(id int64) (v *System, err error) {
 	o := orm.NewOrm()
 	v = &System{ID: id}
@@ -33,7 +49,7 @@ func GetSystemByID(id int64) (v *System, err error) {
 	return nil, err
 }
 
-//get all
+// get all
 func GetALlSystem() (cnt int64, system []System, err error) {
 	o := orm.NewOrm()
 	var sys []System
@@ -46,7 +62,7 @@ func GetALlSystem() (cnt int64, system []System, err error) {
 	return cnt, sys, nil
 }
 
-//get all
+// get all
 func UpdateSystem(m *System) (err error) {
 	o := orm.NewOrm()
 	v := System{ID: m.ID}
@@ -62,17 +78,19 @@ func UpdateSystem(m *System) (err error) {
 	v.MemoryUtilizationID = m.MemoryUtilizationID
 	v.UptimeID = m.UptimeID
 	v.Model = m.Model
+	v.PingTemplateID = m.PingTemplateID
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
 	_, err = o.Update(m, "CPUCore", "CPUUtilizationID", "GroupID", "MemoryTotalID",
-		"MemoryUsedID", "MemoryUtilizationID", "UpdatedAt", "CreatedAt", "UptimeID", "Model")
+		"MemoryUsedID", "MemoryUtilizationID", "UpdatedAt", "CreatedAt", "UptimeID",
+		"Model", "PingTemplateID")
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-//system init
+// SystemInit 初始化指标
 func SystemInit(id int64) error {
 	o := orm.NewOrm()
 	v := &System{ID: id}
@@ -88,23 +106,25 @@ func SystemInit(id int64) error {
 	vt := System{ID: id, Status: 1, InitedAt: time.Now()}
 	_, err = o.Update(&vt, "status", "inited_at")
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	return nil
 }
-func HostTypeSet(s *System, groupid []string) error {
+
+// HostTypeSet 根据提供的主机租初始化
+func HostTypeSet(s *System, groupId []string) error {
 	//根据groupid获取host
 	OutputPar := []string{"hostid"}
 	rep, err := API.CallWithError("host.get", Params{
 		"output":   OutputPar,
-		"groupids": groupid})
+		"groupids": groupId})
 	if err != nil {
 		return err
 	}
-	type hostdata struct {
+	type hostData struct {
 		HostID string `json:"hostid"`
 	}
-	var p []hostdata
+	var p []hostData
 	resByre, resByteErr := json.Marshal(rep.Result)
 	if resByteErr != nil {
 		return err
@@ -114,22 +134,22 @@ func HostTypeSet(s *System, groupid []string) error {
 		return err
 	}
 	//根据id主机类型
-	var htype string
+	var hType string
 	switch s.ID {
 	case 1:
-		htype = "VM_LIN"
+		hType = "VM_LIN"
 	case 2:
-		htype = "VM_WIN"
+		hType = "VM_WIN"
 	case 3:
-		htype = "HW_NET"
+		hType = "HW_NET"
 	case 4:
-		htype = "HW_SRV"
+		hType = "HW_SRV"
 	default:
-		htype = "VM_LIN"
+		hType = "VM_LIN"
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
-	InventoryPara["type"] = htype
+	//开启主机Inventory为自动，并归类
 	_, err = API.CallWithError("host.massupdate", Params{
 		"hosts":          p,
 		"inventory_mode": 1,
@@ -137,25 +157,76 @@ func HostTypeSet(s *System, groupid []string) error {
 	if err != nil {
 		return err
 	}
-	//CPUCore
+	//主机类型直接写入，不关联监控指标
+	InventoryPara["type"] = hType
+	//其他指标绑定
 	ItemToInventory(s.UptimeID, UptimeID)
 	ItemToInventory(s.CPUCore, CPUCore)
 	ItemToInventory(s.CPUUtilizationID, CPUUtilizationID)
 	ItemToInventory(s.MemoryUtilizationID, MemoryUtilizationID)
 	ItemToInventory(s.MemoryTotalID, MemoryTotalID)
 	ItemToInventory(s.Model, Model)
+	//ICMP
+	ICMPToInventory(s.PingTemplateID)
 	return nil
 }
 
-func ItemToInventory(list string, inventoryid int) error {
-	itemids := strings.Split(list, ",")
-	for _, v := range itemids {
+// ItemToInventory 指标绑定到类型
+func ItemToInventory(list string, inventoryId int) error {
+	itemIDs := strings.Split(list, ",")
+	for _, v := range itemIDs {
 		_, err := API.CallWithError("item.update", Params{
 			"itemid":         v,
-			"inventory_link": inventoryid})
+			"inventory_link": inventoryId})
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// ICMPToInventory queries ICMP metrics via the Zabbix API and associates them with the inventory
+func ICMPToInventory(id string) error {
+	type itemData struct {
+		ItemID string `json:"itemid"`
+		Key    string `json:"key_"`
+	}
+
+	rep, err := API.CallWithError("item.get", Params{
+		"output":  []string{"itemid", "key_"},
+		"hostids": id,
+	})
+	if err != nil {
+		return err
+	}
+
+	resByre, resByteErr := json.Marshal(rep.Result)
+	if resByteErr != nil {
+		return err
+	}
+	var items []itemData
+	if err := json.Unmarshal(resByre, &items); err != nil {
+		return err
+	}
+	for _, item := range items {
+		var inventoryLink int
+		switch item.Key {
+		case "icmpping":
+			inventoryLink = Ping
+		case "icmppingloss":
+			inventoryLink = PingLoss
+		case "icmppingsec":
+			inventoryLink = PingSec
+		default:
+			continue
+		}
+		if _, err := API.CallWithError("item.update", Params{
+			"itemid":         item.ItemID,
+			"inventory_link": inventoryLink,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

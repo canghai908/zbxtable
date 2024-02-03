@@ -4,16 +4,35 @@ import (
 	"github.com/astaxie/beego"
 	jwtbeego "github.com/canghai908/jwt-beego"
 	jsoniter "github.com/json-iterator/go"
+	"net/http"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.Config{
+	EscapeHTML:             false,
+	SortMapKeys:            true,
+	ValidateJsonRawMessage: true,
+}.Froze()
 
-//BaseController use
+// BaseController use
 type BaseController struct {
 	beego.Controller
 }
 
-//Resp Resp all
+func (c *BaseController) ServeJSON() {
+	c.Ctx.Output.Header("Content-Type", "application/json; charset=utf-8")
+	var err error
+	data := c.Data["json"]
+	encoder := json.NewEncoder(c.Ctx.Output.Context.ResponseWriter)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(data)
+	if err != nil {
+		http.Error(c.Ctx.Output.Context.ResponseWriter, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// Resp all
 type Resp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -23,16 +42,13 @@ type Resp struct {
 	} `json:"data"`
 }
 
-//Res var
+// Res var
 var Res = &Resp{}
 
-//API for zabbix
-//var API = &zabbix.API{}
-
-//Tuser is userinfo
+// Tuser is userinfo
 var Tuser string
 
-//Prepare Prepare login
+// Prepare login
 func (c *BaseController) Prepare() {
 	tokenString := c.Ctx.Request.Header.Get("X-Token")
 	et := jwtbeego.EasyToken{}

@@ -11,8 +11,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	workwx "github.com/xen0n/go-workwx"
 	ini "gopkg.in/ini.v1"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 	"zbxtable/utils"
 
 	jsoniter "github.com/json-iterator/go"
@@ -21,8 +23,12 @@ import (
 )
 
 var (
-	API        = &zabbix.API{}
-	json       = jsoniter.ConfigCompatibleWithStandardLibrary
+	API  = &zabbix.API{}
+	json = jsoniter.Config{
+		EscapeHTML:             false,
+		SortMapKeys:            true,
+		ValidateJsonRawMessage: true,
+	}.Froze()
 	RDB        = &redis.Client{}
 	ZBX_VER    string
 	ZBX_V      bool
@@ -95,7 +101,22 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	// init admin
 	DatabaseInit()
-
+	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
+	url := zabbix_web + "/api_jsonrpc.php"
+	dClient := http.Client{
+		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
+	}
+	resp, err := dClient.Get(url)
+	if err != nil {
+		logs.Error("Zabbix Web get request failed:", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusPreconditionFailed {
+		logs.Error("Zabbix Web is incorrectly!")
+		os.Exit(1)
+	}
+	//api变量
 	API = zabbix.NewAPI(zabbix_web + "/api_jsonrpc.php")
 	if zabbix_token != "" {
 		API.Auth = zabbix_token
