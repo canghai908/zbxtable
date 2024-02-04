@@ -52,18 +52,20 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.NumberOfCores = v.Inventory.Software
 			d.CPUUtilization = v.Inventory.SoftwareAppA
 			d.MemoryUtilization = v.Inventory.SoftwareAppB
-			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.MemoryTotal = v.Inventory.SoftwareAppC
+			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.Uptime = v.Inventory.SoftwareAppE
 			d.DateHwInstall = v.Inventory.DateHwInstall
 			d.DateHwExpiry = v.Inventory.DateHwExpiry
 			d.MAC = v.Inventory.MacaddressA
 			d.ResourceID = v.Inventory.SerialnoB
-			d.SerialNo = v.Inventory.SerialnoA
-			d.Location = v.Inventory.Location
-			d.Department = v.Inventory.SiteCity
+			//d.SerialNo = v.Inventory.SerialnoA
+			//d.Location = v.Inventory.Location
+			//d.Department = v.Inventory.SiteCity
 			d.Vendor = v.Inventory.Vendor
-			d.Department = v.Inventory.SiteCity
+			d.Ping = v.Inventory.Poc1Name
+			d.PingLoss = v.Inventory.Poc1Email
+			d.PingSec = v.Inventory.Poc1PhoneA
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				if len(v.Interfaces) != 0 {
 					d.SerialNo = v.Inventory.SerialnoA
@@ -108,17 +110,19 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.DateHwExpiry = v.Inventory.DateHwExpiry
 			d.MAC = v.Inventory.MacaddressA
 			d.ResourceID = v.Inventory.SerialnoB
-			d.SerialNo = v.Inventory.SerialnoA
+			//d.SerialNo = v.Inventory.SerialnoA
 			d.Location = v.Inventory.Location
-			d.Department = v.Inventory.SiteCity
+			//d.Department = v.Inventory.SiteCity
 			d.Vendor = v.Inventory.Vendor
-			d.Department = v.Inventory.SiteCity
 			d.Error = v.Error
+			d.Ping = v.Inventory.Poc1Name
+			d.PingLoss = v.Inventory.Poc1Email
+			d.PingSec = v.Inventory.Poc1PhoneA
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				d.Available = v.SnmpAvailable
 				d.Error = v.SnmpError
 				d.SerialNo = v.Inventory.SerialnoA
-				d.Location = v.Inventory.LocationLon
+				d.Location = v.Inventory.Location
 				d.Department = v.Inventory.SiteCity
 			}
 			if hosts != "" && strings.Contains(d.Name, hosts) {
@@ -249,10 +253,13 @@ func GetHost(hostid string) (Hosts, error) {
 	d.ResourceID = hb[0].Inventory.SerialnoB
 	d.MAC = hb[0].Inventory.MacaddressA
 	d.Department = hb[0].Inventory.SiteCity
+	d.Ping = hb[0].Inventory.Poc1Name
+	d.PingLoss = hb[0].Inventory.Poc1Email
+	d.PingSec = hb[0].Inventory.Poc1PhoneA
 	return d, nil
 }
 
-// host get
+// GetHostInfoTopology host
 func GetHostInfoTopology(hostid string) (Hosts, error) {
 	//获取基本信息
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
@@ -309,6 +316,9 @@ func GetHostInfoTopology(hostid string) (Hosts, error) {
 	d.ResourceID = hb[0].Inventory.SerialnoB
 	d.MAC = hb[0].Inventory.MacaddressA
 	d.Alarm = strconv.FormatInt(count, 10)
+	d.Ping = hb[0].Inventory.Poc1Name
+	d.PingLoss = hb[0].Inventory.Poc1Email
+	d.PingSec = hb[0].Inventory.Poc1PhoneA
 	return d, nil
 }
 
@@ -340,12 +350,11 @@ func GetMonItem(hostid string) (MonItemList, error) {
 	return ApplicationRes, nil
 }
 
-// GetInterfaceItem 网络设备接口获取
-// func GetInterfaceItem(hostid string) ([]InterfaceData, error) {
+// GetInterfaceData 网络设备接口获取
 func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	//zabbix 5.4以后版本处理
 	if ZBX_V {
-		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock", "valuemapid"}
+		ItemsOutput := []string{"itemid", "tags", "value_type", "snmp_oid", "name", "key_", "delay", "units", "lastvalue", "lastclock", "valuemapid"}
 		selectTags := []string{"tag", "value"}
 		Search2Par := make(map[string]string, 1)
 		Search2Par["tag"] = "interface"
@@ -356,8 +365,9 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 			"output":     ItemsOutput,
 			"hostids":    hostid,
 			"selectTags": selectTags,
-			"sortfield":  "name",
-			"tags":       Par})
+			//itemid排序
+			"sortfield": "itemid",
+			"tags":      Par})
 		if err != nil {
 			return InterfaceDataList{}, err
 		}
@@ -370,67 +380,76 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 		if err != nil {
 			return InterfaceDataList{}, err
 		}
-		var TagsList []InterfaceData
-		var Tags InterfaceData
-		//page
-		var ItemList []interface{}
+		//遍历整个数据
+		rowData := make([]InterfaceData, 0)
 		for _, v := range ts {
-			for _, vv := range v.Tags {
-				if vv.Tag == "interface" && strings.Contains(v.Name, vv.Value) {
-					switch {
-					case strings.Contains(v.Name, "Bits received"):
-						v.Name = vv.Value
-						ItemList = append(ItemList, v)
-					}
-				}
-			}
-		}
-		page := len(ts) / len(ItemList)
-		//遍历
-		for k, v := range ts {
-			//遍历tags
+			//遍历Tags列表
 			for _, vv := range v.Tags {
 				//查找tags为interface
 				if vv.Tag == "interface" && strings.Contains(v.Name, vv.Value) {
-					Tags.Name = vv.Value
-					var id int64
-					id, err := strconv.ParseInt(v.Itemid, 10, 64)
-					if err != nil {
-						id = 0
-					}
-					Tags.ID = id
-					switch {
-					case strings.Contains(v.Name, "Bits received"):
-						Tags.BitsReceived = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
-						Tags.Lastclock = v.Lastclock
-					case strings.Contains(v.Name, "Inbound packets discarded"):
-						Tags.InDiscarded = utils.InterfaceStrToInt64((v.Lastvalue))
-					case strings.Contains(v.Name, "Inbound packets with errors"):
-						Tags.InErrors = utils.InterfaceStrToInt64((v.Lastvalue))
-					case strings.Contains(v.Name, "Bits sent"):
-						Tags.BitsSent = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
-					case strings.Contains(v.Name, "Outbound packets discarded"):
-						Tags.OutDiscarded = utils.InterfaceStrToInt64((v.Lastvalue))
-					case strings.Contains(v.Name, "Outbound packets with errors"):
-						Tags.OutErrors = utils.InterfaceStrToInt64((v.Lastvalue))
-					case strings.Contains(v.Name, "Speed"):
-						Tags.Speed = v.Lastvalue
-					case strings.Contains(v.Name, "Operational status"):
-						if v.ValuemapID != "0" {
-							p, _ := GetValueMapByID(v.ValuemapID, v.Lastvalue)
-							Tags.OperationalStatus = p + "(" + v.Lastvalue + ")"
-						} else {
-							Tags.OperationalStatus = v.Lastvalue
+					//fmt.Println(k, vv.Value, v.Name)
+					var existingRow *InterfaceData
+					for i := range rowData {
+						if rowData[i].Name == vv.Value {
+							existingRow = &rowData[i]
+							break
 						}
 					}
-					if (k+1)%page == 0 {
-						TagsList = append(TagsList, Tags)
+					if existingRow == nil {
+						rowData = append(rowData, InterfaceData{
+							Name: vv.Value,
+						})
+						existingRow = &rowData[len(rowData)-1]
+					}
+					switch {
+					//收流量
+					case strings.Contains(v.Name, "Bits received"):
+						p := strings.Split(v.SNMPOid, ".")
+						existingRow.Index = p[len(p)-1]
+						existingRow.Lastclock = v.Lastclock
+						existingRow.BitsReceived = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
+						existingRow.BitsReceivedItemId = v.Itemid
+						existingRow.BitsReceivedValueType = v.ValueType
+					case strings.Contains(v.Name, "Bits sent"):
+						existingRow.BitsSent = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
+						existingRow.BitsSentItemId = v.Itemid
+						existingRow.BitsSentValueType = v.ValueType
+					case strings.Contains(v.Name, "Inbound packets discarded"):
+						existingRow.InDiscarded = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.InDiscardedItemId = v.Itemid
+						existingRow.InDiscardedValueType = v.ValueType
+					case strings.Contains(v.Name, "Inbound packets with errors"):
+						existingRow.InErrors = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.InErrorsItemId = v.Itemid
+						existingRow.InErrorsValueType = v.ValueType
+					case strings.Contains(v.Name, "Outbound packets discarded"):
+						existingRow.OutDiscarded = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.OutDiscardedItemId = v.Itemid
+						existingRow.OutDiscardedValueType = v.ValueType
+					case strings.Contains(v.Name, "Outbound packets with errors"):
+						existingRow.OutErrors = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.OutErrorsItemId = v.Itemid
+						existingRow.OutErrorsValueType = v.ValueType
+					case strings.Contains(v.Name, "Speed"):
+						existingRow.Speed = v.Lastvalue
+					case strings.Contains(v.Name, "Operational status"):
+						var OperationalStatus string
+						if v.ValuemapID != "0" {
+							p, _ := GetValueMapByID(v.ValuemapID, v.Lastvalue)
+							OperationalStatus = p + "(" + v.Lastvalue + ")"
+						} else {
+							OperationalStatus = v.Lastvalue
+						}
+						existingRow.OperationalStatus = OperationalStatus
+						existingRow.OperationalStatusItemId = v.Itemid
+						existingRow.OperationalStatusValueType = v.ValueType
 					}
 				}
 			}
 		}
-		return TagsList, nil
+		return rowData, nil
 	}
+
 	//旧版本处理
 	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock", "valuemapid"}
 	Key2Par := []string{"Interface "}
@@ -459,7 +478,7 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	var list InterfaceDataList
 	var data InterfaceData
 	for _, v := range ApplicationRes {
-		data.ID = utils.InterfaceStrToInt64(v.Applicationid)
+		data.Index = v.Applicationid
 		data.Name = strings.Replace(v.Name, "Interface ", "", -1)
 		data.InDiscarded = utils.InterfaceStrToInt64(v.Items[0].Lastvalue)
 		data.InErrors = utils.InterfaceStrToInt64(v.Items[1].Lastvalue)
@@ -500,7 +519,7 @@ func UpdateHost(Host *Hosts) (MonItemList, error) {
 	return MonItemList{}, nil
 }
 
-// HostsList func
+// GetHostsList  func
 func GetHostsList(HostType string) ([]Hosts, int64, error) {
 	//获取主机列表
 	//OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
@@ -548,6 +567,9 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.MemoryTotal = v.Inventory.SoftwareAppC
 			d.Uptime = v.Inventory.SoftwareAppE
+			d.Ping = v.Inventory.Poc1Name
+			d.PingLoss = v.Inventory.Poc1Email
+			d.PingSec = v.Inventory.Poc1PhoneA
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				if len(v.Interfaces) != 0 {
 					d.SerialNo = v.Inventory.SerialnoA
@@ -585,6 +607,9 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 			d.MemoryUsed = v.Inventory.SoftwareAppD
 			d.MemoryTotal = v.Inventory.SoftwareAppC
 			d.Uptime = v.Inventory.SoftwareAppE
+			d.Ping = v.Inventory.Poc1Name
+			d.PingLoss = v.Inventory.Poc1Email
+			d.PingSec = v.Inventory.Poc1PhoneA
 			d.Alarm = strconv.FormatInt(count, 10)
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				d.Available = v.SnmpAvailable
@@ -599,7 +624,7 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 	return dt, int64(len(dt)), err
 }
 
-// GetLinFileSystemItem linux文件系统
+// GetLinFilesSystemData linux文件系统数据获取
 func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 	if ZBX_V {
 		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
@@ -725,7 +750,7 @@ func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 
 }
 
-// GetLinFileSystemItem 网络设备接口获取
+// GetWinFilesSystemData windows文件系统获取
 func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
 	//大于等于5.4版本处理
 	if ZBX_V {

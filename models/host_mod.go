@@ -1,6 +1,6 @@
 package models
 
-//HostList struct
+// HostList struct
 type HostList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -28,10 +28,10 @@ type HostInterfaceInfo struct {
 	} `json:"data"`
 }
 
-//Params map
+// Params map
 type Params map[string]interface{}
 
-//HostGet struct
+// HostGet struct
 type HostGet struct {
 	ID      int    `json:"id"`
 	Jsonrpc string `json:"jsonrpc"`
@@ -65,7 +65,7 @@ type (
 	InternalType int
 )
 
-//const aliav
+// const aliav
 const (
 	Available   AvailableType = 1
 	Unavailable AvailableType = 2
@@ -79,25 +79,25 @@ const (
 	Internal    InternalType  = 1
 )
 
-//HostGroup struct
+// HostGroup struct
 type HostGroup struct {
 	GroupID  string       `json:"groupid,omitempty"`
 	Name     string       `json:"name"`
 	Internal InternalType `json:"internal,omitempty"`
 }
 
-//HostGroupID struct
+// HostGroupID struct
 type HostGroupID struct {
 	GroupID string `json:"groupid"`
 }
 
-//HostGroupIds type
+// HostGroupIds type
 type HostGroupIds []HostGroupID
 
-//HostInterfaces type
+// HostInterfaces type
 type HostInterfaces []HostInterface
 
-//HostInterface type
+// HostInterface type
 type HostInterface struct {
 	DNS   string        `json:"dns"`
 	IP    string        `json:"ip"`
@@ -107,7 +107,7 @@ type HostInterface struct {
 	UseIP int           `json:"useip"`
 }
 
-//Hosts struct
+// Hosts struct
 type Hosts struct {
 	HostID            string `json:"hostid"` //主机
 	Host              string `json:"host"`
@@ -133,10 +133,13 @@ type Hosts struct {
 	ResourceID        string `json:"resource_id"`        //资产编号
 	MAC               string `json:"mac"`                //mac地址
 	Department        string `json:"department"`         //部门
+	Ping              string `json:"ping"`               //ping
+	PingLoss          string `json:"ping_loss"`          //ping丢包率
+	PingSec           string `json:"ping_sec"`           //ping时延
 	Alarm             string `json:"alarm"`              //告警总数
 }
 
-//Host struct
+// Host struct
 type Host struct {
 	HostID     string `json:"hostid,omitempty"`
 	Host       string `json:"host,omitempty"`
@@ -219,7 +222,7 @@ type Inventory struct {
 	Poc2Notes        string `json:"poc_2_notes"`
 }
 
-//ListHosts struct
+// ListHosts struct
 type ListHosts []struct {
 	AutoCompress string    `json:"auto_compress"`
 	Available    string    `json:"available"`
@@ -294,17 +297,33 @@ type MonItem struct {
 
 type InterfaceDataList []InterfaceData
 type InterfaceData struct {
-	ID                int64   `json:"id"`
-	Name              string  `json:"name"`
-	InDiscarded       int64   `json:"in_discarded"`
-	InErrors          int64   `json:"in_errors"`
-	BitsReceived      float64 `json:"bits_received"`
-	OutDiscarded      int64   `json:"out_discarded"`
-	OutErrors         int64   `json:"out_errors"`
-	BitsSent          float64 `json:"bits_sent"`
-	Speed             string  `json:"speed"`
-	OperationalStatus string  `json:"operational_status"`
-	Lastclock         string  `json:"lastclock"`
+	Index                      string  `json:"index"`
+	Name                       string  `json:"name"`
+	InDiscarded                int64   `json:"in_discarded"`
+	InDiscardedItemId          string  `json:"in_discarded_itemid"`
+	InDiscardedValueType       string  `json:"in_discarded_value_type"`
+	InErrors                   int64   `json:"in_errors"`
+	InErrorsItemId             string  `json:"in_errors_itemid"`
+	InErrorsValueType          string  `json:"in_errors_value_type"`
+	BitsReceived               float64 `json:"bits_received"`
+	BitsReceivedItemId         string  `json:"bits_received_itemid"`
+	BitsReceivedValueType      string  `json:"bits_received_value_type"`
+	BitsSent                   float64 `json:"bits_sent"`
+	BitsSentItemId             string  `json:"bits_sent_itemid"`
+	BitsSentValueType          string  `json:"bits_sent_value_type"`
+	OutDiscarded               int64   `json:"out_discarded"`
+	OutDiscardedItemId         string  `json:"out_discarded_itemid"`
+	OutDiscardedValueType      string  `json:"out_discarded_value_type"`
+	OutErrors                  int64   `json:"out_errors"`
+	OutErrorsItemId            string  `json:"out_errors_itemid"`
+	OutErrorsValueType         string  `json:"out_errors_value_type"`
+	Speed                      string  `json:"speed"`
+	OperationalStatus          string  `json:"operational_status"`
+	OperationalStatusItemId    string  `json:"operational_status_itemid"`
+	OperationalStatusValueType string  `json:"operational_status_value_type"`
+	Lastclock                  string  `json:"lastclock"`
+	Begin                      string  `json:"begin"`
+	End                        string  `json:"end"`
 }
 type WinFilesSystemData struct {
 	ID               int64   `json:"id"`

@@ -11,7 +11,9 @@ import (
 	"github.com/canghai908/zabbix-go"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
+	"net/http"
 	"os"
+	"time"
 	"zbxtable/models"
 	"zbxtable/packfile"
 	"zbxtable/routers"
@@ -124,8 +126,23 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	user := args[1]
 	pass := args[2]
 	token := args[3]
+	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
+	url := address + "/api_jsonrpc.php"
+	dClient := http.Client{
+		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
+	}
+	resp, err := dClient.Get(url)
+	if err != nil {
+		logs.Error("Zabbix Web get request failed:", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusPreconditionFailed {
+		logs.Error("Zabbix Web is incorrectly!")
+		os.Exit(1)
+	}
+	// api定义
 	API = zabbix.NewAPI(address + "/api_jsonrpc.php")
-	address = args[0]
 	if token != "" {
 		API.Auth = token
 	} else {
@@ -138,7 +155,7 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	//zabbix api data get test
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	type params map[string]interface{}
-	_, err := API.CallWithError("host.get", params{
+	_, err = API.CallWithError("host.get", params{
 		"output":  OutputPar,
 		"hostids": "10084",
 	})

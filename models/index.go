@@ -66,7 +66,6 @@ func GetRouter(username string) ([]RouterRes, error) {
 					{Name: "组织管理", Router: "systemGroups", Path: "groups", Icon: "smile",
 						Authority: Authority{Role: "admin", Permission: "['add','edit','delete','update']"}},
 					{Name: "指标映射", Router: "sysInit", Path: "init", Icon: "interaction"},
-					{Name: "映射编辑", Router: "sysInitEdit", Path: "init-edit", Meta: Meta{Highlight: "/system", Invisible: true}},
 					{Name: "出口配置", Router: "systemBandwidth", Path: "bandwidth", Icon: "api"},
 					{Name: "版本信息", Router: "version", Path: "version", Icon: "info"},
 				}},
@@ -136,87 +135,34 @@ func GetRouter(username string) ([]RouterRes, error) {
 	}
 	return []RouterRes{}, nil
 }
+func getCountByType(hostType string) (int64, error) {
+	inventoryParams := make(map[string]string)
+	inventoryParams["type"] = hostType
+	hostCount, err := API.CallWithError("host.get", Params{
+		"output":          "extend",
+		"searchInventory": inventoryParams,
+		"countOutput":     true})
+	if err != nil {
+		return 0, err
+	}
+	count, _ := strconv.ParseInt(hostCount.Result.(string), 10, 64)
+	return count, nil
+}
 
-// GetCountHost func
-func GetCountHost() (info IndexInfo, err error) {
-	hosts, err := API.CallWithError("host.get", Params{"output": "extend",
-		"countOutput": true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	items, err := API.CallWithError("item.get", Params{"output": "extend",
-		"countOutput": true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	problems, err := API.CallWithError("problem.get", Params{"output": "extend",
-		"countOutput": true,
-	})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	triggers, err := API.CallWithError("trigger.get", Params{"output": "extend",
-		"countOutput": true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	//Linux主机
-	LinuxInventoryPar := make(map[string]string)
-	LinuxInventoryPar["type"] = "VM_LIN"
-	LinuxCount, err := API.CallWithError("host.get", Params{
-		"output":          "extend",
-		"searchInventory": LinuxInventoryPar,
-		"countOutput":     true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	//Windows主机
-	WinInventoryPar := make(map[string]string)
-	WinInventoryPar["type"] = "VM_WIN"
-	WinCount, err := API.CallWithError("host.get", Params{
-		"output":          "extend",
-		"searchInventory": WinInventoryPar,
-		"countOutput":     true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	//物理服务器
-	SrvInventoryPar := make(map[string]string)
-	SrvInventoryPar["type"] = "HW_SRV"
-	SrvCount, err := API.CallWithError("host.get", Params{
-		"output":          "extend",
-		"searchInventory": SrvInventoryPar,
-		"countOutput":     true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
-	//网络设备
-	NetInventoryPar := make(map[string]string)
-	NetInventoryPar["type"] = "HW_NET"
-	NetCount, err := API.CallWithError("host.get", Params{
-		"output":          "extend",
-		"searchInventory": NetInventoryPar,
-		"countOutput":     true})
-	if err != nil {
-		return IndexInfo{}, err
-	}
+func GetCountHost() (IndexInfo, error) {
 	d := IndexInfo{}
-	hostsint64, _ := strconv.ParseInt(hosts.Result.(string), 10, 64)
-	d.Hosts = hostsint64
-	itemsint64, _ := strconv.ParseInt(items.Result.(string), 10, 64)
-	d.Items = itemsint64
-	problemsint64, _ := strconv.ParseInt(problems.Result.(string), 10, 64)
-	d.Problems = problemsint64
-	triggersint64, _ := strconv.ParseInt(triggers.Result.(string), 10, 64)
-	d.Triggers = triggersint64
-	linint64, _ := strconv.ParseInt(LinuxCount.Result.(string), 10, 64)
-	d.LinCount = linint64
-	winint64, _ := strconv.ParseInt(WinCount.Result.(string), 10, 64)
-	d.WinCount = winint64
-	netint64, _ := strconv.ParseInt(NetCount.Result.(string), 10, 64)
-	d.NETCount = netint64
-	srvint64, _ := strconv.ParseInt(SrvCount.Result.(string), 10, 64)
-	d.SRVCount = srvint64
+	var err error
+	//d.Hosts, err = getCountByType("host.get")
+	//d.Items, err = getCountByType("item.get")
+	//d.Problems, err = getCountByType("problem.get")
+	//d.Triggers, err = getCountByType("trigger.get")
+	d.LinCount, err = getCountByType("VM_LIN")
+	d.WinCount, err = getCountByType("VM_WIN")
+	d.SRVCount, err = getCountByType("HW_SRV")
+	d.NETCount, err = getCountByType("HW_NET")
+	if err != nil {
+		return IndexInfo{}, err
+	}
 	return d, nil
 }
 
