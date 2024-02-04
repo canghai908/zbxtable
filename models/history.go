@@ -109,6 +109,7 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 	return hb, err
 }
 
+// GetInterfaceGraphData 接口流量数据获取
 func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	var timeFrom, timeTill int64
 	loc, _ := time.LoadLocation("Asia/Shanghai")
@@ -162,36 +163,38 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 		return TrafficData{}, err
 	}
 	var date []string
-	var BitsReceived, BitsSent, InDiscarded, OutDiscarded, InErrors, OutErrors, OperationalStatus []float64
+	var BitsReceived, BitsSent, InDiscarded, OutDiscarded, InErrors,
+		OutErrors, OperationalStatus []float64
+
 	for _, v := range hb {
 		switch v.Itemid {
 		//BitsReceived
 		case data.BitsReceivedItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			BitsReceived = append(BitsReceived, tValue)
 			t, _ := strconv.ParseInt(v.Clock, 10, 64)
 			//时间统一
 			date = append(date, time.Unix(t, 0).Format("01-02 15:04:05"))
 			//BitsSent
 		case data.BitsSentItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			BitsSent = append(BitsSent, tValue)
 		case data.InDiscardedItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			InDiscarded = append(InDiscarded, tValue)
 		case data.OutDiscardedItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			OutDiscarded = append(OutDiscarded, tValue)
 			//errors
 		case data.InErrorsItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			InErrors = append(InErrors, tValue)
 		case data.OutErrorsItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			OutErrors = append(OutErrors, tValue)
 		//operation
 		case data.OperationalStatusItemId:
-			tValue, _ := strconv.ParseFloat(v.Value, 10)
+			tValue, _ := strconv.ParseFloat(v.Value, 64)
 			OperationalStatus = append(OperationalStatus, tValue)
 		}
 	}
@@ -226,6 +229,7 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 		},
 	})
 	trafficLeg := []string{"接收流量", "发送流量"}
+	//表格数据
 	tfSeries.Legend.Data = trafficLeg
 	avgRX, maxRx, minRx, perc95AvgRx, _ := GetFloat64ArrayData(BitsReceived)
 	avgTx, maxTx, minTx, perc95AvgTx, _ := GetFloat64ArrayData(BitsSent)
@@ -330,18 +334,20 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	return se, nil
 }
 
-// GetFloat64ArrayData 计算float64数组的平均值，最大，最小，95%平均值，95%值，保留3位小数
+// GetFloat64ArrayData 计算float64数组的平均值，最大，最小，95%平均值，95%值，并保留3位小数
 func GetFloat64ArrayData(data []float64) (avg, max, min, perc95Avg, perc95Val string) {
-	sort.Float64s(data)
+	//data拷贝到data1
+	data1 := make([]float64, 0)
+	data1 = append(data1, data[:]...)
+	sort.Float64s(data1)
 	var sum float64
-	for _, v := range data {
+	for _, v := range data1 {
 		sum += v
 	}
-
-	avg = strconv.FormatFloat(sum/float64(len(data)), 'f', 2, 64)
-	max = strconv.FormatFloat(data[len(data)-1], 'f', 2, 64)
-	min = strconv.FormatFloat(data[0], 'f', 2, 64)
-	perc95Avg = strconv.FormatFloat(sum/float64(len(data))*0.95, 'f', 2, 64)
-	perc95Val = strconv.FormatFloat(data[int(float64(len(data))*0.95)], 'f', 2, 64)
+	avg = strconv.FormatFloat(sum/float64(len(data1)), 'f', 2, 64)
+	max = strconv.FormatFloat(data1[len(data1)-1], 'f', 2, 64)
+	min = strconv.FormatFloat(data1[0], 'f', 2, 64)
+	perc95Avg = strconv.FormatFloat(sum/float64(len(data1))*0.95, 'f', 2, 64)
+	perc95Val = strconv.FormatFloat(data1[int(float64(len(data1))*0.95)], 'f', 2, 64)
 	return avg, max, min, perc95Avg, perc95Val
 }
