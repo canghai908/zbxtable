@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 	"zbxtable/models"
@@ -96,9 +97,9 @@ func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) err
 	//database type
 	switch dbdriver {
 	case "mysql":
-		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
+		dbURL := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		db, err := sql.Open("mysql", dburl)
+		db, err := sql.Open("mysql", dbURL)
 		if err != nil {
 			return err
 		}
@@ -107,8 +108,12 @@ func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) err
 			return err
 		}
 	case "postgresql":
-		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		db, err := sql.Open("postgres", dburl)
+		dbURL := "postgres://" + dbuser + ":" + url.QueryEscape(dbpass) + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
+		connString, err := url.Parse(dbURL)
+		if err != nil {
+			return err
+		}
+		db, err := sql.Open("postgres", connString.String())
 		if err != nil {
 			return err
 		}
@@ -127,11 +132,11 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	pass := args[2]
 	token := args[3]
 	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
-	url := address + "/api_jsonrpc.php"
+	addURL := address + "/api_jsonrpc.php"
 	dClient := http.Client{
 		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
 	}
-	resp, err := dClient.Get(url)
+	resp, err := dClient.Get(addURL)
 	if err != nil {
 		logs.Error("Zabbix Web get request failed:", err)
 		os.Exit(1)

@@ -336,6 +336,10 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 
 // GetFloat64ArrayData 计算float64数组的平均值，最大，最小，95%平均值，95%值，并保留3位小数
 func GetFloat64ArrayData(data []float64) (avg, max, min, perc95Avg, perc95Val string) {
+	//空数组判断
+	if len(data) == 0 {
+		return "0", "0", "0", "0", "0"
+	}
 	//data拷贝到data1
 	data1 := make([]float64, 0)
 	data1 = append(data1, data[:]...)

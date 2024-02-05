@@ -291,39 +291,40 @@ type MonItem struct {
 		Units      string `json:"units"`
 		Lastvalue  string `json:"lastvalue"`
 		Lastclock  string `json:"lastclock"`
+		SNMPOid    string `json:"snmp_oid"`
 		ValuemapID string `json:"valuemapid"`
 	} `json:"items"`
 }
 
 type InterfaceDataList []InterfaceData
 type InterfaceData struct {
-	Index                      string  `json:"index"`
-	Name                       string  `json:"name"`
-	InDiscarded                int64   `json:"in_discarded"`
-	InDiscardedItemId          string  `json:"in_discarded_itemid"`
-	InDiscardedValueType       string  `json:"in_discarded_value_type"`
-	InErrors                   int64   `json:"in_errors"`
-	InErrorsItemId             string  `json:"in_errors_itemid"`
-	InErrorsValueType          string  `json:"in_errors_value_type"`
-	BitsReceived               float64 `json:"bits_received"`
-	BitsReceivedItemId         string  `json:"bits_received_itemid"`
-	BitsReceivedValueType      string  `json:"bits_received_value_type"`
-	BitsSent                   float64 `json:"bits_sent"`
-	BitsSentItemId             string  `json:"bits_sent_itemid"`
-	BitsSentValueType          string  `json:"bits_sent_value_type"`
-	OutDiscarded               int64   `json:"out_discarded"`
-	OutDiscardedItemId         string  `json:"out_discarded_itemid"`
-	OutDiscardedValueType      string  `json:"out_discarded_value_type"`
-	OutErrors                  int64   `json:"out_errors"`
-	OutErrorsItemId            string  `json:"out_errors_itemid"`
-	OutErrorsValueType         string  `json:"out_errors_value_type"`
-	Speed                      string  `json:"speed"`
-	OperationalStatus          string  `json:"operational_status"`
-	OperationalStatusItemId    string  `json:"operational_status_itemid"`
-	OperationalStatusValueType string  `json:"operational_status_value_type"`
-	Lastclock                  string  `json:"lastclock"`
-	Begin                      string  `json:"begin"`
-	End                        string  `json:"end"`
+	Index                      string `json:"index"`
+	Name                       string `json:"name"`
+	InDiscarded                string `json:"in_discarded"`
+	InDiscardedItemId          string `json:"in_discarded_itemid"`
+	InDiscardedValueType       string `json:"in_discarded_value_type"`
+	InErrors                   string `json:"in_errors"`
+	InErrorsItemId             string `json:"in_errors_itemid"`
+	InErrorsValueType          string `json:"in_errors_value_type"`
+	BitsReceived               string `json:"bits_received"`
+	BitsReceivedItemId         string `json:"bits_received_itemid"`
+	BitsReceivedValueType      string `json:"bits_received_value_type"`
+	BitsSent                   string `json:"bits_sent"`
+	BitsSentItemId             string `json:"bits_sent_itemid"`
+	BitsSentValueType          string `json:"bits_sent_value_type"`
+	OutDiscarded               string `json:"out_discarded"`
+	OutDiscardedItemId         string `json:"out_discarded_itemid"`
+	OutDiscardedValueType      string `json:"out_discarded_value_type"`
+	OutErrors                  string `json:"out_errors"`
+	OutErrorsItemId            string `json:"out_errors_itemid"`
+	OutErrorsValueType         string `json:"out_errors_value_type"`
+	Speed                      string `json:"speed"`
+	OperationalStatus          string `json:"operational_status"`
+	OperationalStatusItemId    string `json:"operational_status_itemid"`
+	OperationalStatusValueType string `json:"operational_status_value_type"`
+	Lastclock                  string `json:"lastclock"`
+	Begin                      string `json:"begin"`
+	End                        string `json:"end"`
 }
 type WinFilesSystemData struct {
 	ID               int64   `json:"id"`

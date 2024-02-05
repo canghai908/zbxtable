@@ -149,6 +149,8 @@ func HostTypeSet(s *System, groupId []string) error {
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
+	//主机类型直接写入，不关联监控指标
+	InventoryPara["type"] = hType
 	//开启主机Inventory为自动，并归类
 	_, err = API.CallWithError("host.massupdate", Params{
 		"hosts":          p,
@@ -157,8 +159,7 @@ func HostTypeSet(s *System, groupId []string) error {
 	if err != nil {
 		return err
 	}
-	//主机类型直接写入，不关联监控指标
-	InventoryPara["type"] = hType
+
 	//其他指标绑定
 	ItemToInventory(s.UptimeID, UptimeID)
 	ItemToInventory(s.CPUCore, CPUCore)

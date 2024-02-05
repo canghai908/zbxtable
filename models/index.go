@@ -271,12 +271,12 @@ func GetOverviewData() (OverviewList, error) {
 		}
 		listmap[v] = ArrayOne
 	}
-	var Newlist OverviewList
-	Newlist.Lin = listmap["VM_LIN"]
-	Newlist.Win = listmap["VM_WIN"]
-	Newlist.NET = listmap["HW_NET"]
-	Newlist.SRV = listmap["HW_SRV"]
-	return Newlist, nil
+	var newList OverviewList
+	newList.Lin = listmap["VM_LIN"]
+	newList.Win = listmap["VM_WIN"]
+	newList.NET = listmap["HW_NET"]
+	newList.SRV = listmap["HW_SRV"]
+	return newList, nil
 }
 func GetEgressData() (EgressList, error) {
 	var ctx = context.Background()

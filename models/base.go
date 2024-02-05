@@ -12,6 +12,7 @@ import (
 	workwx "github.com/xen0n/go-workwx"
 	ini "gopkg.in/ini.v1"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -62,24 +63,29 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	//database chechek
 	switch dbtype {
 	case "mysql":
-		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
+		dbURL := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		err := orm.RegisterDataBase("default", "mysql", dburl)
+		err := orm.RegisterDataBase("default", "mysql", dbURL)
 		if err != nil {
 			logs.Error(err)
 			os.Exit(1)
 		}
 	case "postgresql":
-		dburl := "postgres://" + dbuser + ":" + dbpass + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
-		err := orm.RegisterDataBase("default", "postgres", dburl)
+		dbURl := "postgres://" + dbuser + ":" + url.QueryEscape(dbpass) + "@" + dbhost + ":" + dbport + "/" + dbname + "?sslmode=disable"
+		connString, err := url.Parse(dbURl)
+		if err != nil {
+			logs.Error(err)
+			os.Exit(1)
+		}
+		err = orm.RegisterDataBase("default", "postgres", connString.String())
 		if err != nil {
 			logs.Error(err)
 			os.Exit(1)
 		}
 	default:
-		dburl := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
+		dbURL := dbuser + ":" + dbpass + "@tcp(" + dbhost + ":" +
 			dbport + ")/" + dbname + "?parseTime=true&loc=Asia%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci"
-		err := orm.RegisterDataBase("default", "mysql", dburl)
+		err := orm.RegisterDataBase("default", "mysql", dbURL)
 		if err != nil {
 			logs.Error(err)
 			os.Exit(1)
@@ -102,11 +108,11 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	// init admin
 	DatabaseInit()
 	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
-	url := zabbix_web + "/api_jsonrpc.php"
+	addURL := zabbix_web + "/api_jsonrpc.php"
 	dClient := http.Client{
 		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
 	}
-	resp, err := dClient.Get(url)
+	resp, err := dClient.Get(addURL)
 	if err != nil {
 		logs.Error("Zabbix Web get request failed:", err)
 		os.Exit(1)

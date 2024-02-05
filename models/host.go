@@ -407,27 +407,27 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 						p := strings.Split(v.SNMPOid, ".")
 						existingRow.Index = p[len(p)-1]
 						existingRow.Lastclock = v.Lastclock
-						existingRow.BitsReceived = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
+						existingRow.BitsReceived = v.Lastvalue
 						existingRow.BitsReceivedItemId = v.Itemid
 						existingRow.BitsReceivedValueType = v.ValueType
 					case strings.Contains(v.Name, "Bits sent"):
-						existingRow.BitsSent = utils.InterfaceTrafficeStrTofloat64(v.Lastvalue)
+						existingRow.BitsSent = v.Lastvalue
 						existingRow.BitsSentItemId = v.Itemid
 						existingRow.BitsSentValueType = v.ValueType
 					case strings.Contains(v.Name, "Inbound packets discarded"):
-						existingRow.InDiscarded = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.InDiscarded = v.Lastvalue
 						existingRow.InDiscardedItemId = v.Itemid
 						existingRow.InDiscardedValueType = v.ValueType
 					case strings.Contains(v.Name, "Inbound packets with errors"):
-						existingRow.InErrors = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.InErrors = v.Lastvalue
 						existingRow.InErrorsItemId = v.Itemid
 						existingRow.InErrorsValueType = v.ValueType
 					case strings.Contains(v.Name, "Outbound packets discarded"):
-						existingRow.OutDiscarded = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.OutDiscarded = v.Lastvalue
 						existingRow.OutDiscardedItemId = v.Itemid
 						existingRow.OutDiscardedValueType = v.ValueType
 					case strings.Contains(v.Name, "Outbound packets with errors"):
-						existingRow.OutErrors = utils.InterfaceStrToInt64(v.Lastvalue)
+						existingRow.OutErrors = v.Lastvalue
 						existingRow.OutErrorsItemId = v.Itemid
 						existingRow.OutErrorsValueType = v.ValueType
 					case strings.Contains(v.Name, "Speed"):
@@ -451,7 +451,9 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	}
 
 	//旧版本处理
-	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock", "valuemapid"}
+	//获取网卡应用所有地址
+	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units",
+		"lastvalue", "lastclock", "snmp_oid", "valuemapid"}
 	Key2Par := []string{"Interface "}
 	Search2Par := make(map[string][]string)
 	Search2Par["name"] = Key2Par
@@ -474,27 +476,75 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 	if err != nil {
 		return InterfaceDataList{}, err
 	}
-	//
+
 	var list InterfaceDataList
 	var data InterfaceData
+	//遍历应用内所有接口
 	for _, v := range ApplicationRes {
+		//过滤interface {#IFNAME}接口
+		if len(v.Items) < 7 {
+			continue
+		}
 		data.Index = v.Applicationid
 		data.Name = strings.Replace(v.Name, "Interface ", "", -1)
-		data.InDiscarded = utils.InterfaceStrToInt64(v.Items[0].Lastvalue)
-		data.InErrors = utils.InterfaceStrToInt64(v.Items[1].Lastvalue)
-		data.BitsReceived = utils.InterfaceTrafficeStrTofloat64(v.Items[2].Lastvalue)
-		data.OutDiscarded = utils.InterfaceStrToInt64(v.Items[3].Lastvalue)
-		data.OutErrors = utils.InterfaceStrToInt64(v.Items[4].Lastvalue)
-		data.BitsSent = utils.InterfaceTrafficeStrTofloat64(v.Items[5].Lastvalue)
-		data.Speed = v.Items[6].Lastvalue
-		//valuemap 映射
-		if v.Items[7].ValuemapID != "0" {
-			p, _ := GetValueMapByID(v.Items[7].ValuemapID, v.Items[7].Lastvalue)
-			data.OperationalStatus = p + "(" + v.Items[7].Lastvalue + ")"
-		} else {
-			data.OperationalStatus = v.Items[7].Lastvalue
+		for _, vv := range v.Items {
+			//接口对应
+			//收流量
+			if strings.Contains(vv.Name, "Bits received") {
+				data.BitsReceived = vv.Lastvalue
+				data.Lastclock = vv.Lastclock
+				index := strings.Split(vv.SNMPOid, ".")
+				data.Index = index[len(index)-1]
+				data.BitsReceivedItemId = vv.Itemid
+				data.BitsReceivedValueType = vv.ValueType
+			}
+			//发流量
+			if strings.Contains(vv.Name, "Bits sent") {
+				data.BitsSent = vv.Lastvalue
+				data.BitsSentItemId = vv.Itemid
+				data.BitsSentValueType = vv.ValueType
+
+			}
+			//Inbound packets with errors
+			if strings.Contains(vv.Name, "Inbound packets with errors") {
+				data.InErrors = vv.Lastvalue
+				data.InErrorsItemId = vv.Itemid
+				data.InErrorsValueType = vv.ValueType
+			}
+			//Outbound packets with errors
+			if strings.Contains(vv.Name, "Outbound packets with errors") {
+				data.OutErrors = vv.Lastvalue
+				data.OutErrorsItemId = vv.Itemid
+				data.OutErrorsValueType = vv.ValueType
+			}
+			//Outbound packets discarded
+			if strings.Contains(vv.Name, "Outbound packets discarded") {
+				data.OutDiscarded = vv.Lastvalue
+				data.OutDiscardedItemId = vv.Itemid
+				data.OutDiscardedValueType = vv.ValueType
+			}
+			//Inbound packets discarded
+			if strings.Contains(vv.Name, "Inbound packets discarded") {
+				data.InDiscarded = vv.Lastvalue
+				data.InDiscardedItemId = vv.Itemid
+				data.InDiscardedValueType = vv.ValueType
+			}
+			//Speed
+			if strings.Contains(vv.Name, "Speed") {
+				data.Speed = vv.Lastvalue
+			}
+			//Operational status
+			if strings.Contains(vv.Name, "Operational status") {
+				if vv.ValuemapID != "0" {
+					p, _ := GetValueMapByID(vv.ValuemapID, vv.Lastvalue)
+					data.OperationalStatus = p + "(" + vv.Lastvalue + ")"
+				} else {
+					data.OperationalStatus = vv.Lastvalue
+				}
+				data.OperationalStatusItemId = vv.Itemid
+				data.OperationalStatusValueType = vv.ValueType
+			}
 		}
-		data.Lastclock = v.Items[2].Lastclock
 		list = append(list, data)
 	}
 	return list, nil
