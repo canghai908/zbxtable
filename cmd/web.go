@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -131,10 +132,16 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	user := args[1]
 	pass := args[2]
 	token := args[3]
+
+	//TLS SkipVerify
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
 	addURL := address + "/api_jsonrpc.php"
 	dClient := http.Client{
-		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
+		Transport: transport,
+		Timeout:   3 * time.Second, // 设置超时时间为 3 秒
 	}
 	resp, err := dClient.Get(addURL)
 	if err != nil {

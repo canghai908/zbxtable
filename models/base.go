@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
@@ -107,10 +108,15 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	// init admin
 	DatabaseInit()
+	//TLS SkipVerify
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
 	addURL := zabbix_web + "/api_jsonrpc.php"
 	dClient := http.Client{
-		Timeout: 3 * time.Second, // 设置超时时间为 3 秒
+		Transport: transport,
+		Timeout:   3 * time.Second, // 设置超时时间为 3 秒
 	}
 	resp, err := dClient.Get(addURL)
 	if err != nil {
@@ -183,11 +189,10 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	logs.Info("Redis connected!")
 	//gen tpl
-
 	//
 	AgentId, err := beego.AppConfig.Int64("wechat_agentid")
 	if err != nil {
-		logs.Error(err)
+		logs.Error("wechat_agentid get error:", err)
 		os.Exit(1)
 	}
 	client := workwx.New(beego.AppConfig.String("wechat_corpid"))
