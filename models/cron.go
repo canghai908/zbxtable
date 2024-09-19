@@ -339,7 +339,6 @@ func GetTypeHostList() error {
 		p, _, err := GetHostsList(v)
 		if err != nil {
 			logs.Error(err)
-			return err
 			continue
 		}
 		//hosts info to redis
@@ -350,7 +349,6 @@ func GetTypeHostList() error {
 		err = RDB.Set(ctx, v+"_OVERVIEW", string(hostsdata), 3600*time.Second).Err()
 		if err != nil {
 			logs.Error(err)
-			return err
 			continue
 		}
 		//inventor info to redis
@@ -375,7 +373,6 @@ func GetTypeHostList() error {
 		err = RDB.Set(ctx, v+"_INVENTORY", string(data), 3600*time.Second).Err()
 		if err != nil {
 			logs.Error(err)
-			return err
 			continue
 		}
 	}
@@ -392,7 +389,7 @@ func EgressCache() error {
 	}
 	var itemlist []string
 	//空返回
-	if v.InOne == "" || v.OutOne == "" || v.InTwo == "" || v.OutTwo == "" {
+	if v.InOne == "" && v.OutOne == "" && v.InTwo == "" && v.OutTwo == "" {
 		var dList EgressList
 		dList.NameOne = v.NameOne
 		dList.InOne = "0Kb/s"

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-//GetItemByKey bye key
+// GetItemByKey bye key
 func GetItemByKey(hostid, key string) (item []Item, err error) {
 	par := make(map[string]string)
 	par["key_"] = key
@@ -33,7 +33,7 @@ func GetItemByKey(hostid, key string) (item []Item, err error) {
 	return hb, err
 }
 
-//GetAllItemByHostID func
+// GetAllItemByHostID func
 func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	output := []string{"itemid", "name", "key_", "value_type", "units", "hostid"}
 	rep, err := API.Call("item.get", Params{"output": output, "sortfield": "name",
@@ -58,14 +58,14 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	return hb, int64(len(hb)), err
 }
 
-//GetAllItemByHostID func
+// GetAllItemByHostID func
 func GetAllTrafficeItemByHostID(hostid string) (item []interface{}, count int64, err error) {
 	var ItemList []interface{}
 	if ZBX_V {
 		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
 		selectTags := []string{"tag", "value"}
 		Search2Par := make(map[string]string, 1)
-		Search2Par["tag"] = "interface"
+		Search2Par["tag"] = "Interface"
 		Search2Par["value"] = ""
 		Par := make(map[int]interface{})
 		Par[0] = Search2Par
@@ -89,7 +89,7 @@ func GetAllTrafficeItemByHostID(hostid string) (item []interface{}, count int64,
 		}
 		for _, v := range ts {
 			for _, vv := range v.Tags {
-				if vv.Tag == "interface" {
+				if vv.Tag == "Interface" {
 					switch {
 					case strings.Contains(v.Name, "Bits received"):
 						ItemList = append(ItemList, v)
@@ -132,7 +132,7 @@ func GetAllTrafficeItemByHostID(hostid string) (item []interface{}, count int64,
 	return ItemList, int64(len(ItemList)), nil
 }
 
-//GetAllItemByHostID func
+// GetAllItemByHostID func
 func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count int64, err error) {
 	var ItemList []interface{}
 	if ZBX_V {
@@ -206,7 +206,7 @@ func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count in
 	return ItemList, int64(len(ItemList)), nil
 }
 
-//GetFlowItemByHostID func
+// GetFlowItemByHostID func
 func GetFlowItemByHostID(hostid string) (item []Item, count int64, err error) {
 	output := []string{"itemid", "name", "key_", "value_type", "units"}
 	rep, err := API.Call("item.get", Params{"output": output, "" +
@@ -233,7 +233,7 @@ func GetFlowItemByHostID(hostid string) (item []Item, count int64, err error) {
 	return hb, int64(len(hb)), err
 }
 
-//GetAllItemByHostID func
+// GetAllItemByHostID func
 func GetItemByID(itemid string) (item []Item, err error) {
 	if itemid == "" {
 		return []Item{}, err
@@ -260,7 +260,7 @@ func GetItemByID(itemid string) (item []Item, err error) {
 	return hb, err
 }
 
-//GetValueMap
+// GetValueMap
 func GetValueMapByID(id, value string) (newvalue string, err error) {
 	if id == "" {
 		return "", err
@@ -304,7 +304,7 @@ func GetValueMapByID(id, value string) (newvalue string, err error) {
 
 }
 
-//GetItemByItemids
+// GetItemByItemids
 func GetItemByIDS(itemids []string) (item []Item, err error) {
 	if len(itemids) == 0 {
 		return []Item{}, err

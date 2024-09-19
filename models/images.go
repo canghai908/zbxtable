@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
+	"encoding/base64"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"github.com/signintech/gopdf"
 )
 
-//SaveImagePDF 导出图形到PDF
+// SaveImagePDF 导出图形到PDF
 func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	pdf := gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{PageSize: gopdf.Rect{W: 595.28, H: 841.89}})
@@ -97,7 +98,7 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-//GetPdfImageHolder func
+// GetPdfImageHolder func
 func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup, pdfHolder chan<- gopdf.ImageHolder) {
 	defer wg.Done()
 	//请求图形
@@ -150,4 +151,66 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 		}
 		pdfHolder <- imgH2
 	}
+}
+
+func GetPNGGraph(GraphID, start, end string) (png string, err error) {
+	//请求图形
+	ZabbixWeb := GetConfKey("zabbix_web")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client1 := &http.Client{tr, nil,
+		JAR, 99999999999992}
+	imgurl := ZabbixWeb + "/chart2.php?"
+	data := url.Values{}
+	URL, err := url.Parse(imgurl)
+	if err != nil {
+		logs.Error(err)
+		return "", err
+	}
+	data.Set("graphid", GraphID)
+	data.Set("from", start)
+	data.Set("to", end)
+	data.Set("profileIdx", "web.graphs.filter")
+	//data.Set("profileIdx2", "200")
+	data.Set("high", "200")
+	data.Set("width", "800")
+	//不显示图形名称
+	data.Set("widget_view", "1")
+	data.Set("resolve_macros", "1")
+	//Encode rul
+	URL.RawQuery = data.Encode()
+	urlPath := URL.String()
+	request, err := http.NewRequest("GET", urlPath, nil)
+	if err != nil {
+		logs.Error(err)
+		return "", err
+	}
+	request.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	request.Header.Add("Accept-Encoding", "gzip, deflate")
+	request.Header.Add("Accept-Language", "zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3")
+	request.Header.Add("Connection", "keep-alive")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
+	response1, err := client1.Do(request)
+	if err != nil {
+		logs.Error(err)
+		return "", err
+	}
+	defer response1.Body.Close()
+	if response1.StatusCode == 200 {
+		var reader io.Reader
+		switch response1.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, _ = gzip.NewReader(response1.Body)
+		default:
+			reader = response1.Body
+		}
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			return "", err
+		}
+		res := base64.StdEncoding.EncodeToString(body)
+		return res, nil
+	}
+	return "", err
 }

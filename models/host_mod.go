@@ -357,3 +357,7 @@ type MonLinData struct {
 	Interfaces      []InterfaceData      `json:"interfaces"`
 	InterfacesTotal int64                `json:"interfaces_total"`
 }
+type GraphData struct {
+	GraphId string `json:"graphid"`
+	Name    string `json:"name"`
+}

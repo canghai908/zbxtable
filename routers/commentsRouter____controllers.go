@@ -252,6 +252,15 @@ func init() {
 
 	beego.GlobalControllerRouter["zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:HostController"],
 		beego.ControllerComments{
+			Method:           "GetGraph",
+			Router:           "/graph/:hostid",
+			AllowHTTPMethods: []string{"post"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["zbxtable/controllers:HostController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:HostController"],
+		beego.ControllerComments{
 			Method:           "GetMonInterface",
 			Router:           "/interface/:hostid",
 			AllowHTTPMethods: []string{"get"},

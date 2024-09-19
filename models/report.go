@@ -10,12 +10,12 @@ import (
 	"zbxtable/utils"
 )
 
-//TableName alarm
+// TableName alarm
 func (t *Report) TableName() string {
 	return TableName("report")
 }
 
-//get id
+// GetReportsByID f
 func GetReportsByID(id int) (v *Report, err error) {
 	o := orm.NewOrm()
 	v = &Report{ID: id}
@@ -25,7 +25,7 @@ func GetReportsByID(id int) (v *Report, err error) {
 	return nil, err
 }
 
-//get all
+// get all
 func GetALlReport() (cnt int64, system []Report, err error) {
 	o := orm.NewOrm()
 	var sys []Report
