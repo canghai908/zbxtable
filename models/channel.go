@@ -12,7 +12,7 @@ import (
 	"zbxtable/utils"
 )
 
-//alert gen by rules
+// alert gen by rules
 func GenAlert(alarm *Alarm) bool {
 	o := orm.NewOrm()
 	var rules []Rule
@@ -143,31 +143,41 @@ func GenAlert(alarm *Alarm) bool {
 	return true
 }
 
-func GetEventUser(groupIds, userIds, channel string) (list []string, err error) {
+// GetEventUser 查找事件用户信息
+func GetEventUser(groupIds, userIds string) (list []string, err error) {
 	o := orm.NewOrm()
-	//get grouids
-	var group UserGroup
-	var gList []UserGroup
-	gids := strings.Split(groupIds, ",")
-	_, err = o.QueryTable(group).Filter("id__in", gids).All(&gList)
-	if err != nil {
-		return []string{}, err
-	}
-	//get group userid
+	//用户组信息,判断用户组是否为空
 	var guidList []string
-	if len(gList) != 0 {
-		for _, v := range gList {
-			ids := strings.Split(v.Member, ",")
-			for _, vv := range ids {
-				guidList = append(guidList, vv)
+	if groupIds != "" {
+		var group UserGroup
+		var gList []UserGroup
+		//组分隔
+		gids := strings.Split(groupIds, ",")
+		_, err = o.QueryTable(group).Filter("id__in", gids).All(&gList)
+		if err != nil {
+			return
+		}
+		//get group userid
+		if len(gList) != 0 {
+			for _, v := range gList {
+				ids := strings.Split(v.Member, ",")
+				for _, vv := range ids {
+					guidList = append(guidList, vv)
+				}
 			}
 		}
 	}
+	var ids []string
 	uid := strings.Split(userIds, ",")
+	if len(guidList) != 0 {
+		//添加用户组
+		ids = utils.UniqueArr(utils.MergeArr(guidList, uid))
+	} else {
+		//添加用户
+		ids = uid
+	}
 	//get all userids unique
-	ids := utils.UniqueArr(utils.MergeArr(guidList, uid))
 	if len(ids) != 0 {
-
 		var user Manager
 		var plist []Manager
 		_, err = o.QueryTable(user).Filter("id__in", ids).All(&plist, "id", "username",
@@ -204,8 +214,8 @@ func sendEvent(event *Event) {
 			}
 			continue
 		}
-		//popuser
-		toUsers, err := GetEventUser(event.GroupIds, event.UserIds, v)
+		//GetEventUser
+		toUsers, err := GetEventUser(event.GroupIds, event.UserIds)
 		if err != nil {
 			logs.Error(err)
 			return
@@ -237,7 +247,7 @@ func sendEvent(event *Event) {
 	}
 }
 
-//mut
+// mut
 func IsMuted(event *Event) bool {
 	o := orm.NewOrm()
 	var rules []Rule
@@ -280,7 +290,7 @@ func IsMuted(event *Event) bool {
 	return false
 }
 
-//IsMuteTime not
+// IsMuteTime not
 func IsMuteTime(event *Event, rule *Rule) bool {
 	stime, _ := utils.ParTime(rule.Stime)
 	etime, _ := utils.ParTime(rule.Etime)

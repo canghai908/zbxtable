@@ -3,10 +3,12 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/astaxie/beego/logs"
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"zbxtable/utils"
 )
 
@@ -15,8 +17,12 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
 	SearchInventoryInventoryPar := make(map[string]string)
 	SearchInventoryInventoryPar["type"] = HostType
+	filterPar := make(map[string]string)
+	filterPar["status"] = "0"
+	//old version
 	rep, err := API.CallWithError("host.get", Params{
 		"output":           "extend",
+		"filter":           filterPar,
 		"searchInventory":  SearchInventoryInventoryPar,
 		"selectInventory":  "extend",
 		"selectInterfaces": SelectInterfacesPar})
@@ -676,6 +682,7 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 
 // GetLinFilesSystemData linux文件系统数据获取
 func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
+	//新版本
 	if ZBX_V {
 		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
 		selectTags := []string{"tag", "value"}
@@ -702,63 +709,54 @@ func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 		if err != nil {
 			return []LinFilesSystemData{}, err
 		}
-		var TagsList []LinFilesSystemData
-		var Tags LinFilesSystemData
-		var count, rootcount int64
-		count = 0
-		rootcount = 0
-		//
+		var linFilesystemData []LinFilesSystemData
+		filesystemData := make(map[string]map[string]interface{})
+		//遍历文件系统数据
 		for _, v := range ts {
 			for _, vv := range v.Tags {
 				if vv.Tag == "filesystem" || strings.Contains(vv.Value, "Filesystem") {
-					//root /
-					if vv.Value == "/" {
-						Tags.Name = vv.Value
-						switch {
-						case v.Key == "vfs.fs.size["+vv.Value+",used]":
-							Tags.UsedSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							rootcount++
-						case v.Key == "vfs.fs.inode["+vv.Value+",pfree]":
-							Tags.InodesPUsed = utils.Float64Round2(float64(100) - utils.DecFloat64Round2(v.Lastvalue))
-							Tags.Lastclock = v.Lastclock
-							rootcount++
-						case v.Key == "vfs.fs.size["+vv.Value+",pused]":
-							Tags.SpaceUtilization = utils.DecFloat64Round2(v.Lastvalue)
-							rootcount++
-						case v.Key == "vfs.fs.size["+vv.Value+",total]":
-							Tags.TotalSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							rootcount++
-						}
-						if rootcount%4 == 0 {
-							TagsList = append(TagsList, Tags)
-
-						}
-					} else {
-						//if strings.Contains(v.Name, vv.Value) && vv.Value != "/" {
-						Tags.Name = vv.Value
-						switch {
-						case v.Key == "vfs.fs.size["+vv.Value+",used]":
-							Tags.UsedSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							count++
-						case v.Key == "vfs.fs.inode["+vv.Value+",pfree]":
-							Tags.InodesPUsed = utils.Float64Round2(float64(100) - utils.DecFloat64Round2(v.Lastvalue))
-							Tags.Lastclock = v.Lastclock
-							count++
-						case v.Key == "vfs.fs.size["+vv.Value+",pused]":
-							Tags.SpaceUtilization = utils.DecFloat64Round2(v.Lastvalue)
-							count++
-						case v.Key == "vfs.fs.size["+vv.Value+",total]":
-							Tags.TotalSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							count++
-						}
-						if count%4 == 0 {
-							TagsList = append(TagsList, Tags)
-						} //}
+					fsData, ok := filesystemData[vv.Value]
+					if !ok {
+						fsData = make(map[string]interface{})
+						filesystemData[vv.Value] = fsData
+					}
+					switch v.Key {
+					case "vfs.fs.size[" + vv.Value + ",used]", "vfs.fs.dependent.size[" + vv.Value + ",used]":
+						fsData["UsedSpace"] = utils.InterfaceStrToInt64(v.Lastvalue)
+					case "vfs.fs.inode[" + vv.Value + ",pfree]", "vfs.fs.dependent.inode[" + vv.Value + ",pfree]":
+						fsData["InodesPUsed"] = utils.Float64Round2(float64(100) - utils.DecFloat64Round2(v.Lastvalue))
+						fsData["Lastclock"] = v.Lastclock
+					case "vfs.fs.size[" + vv.Value + ",pused]", "vfs.fs.dependent.size[" + vv.Value + ",pused]":
+						fsData["SpaceUtilization"] = utils.DecFloat64Round2(v.Lastvalue)
+					case "vfs.fs.size[" + vv.Value + ",total]", "vfs.fs.dependent.size[" + vv.Value + ",total]":
+						fsData["TotalSpace"] = utils.InterfaceStrToInt64(v.Lastvalue)
 					}
 				}
 			}
 		}
-		return TagsList, nil
+		// 将 map 转换为 LinFilesSystemData 切片
+		for name, data := range filesystemData {
+			fsData := LinFilesSystemData{
+				Name: name,
+			}
+			if usedSpace, ok := data["UsedSpace"].(int64); ok {
+				fsData.UsedSpace = usedSpace
+			}
+			if inodesPUsed, ok := data["InodesPUsed"].(float64); ok {
+				fsData.InodesPUsed = inodesPUsed
+			}
+			if spaceUtilization, ok := data["SpaceUtilization"].(float64); ok {
+				fsData.SpaceUtilization = spaceUtilization
+			}
+			if totalSpace, ok := data["TotalSpace"].(int64); ok {
+				fsData.TotalSpace = totalSpace
+			}
+			if lastclock, ok := data["Lastclock"].(string); ok {
+				fsData.Lastclock = lastclock
+			}
+			linFilesystemData = append(linFilesystemData, fsData)
+		}
+		return linFilesystemData, nil
 	}
 	//5.4以下版本处理
 	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
@@ -799,6 +797,9 @@ func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 	return list, nil
 
 }
+func (fsData *LinFilesSystemData) isComplete() bool {
+	return fsData.UsedSpace != 0 && fsData.InodesPUsed != 0 && fsData.SpaceUtilization != 0 && fsData.TotalSpace != 0
+}
 
 // GetWinFilesSystemData windows文件系统获取
 func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
@@ -824,41 +825,56 @@ func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
 		if err != nil {
 			return []WinFilesSystemData{}, err
 		}
-
 		var ts []MonIts
 		err = json.Unmarshal(ApplicationResByte, &ts)
 		if err != nil {
 			return []WinFilesSystemData{}, err
 		}
-		var TagsList []WinFilesSystemData
-		var Tags WinFilesSystemData
-		var count int64
-		count = 0
+		var fileList []WinFilesSystemData
+		filesystemData := make(map[string]map[string]interface{})
 		for _, v := range ts {
 			for _, vv := range v.Tags {
 				if vv.Tag == "filesystem" {
 					if strings.Contains(v.Name, vv.Value) {
-						Tags.Name = vv.Value
-						switch {
-						case v.Key == "vfs.fs.size["+vv.Value+",pused]":
-							Tags.SpaceUtilization = utils.DecFloat64Round2(v.Lastvalue)
-							Tags.Lastclock = v.Lastclock
-							count++
-						case v.Key == "vfs.fs.size["+vv.Value+",total]":
-							Tags.TotalSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							count++
-						case v.Key == "vfs.fs.size["+vv.Value+",used]":
-							Tags.UsedSpace = utils.InterfaceStrToInt64(v.Lastvalue)
-							count++
+						fsData, ok := filesystemData[vv.Value]
+						if !ok {
+							fsData = make(map[string]interface{})
+							filesystemData[vv.Value] = fsData
 						}
-						if count%3 == 0 {
-							TagsList = append(TagsList, Tags)
+						switch v.Key {
+						case "vfs.fs.size[" + vv.Value + ",pused]", "vfs.fs.dependent.size[" + vv.Value + ",pused]":
+							fmt.Println("vfs.fs.size["+vv.Value+",pused]", v.Lastvalue)
+							fsData["SpaceUtilization"] = utils.DecFloat64Round2(v.Lastvalue)
+							fsData["Lastclock"] = v.Lastclock
+						case "vfs.fs.size[" + vv.Value + ",total]", "vfs.fs.dependent.size[" + vv.Value + ",total]":
+							fsData["TotalSpace"] = utils.InterfaceStrToInt64(v.Lastvalue)
+						case "vfs.fs.size[" + vv.Value + ",used]", "vfs.fs.dependent.size[" + vv.Value + ",used]":
+							fsData["UsedSpace"] = utils.InterfaceStrToInt64(v.Lastvalue)
 						}
 					}
 				}
 			}
 		}
-		return TagsList, nil
+		// 将 map 转换为 LinFilesSystemData 切片
+		for name, data := range filesystemData {
+			fsData := WinFilesSystemData{
+				Name: name,
+			}
+			if usedSpace, ok := data["UsedSpace"].(int64); ok {
+				fsData.UsedSpace = usedSpace
+			}
+			if spaceUtilization, ok := data["SpaceUtilization"].(float64); ok {
+				fsData.SpaceUtilization = spaceUtilization
+			}
+			if totalSpace, ok := data["TotalSpace"].(int64); ok {
+				fsData.TotalSpace = totalSpace
+			}
+			if lastclock, ok := data["Lastclock"].(string); ok {
+				fsData.Lastclock = lastclock
+			}
+			fileList = append(fileList, fsData)
+		}
+		return fileList, nil
 	}
 	//5.4以下版本处理
 	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
@@ -931,4 +947,62 @@ func GetMonLinData(hostid string) (mon MonLinData, err error) {
 	mo.Interfaces = interfaces
 	mo.InterfacesTotal = int64(len(interfaces))
 	return mo, nil
+}
+
+type PNGData struct {
+	Name string `json:"name"`
+	Png  string `json:"png"`
+}
+type GraphReq struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
+// GetGraphData 查看主机的图形数据
+func GetGraphData(hostId, start, end string) ([]PNGData, error) {
+	var pngData []PNGData
+	selectItemsPar := []string{"graphid", "name"}
+	//Key2Par := []string{"system.cpu.util", "vm.memory.utilization", "vm.memory.size"}
+	//Search2Par := make(map[string][]string)
+	//Search2Par["key_"] = Key2Par
+	p, err := API.CallWithError("graph.get", Params{
+		"output":      selectItemsPar,
+		"hostids":     hostId,
+		"searchByAny": true,
+		//"search":      Search2Par,
+		"sortfield": "graphid"})
+	if err != nil {
+		return pngData, nil
+	}
+	st, err := json.Marshal(p.Result)
+	if err != nil {
+		return pngData, nil
+	}
+	var hba []GraphData
+	err = json.Unmarshal(st, &hba)
+	if err != nil {
+		return pngData, nil
+
+	}
+	var wg sync.WaitGroup
+	pngDataChan := make(chan PNGData, len(hba))
+	for _, v := range hba {
+		wg.Add(1)
+		go func(v GraphData) {
+			defer wg.Done()
+			png, _ := GetPNGGraph(v.GraphId, start, end)
+			pngDataChan <- PNGData{
+				Name: v.Name,
+				Png:  png,
+			}
+		}(v)
+	}
+	go func() {
+		wg.Wait()
+		close(pngDataChan)
+	}()
+	for data := range pngDataChan {
+		pngData = append(pngData, data)
+	}
+	return pngData, nil
 }

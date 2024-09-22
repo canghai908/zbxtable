@@ -35,6 +35,8 @@ func GetRouter(username string) ([]RouterRes, error) {
 			{Router: "server", Path: "server", Name: "硬件管理", Icon: "database", Meta: Meta{Page: Page{CacheAble: false}},
 				Children: []TRouterChildren{
 					{Name: "物理服务器", Router: "srvList", Path: "list", Icon: "mobile"},
+					{Name: "光纤交换机", Router: "sanList", Path: "fiber", Icon: "mobile"},
+					{Name: "存储设备", Router: "stoList", Path: "storage", Icon: "mobile"},
 					{Name: "设备详情", Router: "srvDetail", Path: "detail", Meta: Meta{Highlight: "/server", Invisible: true}},
 				}},
 			{Router: "alarm", Path: "alarm", Name: "告警管理", Icon: "alert", Meta: Meta{Page: Page{CacheAble: false}},
@@ -260,14 +262,13 @@ func GetOverviewData() (OverviewList, error) {
 		var ArrayOne []Hosts
 		p, err := RDB.Get(ctx, v+"_OVERVIEW").Result()
 		if err != nil {
-			return OverviewList{}, err
 			logs.Error(err)
 			continue
 		}
 		err = json.Unmarshal([]byte(p), &ArrayOne)
 		if err != nil {
 			logs.Error(err)
-			return OverviewList{}, err
+			continue
 		}
 		listmap[v] = ArrayOne
 	}

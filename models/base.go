@@ -167,8 +167,8 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	logs.Info("Zabbix API connected！Zabbix version:", version)
 
-	//zabbix web login
-	//	LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
+	//	zabbix web login
+	LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
 
 	//redis
 	res_db, err := strconv.Atoi(redis_db)

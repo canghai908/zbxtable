@@ -24,6 +24,7 @@ func (c *HostController) URLMapping() {
 	c.Mapping("getOneInterface", c.GetOneInterface)
 	c.Mapping("GetMonWinFileSystem", c.GetMonWinFileSystem)
 	c.Mapping("GetMonLinFileSystem", c.GetMonLinFileSystem)
+	c.Mapping("GetGraph", c.GetGraph)
 }
 
 // Post ...
@@ -80,8 +81,6 @@ func (c *HostController) GetOne() {
 		c.Data["json"] = v.Error
 	} else {
 		c.Data["json"] = v
-		c.ServeJSON()
-		return
 	}
 	c.ServeJSON()
 	return
@@ -255,6 +254,38 @@ func (c *HostController) GetMonLinFileSystem() {
 	HostInterfaceRes.Message = "获取数据成功"
 	HostInterfaceRes.Data.Items = hs
 	HostInterfaceRes.Data.Total = 2
+	c.Data["json"] = HostInterfaceRes
+	c.ServeJSON()
+}
+
+// GetGraph
+// @Title 查看主机图形
+// @Description 查看图形
+// @Param	X-Token	header  string	true	"x-token in header"
+// @Param	hostid	path	string	ture	"hostid"
+// @Success 200 {object} models.MonItemList
+// @Failure 403
+// @router /graph/:hostid [post]
+func (c *HostController) GetGraph() {
+	var v models.GraphReq
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &v)
+	if err != nil {
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = err.Error()
+		c.Data["json"] = HostInterfaceRes
+		c.ServeJSON()
+	}
+	hostId := c.Ctx.Input.Param(":hostid")
+	hs, err := models.GetGraphData(hostId, v.Start, v.End)
+	if err != nil {
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = err.Error()
+	} else {
+		HostInterfaceRes.Code = 200
+		HostInterfaceRes.Message = "获取数据成功"
+		HostInterfaceRes.Data.Items = hs
+		HostInterfaceRes.Data.Total = int64(len(hs))
+	}
 	c.Data["json"] = HostInterfaceRes
 	c.ServeJSON()
 }

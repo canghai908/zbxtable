@@ -126,7 +126,7 @@ func UpdateRule(m *Rule, tuser string) error {
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
 	_, err = o.Update(m, "name", "tenant_id", "conditions", "s_week", "m_type",
-		"s_time", "e_time", "channel", "user_ids", "group_ids", "note", "status", "status")
+		"s_time", "e_time", "channel", "user_ids", "group_ids", "note", "status")
 	if err != nil {
 		return err
 	}
