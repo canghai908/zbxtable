@@ -2,6 +2,10 @@
 Description=zbxtable
 After=syslog.target
 After=network.target
+After=mysql.service
+After=mysqld.service
+After=mariadb.service
+After=postgresql.service
 
 [Service]
 PIDFile=/tmp/zbxtable.pid
