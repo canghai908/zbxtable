@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/astaxie/beego"
@@ -19,6 +18,8 @@ import (
 	"time"
 	"zbxtable/utils"
 
+	"context"
+	"errors"
 	jsoniter "github.com/json-iterator/go"
 	_ "github.com/lib/pq"
 	"os"
@@ -92,12 +93,13 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 			os.Exit(1)
 		}
 	}
+	logs.Info("Database connected!")
 	//创建表
 	orm.RegisterModel(
 		new(Alarm), new(Manager), new(Topology),
 		new(System), new(Report), new(Egress),
 		new(TaskLog), new(Rule), new(UserGroup),
-		new(EventLog))
+		new(EventLog), new(Config), new(Menu))
 	err := orm.RunSyncdb("default", false, true)
 	if err != nil {
 		logs.Error(err)
@@ -106,8 +108,27 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	if GetConfKey("runmode") == "dev" {
 		orm.Debug = true
 	}
-	// init admin
+	// 基础数据初始化
 	DatabaseInit()
+	//redis 初始化
+	redisDB, err := strconv.Atoi(redis_db)
+	if err != nil {
+		logs.Error(err)
+		os.Exit(1)
+	}
+	RDB = redis.NewClient(&redis.Options{
+		Addr:     redis_host + ":" + redis_port,
+		Password: redis_pass, // no password set
+		DB:       redisDB,    // use default DB
+	})
+	var ctx = context.Background()
+	_, err = RDB.Ping(ctx).Result()
+	if err != nil {
+		logs.Error(err)
+		os.Exit(1)
+	}
+	logs.Info("Redis connected!")
+
 	//TLS SkipVerify
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -151,12 +172,11 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		os.Exit(1)
 	}
 	//Zabbix version
-	version, err := API.Version()
+	ZBX_VER, err = API.Version()
 	if err != nil {
 		logs.Error(err)
 		os.Exit(1)
 	}
-	ZBX_VER = version
 	verArr := strings.Split(ZBX_VER, ".")
 	ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
 	ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
@@ -165,31 +185,12 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	} else {
 		ZBX_V = false
 	}
-	logs.Info("Zabbix API connected！Zabbix version:", version)
+	logs.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
 
 	//	zabbix web login
 	LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
 
-	//redis
-	res_db, err := strconv.Atoi(redis_db)
-	if err != nil {
-		logs.Error(err)
-		os.Exit(1)
-	}
-	RDB = redis.NewClient(&redis.Options{
-		Addr:     redis_host + ":" + redis_port,
-		Password: redis_pass, // no password set
-		DB:       res_db,     // use default DB
-	})
-	var ctx = context.Background()
-	_, err = RDB.Ping(ctx).Result()
-	if err != nil {
-		logs.Error(err)
-		os.Exit(1)
-	}
-	logs.Info("Redis connected!")
 	//gen tpl
-	//
 	AgentId, err := beego.AppConfig.Int64("wechat_agentid")
 	if err != nil {
 		logs.Error("wechat_agentid get error:", err)
@@ -220,7 +221,7 @@ func DatabaseInit() {
 		logs.Info("update admin operation successfully")
 	}
 	//添加管理员账号
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		logs.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
 		manager.Username = "admin"
@@ -268,17 +269,40 @@ func DatabaseInit() {
 		return
 	}
 	if len(cne) == 0 {
-		egre := []Egress{
+		egress := []Egress{
 			{NameOne: "电信100M", NameTwo: "移动100M", Status: 0},
 		}
-		_, err := o.InsertMulti(len(egre), egre)
+		_, err := o.InsertMulti(len(egress), egress)
 		if err != nil {
 			logs.Info("Init egress info error！")
 			return
 		}
 		logs.Info("Init egress data successfully!")
 	}
-	//init default rule
+	//默认dashboard数据初始化
+	var configs []Config
+	allConfig := new(Config)
+	_, err = o.QueryTable(allConfig).All(&configs)
+	if err != nil {
+		logs.Info(err)
+		return
+	}
+	if len(configs) == 0 {
+		configData := []Config{
+			{Name: "数据面板", Key: "zbx_dash", Value: "1", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
+			{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},
+			{Name: "主机分类同步", Key: "sync_inventory", Value: "1", Comment: "主机分类同步计划任务是否启用：1 启用,0 不启用"},
+		}
+		_, err := o.InsertMulti(len(configData), configData)
+		if err != nil {
+			logs.Info("Init default config data error！")
+			return
+		}
+		logs.Info("Init default config data successfully!")
+	}
+	//默认菜单初始化
+	InitMenuData()
+	//告警默认规则初始化 default rule
 	var cRule []Rule
 	allRule := new(Rule)
 	_, err = o.QueryTable(allRule).Filter("MType", "2").All(&cRule)

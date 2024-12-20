@@ -151,6 +151,7 @@ func installAgent(*cli.Context) error {
 	MediaParams["description"] = MSMedia
 	MediaParams["name"] = MSMedia
 	MediaParams["type"] = "1"
+	MediaParams["status"] = "0"
 	MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
 	MediaParams["exec_path"] = MSName
 	ma, err := API.CallWithError("mediatype.create", MediaParams)

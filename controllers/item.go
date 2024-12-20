@@ -9,7 +9,7 @@ type ItemController struct {
 	BaseController
 }
 
-//ItemRes rep
+// ItemRes rep
 var ItemRes models.ItemList
 var ItemR models.ItemRes
 
@@ -18,7 +18,7 @@ func (c *ItemController) URLMapping() {
 	c.Mapping("GetItemByKey", c.GetItemByKey)
 	//c.Mapping("GetFlowItem", c.GetFlowItem)
 	c.Mapping("GetAllItemByKey", c.GetAllItemByKey)
-	c.Mapping("GetAllTraffficByKey", c.GetAllTraffficByKey)
+	c.Mapping("GetAllTraffficByKey", c.GetAllTrafficByKey)
 	c.Mapping("GetAllTraffficReceive", c.GetAllTraffficReceive)
 }
 
@@ -76,9 +76,9 @@ func (c *ItemController) GetAllItemByKey() {
 // @Success 200 {object} models.Item
 // @Failure 403
 // @router /traffic [get]
-func (c *ItemController) GetAllTraffficByKey() {
+func (c *ItemController) GetAllTrafficByKey() {
 	HostID := c.Ctx.Input.Query("hostid")
-	v, count, err := models.GetAllTrafficeItemByHostID(HostID)
+	v, count, err := models.GetAllTrafficItemByHostID(HostID)
 	if err != nil {
 		ItemR.Code = 500
 		ItemR.Message = "获取错误"

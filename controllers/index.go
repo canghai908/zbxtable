@@ -17,6 +17,7 @@ var (
 	OverRes models.OverviewRes
 	VerRes  models.VerRes
 	EgrRes  models.EgressRes
+	SesRes  models.SessionRes
 )
 
 // URLMapping beego
@@ -28,6 +29,7 @@ func (c *IndexController) URLMapping() {
 	c.Mapping("GetOverview", c.GetOverview)
 	c.Mapping("GetVersion", c.GetVersion)
 	c.Mapping("GetEgress", c.GetEgress)
+	c.Mapping("GetZbxSession", c.GetZbxSession)
 }
 
 // routers ...
@@ -201,5 +203,27 @@ func (c *IndexController) GetVersion() {
 	VerRes.Data.Items.GitHash = models.GitHash
 	VerRes.Data.Items.BuildTime = models.BuildTime
 	c.Data["json"] = VerRes
+	c.ServeJSON()
+}
+
+// GetZbxSession  获取缓存中的zbx session
+// @Title 获取缓存中的zbx session
+// @Description 获取缓存中的zbx session
+// @Param	X-Token			header  string	true	"x-token in header"
+// @Success 200 {object} models.TopRes
+// @Failure 403 :id is empty
+// @router /session [get]
+func (c *IndexController) GetZbxSession() {
+	session, err := models.GetZbxSession()
+	//session, err := models.GetDash("1")
+	if err != nil {
+		SesRes.Code = 500
+		SesRes.Message = err.Error()
+	} else {
+		SesRes.Code = 200
+		SesRes.Message = "获取成功"
+		SesRes.Data.Items = session
+	}
+	c.Data["json"] = SesRes
 	c.ServeJSON()
 }
