@@ -289,7 +289,7 @@ func DatabaseInit() {
 	}
 	if len(configs) == 0 {
 		configData := []Config{
-			{Name: "数据面板", Key: "zbx_dash", Value: "1", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
+			{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
 			{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},
 			{Name: "主机分类同步", Key: "sync_inventory", Value: "1", Comment: "主机分类同步计划任务是否启用：1 启用,0 不启用"},
 		}
