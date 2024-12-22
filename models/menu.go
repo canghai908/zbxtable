@@ -50,7 +50,7 @@ func InitMenuData() {
 		{ParentId: 1, Name: "首页", Path: "workplace", Router: "workplace", Icon: "home", Role: "admin,user"},
 		{ParentId: 1, Name: "资产管理", Path: "inventory", Router: "inventory", Icon: "calendar", Role: "admin,user"},
 		{ParentId: 1, Name: "状态总览", Path: "overview", Router: "overview", Icon: "appstore", Role: "admin,user"},
-		{ParentId: 1, Name: "数据面板", Path: "dash", Router: "dash", Icon: "block", Role: "admin,user"},
+		{ParentId: 1, Name: "数据面板", Path: "dash", Router: "dash", Icon: "block", IsAvailable: true, Role: "admin,user"},
 		//主机管理
 		{ParentId: 2, Name: "Linux主机", Path: "linux", Router: "linux", Icon: "container", Role: "admin,user"},
 		{ParentId: 2, Name: "Linux主机详情", Path: "lindetail", Router: "linDetail", Invisible: true, Highlight: "/host", Role: "admin,user"},
