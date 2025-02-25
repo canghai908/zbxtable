@@ -5,20 +5,21 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
-	redis "github.com/go-redis/redis/v8"
-	"github.com/jordan-wright/email"
 	"html/template"
 	"net/smtp"
 	"strconv"
 	"strings"
 	"time"
 	template2 "zbxtable/utils"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+	redis "github.com/go-redis/redis/v8"
+	"github.com/jordan-wright/email"
 )
 
-//copy from open-facon-plus
+// copy from open-facon-plus
 func ConsumeMail() {
 	for {
 		L := PopAllMail()
@@ -36,7 +37,6 @@ func SendMailList(L []*Event) {
 	}
 }
 
-//
 func SendMail(mail *Event) {
 	defer func() {
 		<-MailWorkerChan
@@ -131,13 +131,13 @@ func SendEmailAlert(event *Event, user Manager) error {
 	if err != nil {
 		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
 			Rule: event.Rule, Channel: "mail", User: user.Username, Account: user.Email,
-			NotifyTime: time.Now(), NotifyContent: string(body.Bytes()),
+			NotifyTime: time.Now(), NotifyContent: body.String(),
 			Status: strconv.Itoa(EventFailed), NotifyError: err.Error(),
 		}
 	} else {
 		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
 			Rule: event.Rule, Channel: "mail", User: user.Username, Account: user.Email,
-			NotifyTime: time.Now(), NotifyContent: string(body.Bytes()),
+			NotifyTime: time.Now(), NotifyContent: body.String(),
 			Status: strconv.Itoa(EventSuccess), NotifyError: "",
 		}
 	}

@@ -152,7 +152,7 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	//api变量
 	API = zabbix.NewAPI(zabbix_web + "/api_jsonrpc.php")
 	if zabbix_token != "" {
-		API.Auth = zabbix_token
+		API.SetAuth(zabbix_token)
 	} else {
 		_, err = API.Login(zabbix_user, zabbix_pass)
 		if err != nil {

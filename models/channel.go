@@ -3,13 +3,14 @@ package models
 import (
 	"context"
 	"errors"
-	"github.com/Knetic/govaluate"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 	"strconv"
 	"strings"
 	"time"
 	"zbxtable/utils"
+
+	"github.com/Knetic/govaluate"
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
 )
 
 // alert gen by rules
@@ -161,9 +162,7 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 		if len(gList) != 0 {
 			for _, v := range gList {
 				ids := strings.Split(v.Member, ",")
-				for _, vv := range ids {
-					guidList = append(guidList, vv)
-				}
+				guidList = append(guidList, ids...)
 			}
 		}
 	}
@@ -352,17 +351,11 @@ func MeetEventConditions(event *Event, rule *Rule) bool {
 			count++
 		}
 	}
-	if count == len(conds) {
-		return true
-	}
-	return false
+	return count == len(conds)
 }
 
 func isMuteChannel(event *Event, rule *Rule) bool {
-	if !strings.Contains(rule.Channel, event.Channel) {
-		return true
-	}
-	return false
+	return !strings.Contains(rule.Channel, event.Channel)
 }
 
 // no alarm
@@ -426,8 +419,5 @@ func MeetConditions(alarm *Alarm, rule *Rule) bool {
 			count++
 		}
 	}
-	if count == len(conds) {
-		return true
-	}
-	return false
+	return count == len(conds)
 }

@@ -8,9 +8,10 @@
 package routers
 
 import (
+	"zbxtable/controllers"
+
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/plugins/cors"
-	"zbxtable/controllers"
 )
 
 // RouterInit router
@@ -146,6 +147,10 @@ func RouterInit() {
 		beego.NSNamespace("/group",
 			beego.NSInclude(
 				&controllers.GroupControllers{}),
+		),
+		beego.NSNamespace("/ai",
+			beego.NSInclude(
+				&controllers.AIController{}),
 		),
 	)
 	beego.AddNamespace(ns)

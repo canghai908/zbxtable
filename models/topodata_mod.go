@@ -24,7 +24,7 @@ type AEdge struct {
 		Line struct {
 			FlowID       string `json:"FlowID"`
 			FlowName     string `json:"FlowName"`
-			FlowType     string `josn:"FlowType""`
+			FlowType     string `json:"FlowType"`
 			HostID       string `json:"HostID"`
 			HostName     string `json:"HostName"`
 			HostType     string `json:"HostType"`

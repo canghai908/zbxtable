@@ -91,7 +91,6 @@ func InitMenuData() {
 	if err != nil {
 		logs.Error(err)
 	}
-	return
 }
 
 type MenuItem struct {

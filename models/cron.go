@@ -3,15 +3,16 @@ package models
 import (
 	"context"
 	"errors"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
-	"github.com/astaxie/beego/toolbox"
-	"github.com/go-redis/redis/v8"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+	"github.com/astaxie/beego/toolbox"
+	"github.com/go-redis/redis/v8"
 )
 
 // top
@@ -149,30 +150,11 @@ func TOP() error {
 		return err
 	}
 	var ctx = context.Background()
-	//var dt []Hosts
-	var d Hosts
 	if len(hb) == 0 {
-		logs.Error(errors.New("host list is null"))
 		return errors.New("host list is null")
 	}
 	for _, v := range hb {
-		d.HostID = v.Hostid
-		d.Host = v.Host
-		d.Name = v.Name
-		if len(v.Interfaces) != 0 {
-			d.Interfaces = v.Interfaces[0].IP
-		}
-		d.Status = v.Status
-		d.Available = v.Available
-		d.Error = v.Error
-		d.NumberOfCores = v.Inventory.Software
-		d.CPUUtilization = v.Inventory.SoftwareAppA
-		d.MemoryUtilization = v.Inventory.SoftwareAppB
-		d.MemoryUsed = v.Inventory.SoftwareAppD
-		d.MemoryTotal = v.Inventory.SoftwareAppC
-		d.Uptime = v.Inventory.SoftwareAppE
-		//排除异常主机
-		if d.Available == "0" {
+		if v.Available == "0" {
 			continue
 		}
 		switch v.Inventory.Type {
@@ -442,6 +424,9 @@ func SyncInventory() error {
 	o := orm.NewOrm()
 	//查询配置表，id 3为同步配置
 	cnt, err := o.QueryTable(Config{}).Filter("id", 3).All(&data)
+	if err != nil {
+		return err
+	}
 	if cnt == 0 {
 		return nil
 	}

@@ -5,13 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/config"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/toolbox"
-	"github.com/canghai908/zabbix-go"
-	"github.com/urfave/cli/v2"
-	"gopkg.in/ini.v1"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,6 +13,14 @@ import (
 	"zbxtable/packfile"
 	"zbxtable/routers"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/config"
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/toolbox"
+	"github.com/canghai908/zabbix-go"
+	"github.com/urfave/cli/v2"
+	"gopkg.in/ini.v1"
 )
 
 const motd = `
@@ -156,7 +157,7 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	// api定义
 	API = zabbix.NewAPI(address + "/api_jsonrpc.php")
 	if token != "" {
-		API.Auth = token
+		API.SetAuth(token)
 	} else {
 		_, err := API.Login(user, pass)
 		if err != nil {

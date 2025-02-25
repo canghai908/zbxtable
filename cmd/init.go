@@ -3,6 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	zabbix "github.com/canghai908/zabbix-go"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -10,9 +14,6 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
-	"os"
-	"strconv"
-	"strings"
 )
 
 const qrencode = `######################################################################
@@ -62,13 +63,13 @@ var (
 	Cfg = &ini.File{}
 )
 
-//AppInit
+// AppInit
 func AppInit(*cli.Context) error {
 DB:
 	validate := func(input string) error {
 		_, err := strconv.ParseFloat(input, 64)
 		if err != nil {
-			return errors.New("Invalid number")
+			return errors.New("invalid number")
 		}
 		return nil
 	}
@@ -236,7 +237,7 @@ WEB:
 	return nil
 }
 
-//Write config files
+// Write config files
 func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
 	httpport, runmode, timeout, token string) error {

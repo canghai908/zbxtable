@@ -3,8 +3,9 @@ package models
 import (
 	"context"
 	"fmt"
-	"github.com/astaxie/beego/logs"
 	"strconv"
+
+	"github.com/astaxie/beego/logs"
 )
 
 func getCountByType(hostType string) (int64, error) {
@@ -29,8 +30,17 @@ func GetCountHost() (IndexInfo, error) {
 	//d.Problems, err = getCountByType("problem.get")
 	//d.Triggers, err = getCountByType("trigger.get")
 	d.LinCount, err = getCountByType("VM_LIN")
+	if err != nil {
+		return d, err
+	}
 	d.WinCount, err = getCountByType("VM_WIN")
+	if err != nil {
+		return d, err
+	}
 	d.SRVCount, err = getCountByType("HW_SRV")
+	if err != nil {
+		return d, err
+	}
 	d.NETCount, err = getCountByType("HW_NET")
 	if err != nil {
 		return IndexInfo{}, err
@@ -125,8 +135,7 @@ func GetOverviewData() (OverviewList, error) {
 	var list = []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
 	//var one OverviewList
 	//var datalist []OverviewList
-	var listmap map[string][]Hosts
-	listmap = make(map[string][]Hosts)
+	listmap := make(map[string][]Hosts)
 	var ctx = context.Background()
 	for _, v := range list {
 		var ArrayOne []Hosts

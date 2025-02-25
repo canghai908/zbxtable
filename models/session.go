@@ -4,13 +4,14 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 )
 
 // Jar struct
@@ -42,7 +43,10 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{
-		tr, nil, JAR, 99999999999999}
+		Transport: tr,
+		Jar:       JAR,
+		Timeout:   99999999999999,
+	}
 	request, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		logs.Error("Fatal error ", err.Error())

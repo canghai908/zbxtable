@@ -53,14 +53,14 @@ func GetAlarmByID(id int) (v *Alarm, err error) {
 
 // GetAllAlarm retrieves all Alarm matches certain condition. Returns empty list if
 // no records exist
-func GetAllAlarm(begin, end time.Time, page, limit,
-	hosts, tenant_id, status, level string) (cnt int64, alarm []Alarm, err error) {
+func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status, level string) (cnt int64, al []Alarm, err error) {
 	o := orm.NewOrm()
 	var alarms []Alarm
 	var CountAlarms []Alarm
-	al := new(Alarm)
+	qs := o.QueryTable(new(Alarm))
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
+
 	//count alarms
 	cond := orm.NewCondition()
 	if hosts != "" {
@@ -75,16 +75,24 @@ func GetAllAlarm(begin, end time.Time, page, limit,
 	if level != "" {
 		cond = cond.And("level", level)
 	}
-	_, err = o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte", end).
-		SetCond(cond).
-		All(&CountAlarms)
-	_, err = o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte", end).
-		Limit(limits, (pages-1)*limits).OrderBy("-occurtime").SetCond(cond).
-		All(&alarms)
+	if ip != "" {
+		cond = cond.And("host_ip__icontains", ip)
+	}
+
+	qs = qs.Filter("occurtime__gte", begin).Filter("occurtime__lte", end).SetCond(cond)
+
+	// 获取总数
+	cnt, err = qs.All(&CountAlarms)
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
-	cnt = int64(len(CountAlarms))
+
+	// 获取分页数据
+	_, err = qs.Limit(limits, (pages-1)*limits).OrderBy("-occurtime").All(&alarms)
+	if err != nil {
+		return 0, []Alarm{}, err
+	}
+
 	return cnt, alarms, nil
 }
 
@@ -102,7 +110,7 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	}
 	var ss []list
 	var p list
-	if err == nil && num > 0 {
+	if num > 0 {
 		for i := 0; i < len(maps); i++ {
 			p.ID = i
 			p.TenantID = maps[i]["tenant_id"].(string)
@@ -158,18 +166,23 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	dpie := []Pie{}
 	//饼图数据
 	var num int64
-	if tenant_id == "" {
-		num, err = o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-			strbeing + "' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or  STATUS='1') GROUP BY level;").
-			Values(&maps)
-	} else {
-		num, err = o.Raw("SELECT level, COUNT(DISTINCT id) AS level_count FROM zbxtable_alarm  WHERE occurtime >='" +
-			strbeing + "' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or  STATUS='1') AND tenant_id ='" +
-			tenant_id + "' GROUP BY level;").
-			Values(&maps)
+
+	baseQueryPie := "SELECT level, COUNT(DISTINCT id) AS level_count " +
+		"FROM zbxtable_alarm WHERE occurtime >= ? AND occurtime <= ? " +
+		"AND (STATUS='故障' or STATUS='1') "
+
+	var paramsPie []interface{}
+	paramsPie = append(paramsPie, strbeing, strend)
+
+	if tenant_id != "" {
+		baseQueryPie += "AND tenant_id = ? "
+		paramsPie = append(paramsPie, tenant_id)
 	}
+
+	baseQueryPie += "GROUP BY level ORDER BY level_count DESC"
+
+	num, err = o.Raw(baseQueryPie, paramsPie...).Values(&maps)
+
 	if err == nil && num > 0 {
 		for i := 0; i < len(maps); i++ {
 			ss = append(ss, maps[i]["level"].(string))
@@ -178,39 +191,36 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 			dpie = append(dpie, n)
 		}
 	}
-	//top10数据
+
+	//修改top10数据查询
 	var map1s []orm.Params
 	var name []string
 	var values []int
-	// mysql8 sql_mode 取消 ONLY_FULL_GROUP_BY
-	if tenant_id == "" {
-		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing +
-			"' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or STATUS='1') GROUP BY host order by host_count asc limit 10;").
-			Values(&map1s)
-	} else {
-		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing +
-			"' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
-			tenant_id + "' GROUP BY host order by host_count asc limit 10;").
-			Values(&map1s)
+
+	baseQuery := "SELECT host, hostname, COUNT(DISTINCT id) AS host_count " +
+		"FROM zbxtable_alarm WHERE occurtime >= ? AND occurtime <= ? " +
+		"AND (STATUS='故障' or STATUS='1') "
+
+	var params []interface{}
+	params = append(params, strbeing, strend)
+
+	if tenant_id != "" {
+		baseQuery += "AND tenant_id = ? "
+		params = append(params, tenant_id)
 	}
-	if err == nil && num > 0 {
-		if len(map1s) <= 10 {
-			for i := 0; i < len(map1s); i++ {
-				name = append(name, map1s[i]["hostname"].(string))
-				va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
-				values = append(values, va)
-			}
-		} else {
-			for i := 0; i <= 10; i++ {
-				name = append(name, map1s[i]["hostname"].(string))
-				va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
-				values = append(values, va)
-			}
+
+	// 修改排序，确保按照告警数量降序排列
+	baseQuery += "GROUP BY host, hostname ORDER BY COUNT(DISTINCT id) DESC LIMIT 10"
+
+	_, err = o.Raw(baseQuery, params...).Values(&map1s)
+
+	if err == nil && len(map1s) > 0 {
+		for i := 0; i < len(map1s); i++ {
+			name = append(name, map1s[i]["hostname"].(string))
+			va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
+			values = append(values, va)
 		}
 	}
+
 	return ss, dpie, name, values, nil
 }

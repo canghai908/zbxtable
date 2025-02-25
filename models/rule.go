@@ -2,9 +2,10 @@ package models
 
 import (
 	"errors"
-	"github.com/astaxie/beego/orm"
 	"strconv"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego/orm"
 )
 
 const (
@@ -62,6 +63,9 @@ func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, us
 	}
 	_, err = o.QueryTable(al).SetCond(cond).
 		All(&CountRules)
+	if err != nil {
+		return 0, []Rule{}, err
+	}
 	_, err = o.QueryTable(al).
 		Limit(limits, (pages-1)*limits).SetCond(cond).
 		All(&rules, "id", "name", "conditions", "tenant_id", "note",
