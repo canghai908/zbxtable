@@ -1,10 +1,12 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
 )
 
 // item link to inventory
@@ -134,6 +136,12 @@ func HostTypeSet(s *System, groupId []string) error {
 	if err != nil {
 		return err
 	}
+
+	// 添加检查，如果没有找到主机则返回错误
+	if len(p) == 0 {
+		return fmt.Errorf("未在指定的主机组中找到任何主机")
+	}
+
 	//根据id主机类型
 	var hType string
 	switch s.ID {
