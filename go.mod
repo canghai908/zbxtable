@@ -9,7 +9,7 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/astaxie/beego v1.12.3
 	github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e
-	github.com/canghai908/zabbix-go v0.0.0-20230322070019-e5d030e26a94
+	github.com/canghai908/zabbix-go v0.0.0-20250224122310-404074f2f28a
 	github.com/go-echarts/go-echarts/v2 v2.2.5
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.0
@@ -19,7 +19,6 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.10.7
 	github.com/manifoldco/promptui v0.9.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pterm/pterm v0.12.75
 	github.com/sanbornm/go-selfupdate v0.0.0-20210106163404-c9b625feac49
 	github.com/shopspring/decimal v1.3.1
