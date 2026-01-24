@@ -182,34 +182,27 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	var map1s []orm.Params
 	var name []string
 	var values []int
-	// mysql8 sql_mode 取消 ONLY_FULL_GROUP_BY
+	var num1 int64
+	// mysql8 修复：SELECT 和 GROUP BY 字段保持一致，使用 hostname
 	if tenant_id == "" {
-		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
+		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
 			strbeing +
 			"' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or STATUS='1') GROUP BY host order by host_count asc limit 10;").
+			"' AND (STATUS='故障' or STATUS='1') GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
 			Values(&map1s)
 	} else {
-		_, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
+		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
 			strbeing +
 			"' and occurtime <='" + strend +
 			"' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
-			tenant_id + "' GROUP BY host order by host_count asc limit 10;").
+			tenant_id + "' GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
 			Values(&map1s)
 	}
-	if err == nil && num > 0 {
-		if len(map1s) <= 10 {
-			for i := 0; i < len(map1s); i++ {
-				name = append(name, map1s[i]["hostname"].(string))
-				va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
-				values = append(values, va)
-			}
-		} else {
-			for i := 0; i <= 10; i++ {
-				name = append(name, map1s[i]["hostname"].(string))
-				va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
-				values = append(values, va)
-			}
+	if err == nil && num1 > 0 {
+		for i := 0; i < len(map1s); i++ {
+			name = append(name, map1s[i]["hostname"].(string))
+			va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
+			values = append(values, va)
 		}
 	}
 	return ss, dpie, name, values, nil

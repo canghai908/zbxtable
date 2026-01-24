@@ -3,15 +3,16 @@ package models
 import (
 	"context"
 	"errors"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
-	"github.com/astaxie/beego/toolbox"
-	"github.com/go-redis/redis/v8"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+	"github.com/astaxie/beego/toolbox"
+	"github.com/go-redis/redis/v8"
 )
 
 // top
@@ -408,13 +409,14 @@ func EgressCache() error {
 	}
 	itemlist = append(itemlist, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
 	list, err := GetItemByIDS(itemlist)
-	//数据异常返回
-	if len(list) != 4 {
-		logs.Error("出口Item数据获取异常")
+	if err != nil {
+		logs.Error("出口Item数据获取异常", err)
 		return errors.New("出口Item数据获取异常")
 	}
-	if err != nil {
-		return err
+	//数据异常返回
+	if len(list) != 4 {
+		logs.Error("出口Item数据结果异常", len(list))
+		return errors.New("出口Item数据结果异常")
 	}
 	var dList EgressList
 	dList.NameOne = v.NameOne

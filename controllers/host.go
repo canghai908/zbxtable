@@ -267,6 +267,15 @@ func (c *HostController) GetMonLinFileSystem() {
 // @Failure 403
 // @router /graph/:hostid [post]
 func (c *HostController) GetGraph() {
+	// 检查是否配置了密码
+	if !models.IsPasswordConfigured() {
+		HostInterfaceRes.Code = 403
+		HostInterfaceRes.Message = "配置文件中zabbix_pass没有配置,无法查看图形,请配置后重启应用查看"
+		c.Data["json"] = HostInterfaceRes
+		c.ServeJSON()
+		return
+	}
+
 	var v models.GraphReq
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &v)
 	if err != nil {
@@ -274,6 +283,7 @@ func (c *HostController) GetGraph() {
 		HostInterfaceRes.Message = err.Error()
 		c.Data["json"] = HostInterfaceRes
 		c.ServeJSON()
+		return
 	}
 	hostId := c.Ctx.Input.Param(":hostid")
 	hs, err := models.GetGraphData(hostId, v.Start, v.End)

@@ -3,14 +3,16 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
-	"github.com/astaxie/beego/logs"
-	"github.com/google/uuid"
-	"github.com/urfave/cli/v2"
 	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/canghai908/zabbix-go"
+	"github.com/google/uuid"
+	"github.com/urfave/cli/v2"
 )
 
 // tpl t
@@ -118,7 +120,8 @@ var (
 		Usage:  "Install ms-agent tools to Zabbix Server",
 		Action: installAgent,
 	}
-	ZBV bool
+	ZBV    bool
+	ZBVVer string // Zabbix version string
 )
 
 func CheckZabbix() error {
@@ -130,6 +133,7 @@ func CheckZabbix() error {
 		logs.Error(err)
 		return err
 	}
+	ZBVVer = version
 	verArr := strings.Split(version, ".")
 	ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
 	ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
@@ -147,12 +151,41 @@ func installAgent(*cli.Context) error {
 	if err != nil {
 		return err
 	}
+	// 确保API对象已正确初始化并保持认证状态
+	// 如果只配置了token，需要重新设置API.Auth
+	token := InitConfig("zabbix_token")
+	if token != "" {
+		// 重新初始化API并设置token，确保认证状态正确
+		zabbixWeb := InitConfig("zabbix_web")
+		API = zabbix.NewAPI(zabbixWeb + "/api_jsonrpc.php")
+		API.Auth = token
+	}
 	MediaParams := make(map[string]interface{}, 0)
 	MediaParams["description"] = MSMedia
 	MediaParams["name"] = MSMedia
-	MediaParams["type"] = "1"
-	MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
+	MediaParams["type"] = 1
+	// Zabbix 7.4+ 使用 parameters，旧版本使用 exec_params
+	verArr := strings.Split(ZBVVer, ".")
+	if len(verArr) >= 2 {
+		ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
+		ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
+		if ZbxMasterVer > 7 || (ZbxMasterVer == 7 && ZbxMiddleVer >= 4) {
+			// Zabbix 7.4+ 使用 parameters，格式为包含 sortorder 和 value 的对象数组
+			MediaParams["parameters"] = []map[string]string{
+				{"sortorder": "0", "value": "{ALERT.SENDTO}"},
+				{"sortorder": "1", "value": "{ALERT.SUBJECT}"},
+				{"sortorder": "2", "value": "{ALERT.MESSAGE}"},
+			}
+		} else {
+			// 旧版本使用 exec_params
+			MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
+		}
+	} else {
+		// 如果版本解析失败，使用旧版本的 exec_params
+		MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
+	}
 	MediaParams["exec_path"] = MSName
+	MediaParams["status"] = "0"
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
 	if err != nil {
 		logs.Error(err)
