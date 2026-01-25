@@ -2,12 +2,13 @@ package models
 
 import (
 	"fmt"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 	"strconv"
 	"strings"
 	"time"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
 )
 
 // TableName alarm
@@ -48,6 +49,9 @@ func GetAllReportsLimt(page, limit, name string) (cnt int64, topo []Report, err 
 	limits, _ := strconv.Atoi(limit)
 	//count topology
 	_, err = o.QueryTable(al).Filter("name__contains", name).All(&CountTopologys)
+	if err != nil {
+		return 0, []Report{}, err
+	}
 	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").
 		Filter("name__contains", name).All(&topologys)
 	if err != nil {

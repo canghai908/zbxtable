@@ -19,6 +19,8 @@ func (c *SystemController) URLMapping() {
 	c.Mapping("DeployInit", c.DeployInit)
 	c.Mapping("GetEgress", c.GetEgress)
 	c.Mapping("PutEgress", c.PutEgress)
+	c.Mapping("GetAllConfig", c.GetAllConfig)
+	c.Mapping("UpdateConfig", c.UpdateConfig)
 
 }
 
@@ -110,7 +112,6 @@ func (c *SystemController) GetAll() {
 // @Description 初始化
 // @Param	X-Token		header  string			true		"x-token in header"
 // @Param	id			path 	string			true		"system id"
-// @Param	body		body 	models.System	true		"body for System content"
 // @Success 200 {object} models.System
 // @Failure 403
 // @router /init/:id [post]
@@ -175,6 +176,81 @@ func (c *SystemController) PutEgress() {
 		NameOne: nameone, InOne: in_one, OutOne: out_one,
 		NameTwo: nametwo, InTwo: in_two, OutTwo: out_two}
 	err := models.UpdateEgress(&v)
+	if err != nil {
+		SystemRes.Code = 500
+		SystemRes.Message = err.Error()
+	} else {
+		SystemRes.Code = 200
+		SystemRes.Message = "更新成功"
+		SystemRes.Data.Items = ""
+		SystemRes.Data.Total = 1
+	}
+	c.Data["json"] = SystemRes
+	c.ServeJSON()
+}
+
+// GetConfig 获取系统参数配置
+// @Title 获取系统参数配置
+// @Description 获取系统参数配置
+// @Param	X-Token		header  string			true		"x-token in header"
+// @Success 200 {object} models.config
+// @Failure 403
+// @router /config/ [get]
+func (c *SystemController) GetAllConfig() {
+	val, err := models.GetConfigList()
+	if err != nil {
+		SystemRes.Code = 500
+		SystemRes.Message = err.Error()
+	} else {
+		SystemRes.Code = 200
+		SystemRes.Message = "获取成功"
+		SystemRes.Data.Items = val
+		SystemRes.Data.Total = int64(len(val))
+	}
+	c.Data["json"] = SystemRes
+	c.ServeJSON()
+}
+
+// GetConfigOne 获取系统参数配置通过ID
+// @Title 获取系统参数配置通过ID
+// @Description 获取系统参数配置通过ID
+// @Param	X-Token		header  string			true		"x-token in header"
+// @Param	id			path 	string			true		"system id"
+// @Success 200 {object} models.config
+// @Failure 403
+// @router /config/:id [get]
+func (c *SystemController) GetConfigOne() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.Atoi(idStr)
+	val, err := models.GetConfigOne(int64(id))
+	if err != nil {
+		SystemRes.Code = 500
+		SystemRes.Message = err.Error()
+	} else {
+		SystemRes.Code = 200
+		SystemRes.Message = "更新成功"
+		SystemRes.Data.Items = val
+		SystemRes.Data.Total = 1
+	}
+	c.Data["json"] = SystemRes
+	c.ServeJSON()
+}
+
+// PutDash 更新dashboard
+// @Title 更新dashboard
+// @Description 更新带宽配置
+// @Param	X-Token		header  string			   true		    "x-token in header"
+// @Param	id			path 	string			   true			"system id"
+// @Param	body		body 	models.config	   true		    "body for System content"
+// @Success 200 {object} models.config
+// @Failure 403
+// @router /config/:id [put]
+func (c *SystemController) UpdateConfig() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.Atoi(idStr)
+	value := gjson.Get(string(c.Ctx.Input.RequestBody), "value").String()
+	v := models.Config{ID: int64(id), Value: value}
+	err := models.UpdateConfig(&v)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()

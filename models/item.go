@@ -58,15 +58,15 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	return hb, int64(len(hb)), err
 }
 
-// GetAllItemByHostID func
-func GetAllTrafficeItemByHostID(hostid string) (item []interface{}, count int64, err error) {
+// GetAllTrafficItemByHostID 根据hostid获取逐渐流量接口
+func GetAllTrafficItemByHostID(hostid string) (item []interface{}, count int64, err error) {
 	var ItemList []interface{}
 	if ZBX_V {
 		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
 		selectTags := []string{"tag", "value"}
 		Search2Par := make(map[string]string, 1)
-		Search2Par["tag"] = "Interface"
-		Search2Par["value"] = ""
+		Search2Par["tag"] = "interface"
+		//Search2Par["value"] = ""
 		Par := make(map[int]interface{})
 		Par[0] = Search2Par
 		rep1, err := API.CallWithError("item.get", Params{
@@ -89,7 +89,7 @@ func GetAllTrafficeItemByHostID(hostid string) (item []interface{}, count int64,
 		}
 		for _, v := range ts {
 			for _, vv := range v.Tags {
-				if vv.Tag == "Interface" {
+				if vv.Tag == "interface" {
 					switch {
 					case strings.Contains(v.Name, "Bits received"):
 						ItemList = append(ItemList, v)
@@ -140,7 +140,7 @@ func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count in
 		selectTags := []string{"tag", "value"}
 		Search2Par := make(map[string]string, 1)
 		Search2Par["tag"] = "interface"
-		Search2Par["value"] = ""
+		//	Search2Par["value"] = ""
 		Par := make(map[int]interface{})
 		Par[0] = Search2Par
 		rep1, err := API.CallWithError("item.get", Params{
@@ -313,19 +313,19 @@ func GetItemByIDS(itemids []string) (item []Item, err error) {
 	rep, err := API.Call("item.get", Params{"output": output, "sortfield": "name",
 		"itemids": itemids})
 	if err != nil {
-		logs.Debug(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Debug(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 
 	var hb []Item
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		logs.Error(err)
 		return []Item{}, err
 	}
 	return hb, err

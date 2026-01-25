@@ -57,6 +57,7 @@ func (c *AlarmController) GetOne() {
 // @Param	page	query	string	false	"第几页"
 // @Param	limit	query	string	false	"每页条数"
 // @Param	hosts	query	string	false	"查询主机名包含某字符的主机"
+// @Param	ip	    query	string	false	"查询主机IP"
 // @Param	tenant_id	query	string	false	"租户id"
 // @Success 200 {object} models.Alarm
 // @Failure 403
@@ -81,10 +82,11 @@ func (c *AlarmController) GetAll() {
 	page := c.Ctx.Input.Query("page")
 	limit := c.Ctx.Input.Query("limit")
 	hosts := c.Ctx.Input.Query("hosts")
+	ip := c.Ctx.Input.Query("host_ip")
 	tenant_id := c.Ctx.Input.Query("tenant_id")
 	status := c.Ctx.Input.Query("status")
 	level := c.Ctx.Input.Query("level")
-	cnt, al, err := models.GetAllAlarm(Begin, End, page, limit, hosts, tenant_id, status, level)
+	cnt, al, err := models.GetAllAlarm(Begin, End, page, limit, hosts, ip, tenant_id, status, level)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()

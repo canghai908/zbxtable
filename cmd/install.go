@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/logs"
-	"github.com/canghai908/zabbix-go"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 )
@@ -137,7 +136,9 @@ func CheckZabbix() error {
 	verArr := strings.Split(version, ".")
 	ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
 	ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
-	if ZbxMasterVer >= 6 || (ZbxMasterVer == 5 && ZbxMiddleVer == 4) {
+
+	// 判断版本是否大于等于 7.0
+	if ZbxMasterVer >= 7 || (ZbxMasterVer == 6 && ZbxMiddleVer >= 4) || (ZbxMasterVer == 5 && ZbxMiddleVer >= 4) {
 		ZBV = true
 	} else {
 		ZBV = false
@@ -163,27 +164,30 @@ func installAgent(*cli.Context) error {
 	MediaParams := make(map[string]interface{}, 0)
 	MediaParams["description"] = MSMedia
 	MediaParams["name"] = MSMedia
-	MediaParams["type"] = 1
-	// Zabbix 7.4+ 使用 parameters，旧版本使用 exec_params
-	verArr := strings.Split(ZBVVer, ".")
-	if len(verArr) >= 2 {
-		ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
-		ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
-		if ZbxMasterVer > 7 || (ZbxMasterVer == 7 && ZbxMiddleVer >= 4) {
-			// Zabbix 7.4+ 使用 parameters，格式为包含 sortorder 和 value 的对象数组
-			MediaParams["parameters"] = []map[string]string{
-				{"sortorder": "0", "value": "{ALERT.SENDTO}"},
-				{"sortorder": "1", "value": "{ALERT.SUBJECT}"},
-				{"sortorder": "2", "value": "{ALERT.MESSAGE}"},
-			}
-		} else {
-			// 旧版本使用 exec_params
-			MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
+	MediaParams["type"] = "1"
+	MediaParams["status"] = "0"
+
+	// 根据 Zabbix 版本设置不同的参数格式
+	if ZBV {
+		parameters := []map[string]interface{}{
+			{
+				"sortorder": "0",
+				"value":     "{ALERT.SENDTO}",
+			},
+			{
+				"sortorder": "1",
+				"value":     "{ALERT.SUBJECT}",
+			},
+			{
+				"sortorder": "2",
+				"value":     "{ALERT.MESSAGE}",
+			},
 		}
+		MediaParams["parameters"] = parameters
 	} else {
-		// 如果版本解析失败，使用旧版本的 exec_params
 		MediaParams["exec_params"] = "{ALERT.SENDTO}\n{ALERT.SUBJECT}\n{ALERT.MESSAGE}\n"
 	}
+
 	MediaParams["exec_path"] = MSName
 	MediaParams["status"] = "0"
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
@@ -369,10 +373,10 @@ func GetUserID(Username string) (userinfo UserInfo, err error) {
 	} else {
 		FilterParams["name"] = Username
 	}
-	Params["selectUsrgrps"] = "usrgrpid"
-	Params["selectMediatypes"] = "mediatypeid"
+	Params["selectUsrgrps"] = []string{"usrgrpid"}
+	Params["selectMediatypes"] = []string{"mediatypeid"}
 	Params["filter"] = FilterParams
-	Params["output"] = "userid,usrgrps"
+	Params["output"] = []string{"userid,usrgrps"}
 	res, err := API.CallWithError("user.get", Params)
 	if err != nil {
 		return UserInfo{}, err

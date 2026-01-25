@@ -5,12 +5,13 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	"encoding/base64"
-	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/astaxie/beego/logs"
 
 	"github.com/signintech/gopdf"
 )
@@ -106,8 +107,11 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client1 := &http.Client{tr, nil,
-		JAR, 99999999999992}
+	client1 := &http.Client{
+		Transport: tr,
+		Jar:       JAR,
+		Timeout:   99999999999992,
+	}
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
@@ -159,8 +163,11 @@ func GetPNGGraph(GraphID, start, end string) (png string, err error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client1 := &http.Client{tr, nil,
-		JAR, 99999999999992}
+	client1 := &http.Client{
+		Transport: tr,
+		Jar:       JAR,
+		Timeout:   99999999999992,
+	}
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)

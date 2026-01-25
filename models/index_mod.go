@@ -21,40 +21,8 @@ type RouRes struct {
 	} `json:"data"`
 }
 type RouterRes struct {
-	Router   string      `json:"router"`
-	Children []RChildren `json:"children"`
-}
-type RChildren struct {
-	Router    string            `json:"router"`
-	Meta      Meta              `json:"meta"`
-	Children  []TRouterChildren `json:"children"`
-	Name      string            `json:"name"`
-	Path      string            `json:"path"`
-	Icon      string            `json:"icon"`
-	Link      string            `json:"link"`
-	Authority string            `json:"authority,omitempty"`
-}
-type TRouterChildren struct {
-	Router    string    `json:"router"`
-	Children  string    `json:"children"`
-	Name      string    `json:"name"`
-	Meta      Meta      `json:"meta"`
-	Path      string    `json:"path"`
-	Icon      string    `json:"icon"`
-	Link      string    `json:"link"`
-	Authority Authority `json:"authority,omitempty"`
-}
-type Authority struct {
-	Role       string `json:"role,omitempty"`
-	Permission string `json:"permission,omitempty"`
-}
-type Meta struct {
-	Highlight string `json:"highlight"`
-	Invisible bool   `json:"invisible"`
-	Page      Page   `json:"page"`
-}
-type Page struct {
-	CacheAble bool `json:"cacheAble"`
+	Router   string     `json:"router"`
+	Children []MenuItem `json:"children"`
 }
 
 type InfoRes struct {
@@ -139,4 +107,12 @@ type EgressList struct {
 	InTwo   string `json:"in_two"`
 	OutTwo  string `json:"out_two"`
 	Date    string `json:"date"`
+}
+
+type SessionRes struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Items string `json:"items"`
+	} `json:"data"`
 }

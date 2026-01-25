@@ -31,11 +31,11 @@ type HostGroups struct {
 
 //HostGroupsPlist list
 type HostGroupsPlist struct {
-	GroupID  string `json:"groupid,omitempy"`
-	Name     string `json:"name,omitempy"`
-	Internal string `json:"internal,omitempy"`
-	Flags    string `json:"flags,omitempy"`
-	Hosts    []Host `json:"hosts,omitempy"`
+	GroupID  string `json:"groupid,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Internal string `json:"internal,omitempty"`
+	Flags    string `json:"flags,omitempty"`
+	Hosts    []Host `json:"hosts,omitempty"`
 }
 
 //HostTreeList sst
@@ -58,14 +58,14 @@ type HostTree struct {
 	} `json:"hosts"`
 }
 type GroupHosts struct {
-	HostID string `json:"hostid,omitempy"`
-	Name   string `json:"name,omitempy"`
+	HostID string `json:"hostid,omitempty"`
+	Name   string `json:"name,omitempty"`
 	Status string `json:"status"`
 }
 
 //HostGroupBYGroupID struct
 type HostGroupBYGroupID struct {
-	GroupID string       `json:"groupid,omitempy"`
+	GroupID string       `json:"groupid,omitempty"`
 	Name    string       `json:"name"`
 	Hosts   []GroupHosts `json:"hosts"`
 }

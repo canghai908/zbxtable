@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/astaxie/beego/logs"
 	"math"
 	"strconv"
 	"strings"
 	"sync"
 	"zbxtable/utils"
+
+	"github.com/astaxie/beego/logs"
 )
 
 // HostsList func
@@ -795,10 +796,6 @@ func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 		list = append(list, data)
 	}
 	return list, nil
-
-}
-func (fsData *LinFilesSystemData) isComplete() bool {
-	return fsData.UsedSpace != 0 && fsData.InodesPUsed != 0 && fsData.SpaceUtilization != 0 && fsData.TotalSpace != 0
 }
 
 // GetWinFilesSystemData windows文件系统获取
@@ -912,7 +909,6 @@ func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
 		list = append(list, data)
 	}
 	return list, nil
-
 }
 
 func GetMonWinData(hostid string) (mon MonWinData, err error) {

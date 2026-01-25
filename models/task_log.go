@@ -1,10 +1,11 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 	"strconv"
 	"time"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
 )
 
 type TaskLog struct {
@@ -17,10 +18,10 @@ type TaskLog struct {
 	Status    int       `orm:"column(status);default(0)" json:"status"`                  // 状态 0:执行失败 1:执行中  2:执行完毕 3:任务取消(上次任务未执行完成) 4:异步执行
 	Result    string    `orm:"column(result);size(200);null" json:"result"`
 	Files     string    `orm:"column(files);size(200);null" json:"files"`
-	TotalTime int64     `orm:"column(total_time);default(0)"json:"total_time"` // 执行总时长=
+	TotalTime int64     `orm:"column(total_time);default(0)" json:"total_time"` // 执行总时长
 }
 
-//SystemList struct
+// SystemList struct
 type TaskRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -30,7 +31,7 @@ type TaskRes struct {
 	} `json:"data"`
 }
 
-//TableName alarm
+// TableName alarm
 func (t *TaskLog) TableName() string {
 	return TableName("task_log")
 }

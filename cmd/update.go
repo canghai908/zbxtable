@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"os"
+	"zbxtable/models"
+
 	"github.com/pterm/pterm"
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 	"github.com/urfave/cli/v2"
-	"os"
-	"zbxtable/models"
 )
 
 const UpdateURL = "http://dl.cactifans.com/stable/"
@@ -80,11 +81,9 @@ func update(*cli.Context) error {
 			return nil
 		}
 
-	} else {
-		pterm.Info.Println("The current version is ", updater.CurrentVersion)
-		pterm.Info.Println("The latest version is ", updater.Info.Version)
-		pterm.Info.Println("The current version is the latest version, no need to update!")
-		return nil
 	}
+	pterm.Info.Println("The current version is ", updater.CurrentVersion)
+	pterm.Info.Println("The latest version is ", updater.Info.Version)
+	pterm.Info.Println("The current version is the latest version, no need to update!")
 	return nil
 }

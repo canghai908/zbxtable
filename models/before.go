@@ -47,7 +47,7 @@ func MsAdd(tenantid string, message []byte) (int64, error) {
 		logs.Error(err)
 		return 0, err
 	}
-	//aler gen
+	//alert gen
 	GenAlert(&meal)
 	return id, nil
 }

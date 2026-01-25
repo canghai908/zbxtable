@@ -73,6 +73,7 @@ func GetExpTrendData(hostdata []HostsData, itemtype string) ([]Itm, string, stri
 	var ityarr []Itm
 	for _, v := range hostdata[0].Items {
 		if strings.Contains(v.Key, itemkey) {
+			itemids = itemids[:0] // 清空切片
 			itemids = append(itemids, v.Itemid)
 			ity.ItemKey = v.Key
 			ity.ItemName = v.Name

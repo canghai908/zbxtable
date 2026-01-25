@@ -844,4 +844,49 @@ func init() {
             Filters: nil,
             Params: nil})
 
+	beego.GlobalControllerRouter["zbxtable/controllers:UserController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:UserController"],
+		beego.ControllerComments{
+			Method:           "Get",
+			Router:           "/",
+			AllowHTTPMethods: []string{"get"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["zbxtable/controllers:UserController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:UserController"],
+		beego.ControllerComments{
+			Method:           "Post",
+			Router:           "/",
+			AllowHTTPMethods: []string{"post"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["zbxtable/controllers:UserController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:UserController"],
+		beego.ControllerComments{
+			Method:           "Put",
+			Router:           "/:id",
+			AllowHTTPMethods: []string{"put"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["zbxtable/controllers:UserController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:UserController"],
+		beego.ControllerComments{
+			Method:           "Delete",
+			Router:           "/:id",
+			AllowHTTPMethods: []string{"delete"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
+	beego.GlobalControllerRouter["zbxtable/controllers:UserController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:UserController"],
+		beego.ControllerComments{
+			Method:           "StatusPut",
+			Router:           "/status/:id",
+			AllowHTTPMethods: []string{"put"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
 }

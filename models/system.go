@@ -1,9 +1,12 @@
 package models
 
 import (
-	"github.com/astaxie/beego/orm"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
 )
 
 // item link to inventory
@@ -39,7 +42,7 @@ func (t *System) TableName() string {
 	return TableName("system")
 }
 
-// get id
+// GetSystemByID 根据id获取系统列表
 func GetSystemByID(id int64) (v *System, err error) {
 	o := orm.NewOrm()
 	v = &System{ID: id}
@@ -49,7 +52,7 @@ func GetSystemByID(id int64) (v *System, err error) {
 	return nil, err
 }
 
-// get all
+// GetALlSystem 获取所有系统列表
 func GetALlSystem() (cnt int64, system []System, err error) {
 	o := orm.NewOrm()
 	var sys []System
@@ -62,7 +65,7 @@ func GetALlSystem() (cnt int64, system []System, err error) {
 	return cnt, sys, nil
 }
 
-// get all
+// UpdateSystem 更新系统分类及指标
 func UpdateSystem(m *System) (err error) {
 	o := orm.NewOrm()
 	v := System{ID: m.ID}
@@ -111,7 +114,7 @@ func SystemInit(id int64) error {
 	return nil
 }
 
-// HostTypeSet 根据提供的主机租初始化
+// HostTypeSet 根据提供的主机组初始化
 func HostTypeSet(s *System, groupId []string) error {
 	//根据groupid获取host
 	OutputPar := []string{"hostid"}
@@ -133,6 +136,12 @@ func HostTypeSet(s *System, groupId []string) error {
 	if err != nil {
 		return err
 	}
+
+	// 添加检查，如果没有找到主机则返回错误
+	if len(p) == 0 {
+		return fmt.Errorf("未在指定的主机组中找到任何主机")
+	}
+
 	//根据id主机类型
 	var hType string
 	switch s.ID {
@@ -157,17 +166,35 @@ func HostTypeSet(s *System, groupId []string) error {
 		"inventory_mode": 1,
 		"inventory":      InventoryPara})
 	if err != nil {
+		logs.Error(err)
 		return err
 	}
-
 	//其他指标绑定
-	ItemToInventory(s.UptimeID, UptimeID)
-	ItemToInventory(s.CPUCore, CPUCore)
-	ItemToInventory(s.CPUUtilizationID, CPUUtilizationID)
-	ItemToInventory(s.MemoryUtilizationID, MemoryUtilizationID)
-	ItemToInventory(s.MemoryTotalID, MemoryTotalID)
-	ItemToInventory(s.Model, Model)
+	inventoryItems := []struct {
+		ID   string
+		Link int
+	}{
+		{s.UptimeID, UptimeID},
+		{s.CPUCore, CPUCore},
+		{s.CPUUtilizationID, CPUUtilizationID},
+		{s.MemoryUtilizationID, MemoryUtilizationID},
+		{s.MemoryTotalID, MemoryTotalID},
+		{s.Model, Model},
+	}
+	// Loop through the inventory items and bind each one
+	for _, item := range inventoryItems {
+		if item.ID == "" {
+			continue
+		}
+		if err := ItemToInventory(item.ID, item.Link); err != nil {
+			logs.Error(err)
+			continue
+		}
+	}
 	//ICMP
+	if s.PingTemplateID == "" {
+		return nil
+	}
 	ICMPToInventory(s.PingTemplateID)
 	return nil
 }

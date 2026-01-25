@@ -3,18 +3,18 @@ package models
 import (
 	"bytes"
 	"context"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
-	redis "github.com/go-redis/redis/v8"
-	"github.com/xen0n/go-workwx"
 	"html/template"
 	"strconv"
 	"strings"
 	"time"
 	template2 "zbxtable/utils"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+	"github.com/xen0n/go-workwx"
 )
 
-//copy from open-facon-plus
+// copy from open-facon-plus
 func ConsumeWechat() {
 	for {
 		L := PopAllWechat()
@@ -32,7 +32,6 @@ func SendWechatList(L []*Event) {
 	}
 }
 
-//
 func SendWechat(event *Event) {
 	defer func() {
 		<-WechatWorkerChan
@@ -57,17 +56,16 @@ func SendWechat(event *Event) {
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
 		logs.Error(err)
+		return
 	}
 	var body bytes.Buffer
-	err = tmpl.Execute(&body, event) //将str的值合成到tmpl模版的{{.}}中，并将合成得到的文本输入到os.Stdout,返回hello, world
-	if err != nil {
-		panic(err)
-	}
+	err = tmpl.Execute(&body, event)
 	if err != nil {
 		logs.Error(err)
+		return
 	}
 	for _, v := range plist {
-		SendWechatAlert(v, event, string(body.Bytes()))
+		SendWechatAlert(v, event, body.String())
 	}
 }
 func SendWechatAlert(user Manager, event *Event, content string) error {
@@ -106,9 +104,6 @@ func PopAllWechat() []*Event {
 		var ctx = context.Background()
 		reply, err := RDB.RPop(ctx, "wechat").Result()
 		if err != nil {
-			if err != redis.Nil {
-				logs.Error(err)
-			}
 			break
 		}
 		if reply == "" || reply == "nil" {

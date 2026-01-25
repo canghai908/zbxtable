@@ -2,14 +2,16 @@ package models
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/tls"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 )
 
 // Jar struct
@@ -41,7 +43,10 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{
-		tr, nil, JAR, 99999999999999}
+		Transport: tr,
+		Jar:       JAR,
+		Timeout:   99999999999999,
+	}
 	request, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		logs.Error("Fatal error ", err.Error())
@@ -71,9 +76,9 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		if err != nil {
 			logs.Error("Failed to read response data: %+v", err)
 		}
-		if beego.BConfig.RunMode == "dev" {
-			logs.Info("Login to zabbix response body is:", string(data))
-		}
+		//if beego.BConfig.RunMode == "dev" {
+		//	logs.Info("Login to zabbix response body is:", string(data))
+		//}
 		if strings.Contains(string(data), "blocked") {
 			logs.Error("Login to Zabbix failed!")
 			os.Exit(1)
@@ -85,5 +90,26 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		logs.Info("Login to zabbix  successfully！http status code:", response.StatusCode)
 	} else {
 		logs.Info("Login to zabbix  successfully!")
+	}
+	//解析并把cookies存如redis
+	u, err := url.Parse(ZabbixWeb)
+	if err != nil {
+		logs.Error("Failed to parse URL: %v", err)
+		return
+	}
+	//把cookies设置到缓存中
+	cookies := JAR.Cookies(u) // 从 CookieJar 中获取指定 URL 的 Cookies
+	for _, cookie := range cookies {
+		var ctx = context.Background()
+		value, err := url.QueryUnescape(cookie.Value)
+		if err != nil {
+			logs.Error("解码失败:", err)
+			return
+		}
+		err = RDB.Set(ctx, "zbx_session", value, 0).Err()
+		if err != nil {
+			logs.Error(err)
+			return
+		}
 	}
 }

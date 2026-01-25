@@ -26,12 +26,14 @@ func InitTask() {
 	//UpdateTopoData := toolbox.NewTask("UpdateTopoData", "0/30 * * * * *", UpdateTopoData)
 	hostTypeHostList := toolbox.NewTask("hostTypeHostList", "0 */5 * * * *", GetTypeHostList)
 	//出口带宽流量获取
-	Egress := toolbox.NewTask("EgressCache", "0/30 * * * * *", EgressCache)
+	egress := toolbox.NewTask("EgressCache", "0/30 * * * * *", EgressCache)
+	syncInventory := toolbox.NewTask("SyncInventory", "0 */5 * * * *", SyncInventory)
 
 	toolbox.AddTask("top", top)
 	//toolbox.AddTask("UpdateTopoData", UpdateTopoData)
 	toolbox.AddTask("hostTypeHostList", hostTypeHostList)
-	toolbox.AddTask("Egress", Egress)
+	toolbox.AddTask("egress", egress)
+	toolbox.AddTask("syncInventory", syncInventory)
 	toolbox.AddTask("DayReport", DayReport)
 	toolbox.AddTask("WeekReport", WeekReport)
 }
@@ -148,30 +150,11 @@ func TOP() error {
 		return err
 	}
 	var ctx = context.Background()
-	//var dt []Hosts
-	var d Hosts
 	if len(hb) == 0 {
-		logs.Error(errors.New("host list is null"))
 		return errors.New("host list is null")
 	}
 	for _, v := range hb {
-		d.HostID = v.Hostid
-		d.Host = v.Host
-		d.Name = v.Name
-		if len(v.Interfaces) != 0 {
-			d.Interfaces = v.Interfaces[0].IP
-		}
-		d.Status = v.Status
-		d.Available = v.Available
-		d.Error = v.Error
-		d.NumberOfCores = v.Inventory.Software
-		d.CPUUtilization = v.Inventory.SoftwareAppA
-		d.MemoryUtilization = v.Inventory.SoftwareAppB
-		d.MemoryUsed = v.Inventory.SoftwareAppD
-		d.MemoryTotal = v.Inventory.SoftwareAppC
-		d.Uptime = v.Inventory.SoftwareAppE
-		//排除异常主机
-		if d.Available == "0" {
+		if v.Available == "0" {
 			continue
 		}
 		switch v.Inventory.Type {
@@ -360,8 +343,8 @@ func GetTypeHostList() error {
 			var err error
 			tid, err = strconv.ParseInt(vv.HostID, 10, 64)
 			if err != nil {
-				logs.Error(err)
 				tid = 0
+				logs.Error(err)
 			}
 			t.ID = tid
 			t.Name = vv.Name
@@ -386,9 +369,10 @@ func EgressCache() error {
 	v := &Egress{ID: 1}
 	err := o.Read(v)
 	if err != nil {
+		logs.Error(err)
 		return err
 	}
-	var itemlist []string
+	var itemList []string
 	//空返回
 	if v.InOne == "" && v.OutOne == "" && v.InTwo == "" && v.OutTwo == "" {
 		var dList EgressList
@@ -433,5 +417,39 @@ func EgressCache() error {
 		return err
 	}
 	return nil
+}
 
+// SyncInventory 同步主机分类及数据绑定
+func SyncInventory() error {
+	var data []Config
+	o := orm.NewOrm()
+	//查询配置表，id 3为同步配置
+	cnt, err := o.QueryTable(Config{}).Filter("id", 3).All(&data)
+	if err != nil {
+		return err
+	}
+	if cnt == 0 {
+		return nil
+	}
+	//1为开启，其他为关闭
+	if data[0].Value != "1" {
+		return nil
+	}
+	var list []System
+	cnt, err = o.QueryTable(System{}).Filter("ID", 1).All(&list)
+	if err != nil {
+		logs.Error(err)
+		return err
+	}
+	if cnt == 0 {
+		return nil
+	}
+	for _, v := range list {
+		gList := strings.Split(v.GroupID, ",")
+		err = HostTypeSet(&v, gList)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
