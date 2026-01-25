@@ -119,7 +119,8 @@ var (
 		Usage:  "Install ms-agent tools to Zabbix Server",
 		Action: installAgent,
 	}
-	ZBV bool
+	ZBV    bool
+	ZBVVer string // Zabbix version string
 )
 
 func CheckZabbix() error {
@@ -131,6 +132,7 @@ func CheckZabbix() error {
 		logs.Error(err)
 		return err
 	}
+	ZBVVer = version
 	verArr := strings.Split(version, ".")
 	ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
 	ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
@@ -149,6 +151,15 @@ func installAgent(*cli.Context) error {
 	err := CheckZabbix()
 	if err != nil {
 		return err
+	}
+	// 确保API对象已正确初始化并保持认证状态
+	// 如果只配置了token，需要重新设置API.Auth
+	token := InitConfig("zabbix_token")
+	if token != "" {
+		// 重新初始化API并设置token，确保认证状态正确
+		zabbixWeb := InitConfig("zabbix_web")
+		API = zabbix.NewAPI(zabbixWeb + "/api_jsonrpc.php")
+		API.Auth = token
 	}
 	MediaParams := make(map[string]interface{}, 0)
 	MediaParams["description"] = MSMedia
@@ -178,6 +189,7 @@ func installAgent(*cli.Context) error {
 	}
 
 	MediaParams["exec_path"] = MSName
+	MediaParams["status"] = "0"
 	ma, err := API.CallWithError("mediatype.create", MediaParams)
 	if err != nil {
 		logs.Error(err)

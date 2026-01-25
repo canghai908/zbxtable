@@ -3,6 +3,13 @@ package models
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+	"zbxtable/utils"
+
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
@@ -11,18 +18,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	workwx "github.com/xen0n/go-workwx"
 	ini "gopkg.in/ini.v1"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
-	"zbxtable/utils"
+
+	"os"
 
 	"context"
 	"errors"
 	jsoniter "github.com/json-iterator/go"
 	_ "github.com/lib/pq"
-	"os"
 )
 
 var (
@@ -187,8 +189,12 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	logs.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
 
-	//	zabbix web login
-	LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
+	//	zabbix web login (only if token is not configured)
+	if zabbix_pass != "" {
+		LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
+	} else {
+		logs.Info("Zabbix pass is not configured, skipping web login")
+	}
 
 	//gen tpl
 	AgentId, err := beego.AppConfig.Int64("wechat_agentid")
@@ -337,4 +343,12 @@ func GetConfKey(v string) string {
 		return ""
 	}
 	return p.String()
+}
+
+// IsPasswordConfigured 检查是否配置了密码（用于图形查看）
+// 如果密码不为空，返回 true；密码为空，返回 false
+func IsPasswordConfigured() bool {
+	pass := GetConfKey("zabbix_pass")
+	// 如果密码不为空，则已配置密码
+	return pass != ""
 }

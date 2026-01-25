@@ -1,10 +1,11 @@
 package controllers
 
 import (
+	"net/http"
+
 	"github.com/astaxie/beego"
 	jwtbeego "github.com/canghai908/jwt-beego"
 	jsoniter "github.com/json-iterator/go"
-	"net/http"
 )
 
 var json = jsoniter.Config{
@@ -69,5 +70,4 @@ func (c *BaseController) Prepare() {
 		c.ServeJSON()
 	}
 	Tuser = iss
-	return
 }

@@ -3,15 +3,17 @@ package controllers
 import (
 	"compress/gzip"
 	"crypto/tls"
-	"github.com/astaxie/beego/logs"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+
 	"zbxtable/models"
+
+	"github.com/astaxie/beego"
 )
 
 // ImagesController operations for Host

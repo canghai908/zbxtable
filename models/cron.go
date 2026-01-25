@@ -391,15 +391,16 @@ func EgressCache() error {
 		}
 		return nil
 	}
-	itemList = append(itemList, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
-	list, err := GetItemByIDS(itemList)
-	//数据异常返回
-	if len(list) != 4 {
-		logs.Error("出口Item数据获取异常")
+	itemlist = append(itemlist, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
+	list, err := GetItemByIDS(itemlist)
+	if err != nil {
+		logs.Error("出口Item数据获取异常", err)
 		return errors.New("出口Item数据获取异常")
 	}
-	if err != nil {
-		return err
+	//数据异常返回
+	if len(list) != 4 {
+		logs.Error("出口Item数据结果异常", len(list))
+		return errors.New("出口Item数据结果异常")
 	}
 	var dList EgressList
 	dList.NameOne = v.NameOne

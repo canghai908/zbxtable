@@ -196,25 +196,23 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	var map1s []orm.Params
 	var name []string
 	var values []int
-
-	baseQuery := "SELECT host, hostname, COUNT(DISTINCT id) AS host_count " +
-		"FROM zbxtable_alarm WHERE occurtime >= ? AND occurtime <= ? " +
-		"AND (STATUS='故障' or STATUS='1') "
-
-	var params []interface{}
-	params = append(params, strbeing, strend)
-
-	if tenant_id != "" {
-		baseQuery += "AND tenant_id = ? "
-		params = append(params, tenant_id)
+	var num1 int64
+	// mysql8 修复：SELECT 和 GROUP BY 字段保持一致，使用 hostname
+	if tenant_id == "" {
+		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
+			strbeing +
+			"' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or STATUS='1') GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
+			Values(&map1s)
+	} else {
+		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
+			strbeing +
+			"' and occurtime <='" + strend +
+			"' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
+			tenant_id + "' GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
+			Values(&map1s)
 	}
-
-	// 修改排序，确保按照告警数量降序排列
-	baseQuery += "GROUP BY host, hostname ORDER BY COUNT(DISTINCT id) DESC LIMIT 10"
-
-	_, err = o.Raw(baseQuery, params...).Values(&map1s)
-
-	if err == nil && len(map1s) > 0 {
+	if err == nil && num1 > 0 {
 		for i := 0; i < len(map1s); i++ {
 			name = append(name, map1s[i]["hostname"].(string))
 			va, _ := strconv.Atoi(map1s[i]["host_count"].(string))

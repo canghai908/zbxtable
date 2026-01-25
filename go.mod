@@ -9,7 +9,7 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/astaxie/beego v1.12.3
 	github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e
-	github.com/canghai908/zabbix-go v0.0.0-20250224122310-404074f2f28a
+	github.com/canghai908/zabbix-go v1.0.0
 	github.com/go-echarts/go-echarts/v2 v2.2.5
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.0

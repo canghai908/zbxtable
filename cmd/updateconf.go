@@ -14,7 +14,7 @@ var (
 	}
 )
 
-//update config
+// update config
 func updateconfig(*cli.Context) error {
 	logs.Info("Start upgrading the old configuration file!")
 	conf := make(map[string]string)
@@ -41,7 +41,7 @@ func updateconfig(*cli.Context) error {
 	return nil
 }
 
-//check conf
+// check conf
 func PreCheckConf(zabbix_web, zabbix_user, zabbix_pass,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport string) error {
 	err := CheckDb(dbtype, dbhost, dbuser, dbpass, dbname, dbport)
@@ -58,37 +58,3 @@ func PreCheckConf(zabbix_web, zabbix_user, zabbix_pass,
 	logs.Info("Connected to zabbix web successfully！Zabbix version is :", version)
 	return nil
 }
-
-//
-////check conf
-//func PreCheckConf() error {
-//	cfg, err := ini.Load("./conf/app.conf")
-//	if err != nil {
-//		logs.Error(err)
-//		return err
-//	}
-//	conf := make(map[string]string)
-//	var b = []string{"dbtype", "dbhost", "dbuser", "dbpass", "dbname", "dbport",
-//		"zabbix_web", "zabbix_user", "zabbix_pass"}
-//	for _, v := range b {
-//		p, err := cfg.Section("").GetKey(v)
-//		if err != nil {
-//			logs.Error(err)
-//			return err
-//		}
-//		conf[v] = p.String()
-//	}
-//	err = CheckDb(InitConfig("dbtype"), conf["dbhost"], conf["dbuser"], conf["dbpass"], conf["dbname"], conf["dbport"])
-//	if err != nil {
-//		logs.Error(err)
-//		return err
-//	}
-//	logs.Info("Connected to database " + conf["dbname"] + " successfully!")
-//	version, err := CheckZabbix(conf["zabbix_web"], conf["zabbix_user"], conf["zabbix_pass"])
-//	if err != nil {
-//		logs.Error(err)
-//		return err
-//	}
-//	logs.Info("Connected to zabbix web successfully！Zabbix version is :", version)
-//	return nil
-//}
