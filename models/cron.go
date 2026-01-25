@@ -391,8 +391,8 @@ func EgressCache() error {
 		}
 		return nil
 	}
-	itemlist = append(itemlist, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
-	list, err := GetItemByIDS(itemlist)
+	itemList = append(itemList, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
+	list, err := GetItemByIDS(itemList)
 	if err != nil {
 		logs.Error("出口Item数据获取异常", err)
 		return errors.New("出口Item数据获取异常")

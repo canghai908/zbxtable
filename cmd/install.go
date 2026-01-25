@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/logs"
+	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 )

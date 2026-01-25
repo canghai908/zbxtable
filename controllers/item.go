@@ -18,7 +18,6 @@ func (c *ItemController) URLMapping() {
 	c.Mapping("GetItemByKey", c.GetItemByKey)
 	//c.Mapping("GetFlowItem", c.GetFlowItem)
 	c.Mapping("GetAllItemByKey", c.GetAllItemByKey)
-	c.Mapping("GetAllTraffficByKey", c.GetAllTrafficByKey)
 	c.Mapping("GetAllTraffficReceive", c.GetAllTraffficReceive)
 }
 
