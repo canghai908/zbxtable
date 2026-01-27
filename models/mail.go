@@ -81,6 +81,11 @@ type TableDataList struct {
 }
 
 func CreateMailTable(m Report, chartdata []ChartData) ([]byte, error) {
+	// 没有任何图表数据时，直接返回错误，避免 panic
+	if len(chartdata) == 0 {
+		return nil, fmt.Errorf("CreateMailTable: no chart data for report %s", m.Name)
+	}
+
 	var data ItemsHtml
 	data.Title = m.Name
 	data.LinkName = m.Name
@@ -90,6 +95,11 @@ func CreateMailTable(m Report, chartdata []ChartData) ([]byte, error) {
 	var plist []TableDataList
 	var one TableDataList
 	for _, v := range chartdata {
+		// 跳过没有带宽信息或没有数据点的记录，避免越界或除零
+		if len(v.LinkBandWidth) == 0 || len(v.Data) == 0 {
+			continue
+		}
+
 		one.ItemName = v.Name
 		one.IP = v.IP
 		one.Host = v.Host
@@ -99,6 +109,11 @@ func CreateMailTable(m Report, chartdata []ChartData) ([]byte, error) {
 		one.AVgPre = AvgPer(ttt, v.LinkBandWidth[0].Value.(float64)) + "%"
 		plist = append(plist, one)
 	}
+	// 如果所有记录都被过滤掉，也返回一个明确错误，给任务日志记录
+	if len(plist) == 0 {
+		return nil, fmt.Errorf("CreateMailTable: chart data has no valid rows for report %s", m.Name)
+	}
+
 	data.TableInfo = plist
 	t, err := template.New("webpage").Parse(htmlReport)
 	if err != nil {
