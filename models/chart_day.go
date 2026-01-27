@@ -25,6 +25,7 @@ type ChartData struct {
 	Date          []string        `json:"date"`
 	Data          []opts.LineData `json:"data"`
 	LinkBandWidth []opts.LineData `json:"link_band_width"`
+	ItemID        string          `json:"item_id"` // 指标ID，用于获取图表
 }
 
 func TaskDayReport(m Report) error {

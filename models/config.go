@@ -84,3 +84,14 @@ func updateZbxDash(m *Config) (err error) {
 	}
 	return nil
 }
+
+// GetConfigValueByKey 根据 key 获取配置值，如果不存在或出错则返回默认值
+func GetConfigValueByKey(key string, defaultVal string) string {
+	o := orm.NewOrm()
+	var c Config
+	err := o.QueryTable(new(Config)).Filter("Key", key).One(&c)
+	if err == nil && c.Value != "" {
+		return c.Value
+	}
+	return defaultVal
+}

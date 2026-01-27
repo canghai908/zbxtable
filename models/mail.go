@@ -5,22 +5,31 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/astaxie/beego"
-	"github.com/go-echarts/go-echarts/v2/opts"
-	"github.com/jordan-wright/email"
 	"html/template"
 	"net/smtp"
 	"os"
+	"strconv"
+	"strings"
 	template2 "zbxtable/utils"
+
+	"github.com/astaxie/beego"
+	"github.com/go-echarts/go-echarts/v2/opts"
+	"github.com/jordan-wright/email"
 )
 
 func Sendmail(To []string, Subject, attach string, temp []byte) error {
-	from := beego.AppConfig.String("email_from")
-	nickname := beego.AppConfig.String("email_nickname")
-	secret := beego.AppConfig.String("email_secret")
-	host := beego.AppConfig.String("email_host")
-	port, _ := beego.AppConfig.Int("email_port")
-	isSSL, _ := beego.AppConfig.Bool("email_isSSl")
+	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
+	from := GetConfigValueByKey("email_from", beego.AppConfig.String("email_from"))
+	nickname := GetConfigValueByKey("email_nickname", beego.AppConfig.String("email_nickname"))
+	secret := GetConfigValueByKey("email_secret", beego.AppConfig.String("email_secret"))
+	host := GetConfigValueByKey("email_host", beego.AppConfig.String("email_host"))
+	portStr := GetConfigValueByKey("email_port", beego.AppConfig.String("email_port"))
+	if portStr == "" {
+		portStr = "465"
+	}
+	port, _ := strconv.Atoi(portStr)
+	isSSlStr := GetConfigValueByKey("email_isSSl", beego.AppConfig.String("email_isSSl"))
+	isSSL := strings.ToLower(isSSlStr) == "true"
 	auth := smtp.PlainAuth("", from, secret, host)
 	e := email.NewEmail()
 	if nickname != "" {

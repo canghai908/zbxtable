@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"sync"
 	"time"
 	"zbxtable/models"
 	"zbxtable/packfile"
@@ -42,6 +45,10 @@ var (
 		Usage:  "Start web server",
 		Action: runWeb,
 	}
+
+	envConfig   map[string]string
+	initEnvOnce sync.Once
+	envFileExists bool
 )
 
 // runWeb 启动web
@@ -71,6 +78,7 @@ func runWeb(*cli.Context) error {
 	models.InitSenderWorker()
 	go models.ConsumeMail()
 	go models.ConsumeWechat()
+	go models.ConsumeWechatRobot()
 	beego.Run()
 	return nil
 }
@@ -203,6 +211,48 @@ func CheckConfExist() {
 
 // init config files
 func InitConfig(v string) string {
+	// 为了与 models.GetConfKey 行为一致，这里也实现：
+	// 1）如果 .env 存在，则所有配置完全由 .env 决定（可以是空字符串），不会再回退到 app.conf
+	// 2）只有当 .env 不存在时，才从 app.conf 读取
+	initEnvOnce.Do(func() {
+		file, err := os.Open(".env")
+		if err != nil {
+			envFileExists = false
+			return
+		}
+		defer file.Close()
+		envFileExists = true
+		envConfig = make(map[string]string)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			val = strings.Trim(val, `"'`)
+			if key != "" {
+				envConfig[key] = val
+			}
+		}
+	})
+
+	if envFileExists {
+		if envConfig == nil {
+			return ""
+		}
+		if val, ok := envConfig[v]; ok {
+			return val
+		}
+		return ""
+	}
+
+	// 回退到 app.conf
 	p, err := Cfg.Section("").GetKey(v)
 	if err != nil {
 		logs.Error(err)

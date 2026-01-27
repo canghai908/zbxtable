@@ -549,24 +549,6 @@ func init() {
 
     beego.GlobalControllerRouter["zbxtable/controllers:ReportController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:ReportController"],
         beego.ControllerComments{
-            Method: "GetHosts",
-            Router: "/hosts",
-            AllowHTTPMethods: []string{"get"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["zbxtable/controllers:ReportController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:ReportController"],
-        beego.ControllerComments{
-            Method: "GetItems",
-            Router: "/items",
-            AllowHTTPMethods: []string{"get"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["zbxtable/controllers:ReportController"] = append(beego.GlobalControllerRouter["zbxtable/controllers:ReportController"],
-        beego.ControllerComments{
             Method: "UpdateReportStatus",
             Router: "/status",
             AllowHTTPMethods: []string{"post"},

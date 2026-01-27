@@ -1,12 +1,17 @@
 package models
 
 import (
+	"bufio"
+	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"zbxtable/utils"
 
@@ -16,15 +21,10 @@ import (
 	zabbix "github.com/canghai908/zabbix-go"
 	redis "github.com/go-redis/redis/v8"
 	_ "github.com/go-sql-driver/mysql"
-	workwx "github.com/xen0n/go-workwx"
-	ini "gopkg.in/ini.v1"
-
-	"os"
-
-	"context"
-	"errors"
 	jsoniter "github.com/json-iterator/go"
 	_ "github.com/lib/pq"
+	workwx "github.com/xen0n/go-workwx"
+	ini "gopkg.in/ini.v1"
 )
 
 var (
@@ -42,6 +42,10 @@ var (
 	BuildTime  string
 	AssetsHost string
 	WeApp      = &workwx.WorkwxApp{}
+
+	envConfig     map[string]string
+	envConfigOnce sync.Once
+	envFileExists bool
 )
 
 // TableName 表名前缀
@@ -62,6 +66,7 @@ func GetAssetsHost() string {
 func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
 	redis_host, redis_port, redis_pass, redis_db string) {
+
 	//GetAssetsHost
 	GetAssetsHost()
 	//database chechek
@@ -188,7 +193,6 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		ZBX_V = false
 	}
 	logs.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
-
 	//	zabbix web login (only if token is not configured)
 	if zabbix_pass != "" {
 		LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
@@ -196,16 +200,27 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		logs.Info("Zabbix pass is not configured, skipping web login")
 	}
 
-	//gen tpl
-	AgentId, err := beego.AppConfig.Int64("wechat_agentid")
-	if err != nil {
-		logs.Error("wechat_agentid get error:", err)
-		os.Exit(1)
+	//gen tpl (企业微信配置优先从系统配置表读取，其次回退到 app.conf)
+	agentIDStr := GetConfigValueByKey("wechat_agentid", beego.AppConfig.String("wechat_agentid"))
+	if agentIDStr == "" {
+		logs.Info("wechat_agentid is empty, WeChat app will not be initialized")
+	} else {
+		AgentId, err := strconv.ParseInt(agentIDStr, 10, 64)
+		if err != nil {
+			logs.Error("wechat_agentid parse error:", err)
+			os.Exit(1)
+		}
+		corpid := GetConfigValueByKey("wechat_corpid", beego.AppConfig.String("wechat_corpid"))
+		secret := GetConfigValueByKey("wechat_secret", beego.AppConfig.String("wechat_secret"))
+		if corpid == "" || secret == "" {
+			logs.Info("wechat_corpid or wechat_secret is empty, WeChat app will not be initialized")
+		} else {
+			client := workwx.New(corpid)
+			WeApp = client.WithApp(secret, AgentId)
+			WeApp.SpawnAccessTokenRefresher()
+			logs.Info("WeChat inited!")
+		}
 	}
-	client := workwx.New(beego.AppConfig.String("wechat_corpid"))
-	WeApp = client.WithApp(beego.AppConfig.String("wechat_secret"), AgentId)
-	WeApp.SpawnAccessTokenRefresher()
-	logs.Info("WeChat inited!")
 }
 
 // DatabaseInit 数据初始化
@@ -285,29 +300,43 @@ func DatabaseInit() {
 		}
 		logs.Info("Init egress data successfully!")
 	}
-	//默认dashboard数据初始化
-	var configs []Config
-	allConfig := new(Config)
-	_, err = o.QueryTable(allConfig).All(&configs)
-	if err != nil {
-		logs.Info(err)
-		return
+	// 默认配置初始化（包括面板、邮件、微信、Ollama 等）
+	defaultConfigs := []Config{
+		// Dashboard 相关
+		{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
+		{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},
+		{Name: "主机分类同步", Key: "sync_inventory", Value: "1", Comment: "主机分类同步计划任务是否启用：1 启用,0 不启用"},
+		// 邮件配置
+		{Name: "邮件发件人", Key: "email_from", Value: "", Comment: "告警邮件发件人邮箱地址"},
+		{Name: "邮件昵称", Key: "email_nickname", Value: "ZbxTable", Comment: "告警邮件显示的发件人昵称"},
+		{Name: "SMTP 密码/授权码", Key: "email_secret", Value: "", Comment: "SMTP 登录密码或授权码"},
+		{Name: "SMTP 服务器", Key: "email_host", Value: "smtp.qq.com", Comment: "SMTP 服务器地址"},
+		{Name: "SMTP 端口", Key: "email_port", Value: "465", Comment: "SMTP 端口号"},
+		{Name: "SMTP 使用 SSL", Key: "email_isSSl", Value: "true", Comment: "是否启用 SSL：true/false"},
+		// 企业微信配置
+		{Name: "企业微信 AgentID", Key: "wechat_agentid", Value: "", Comment: "企业微信应用的 AgentID"},
+		{Name: "企业微信 CorpID", Key: "wechat_corpid", Value: "", Comment: "企业微信企业ID"},
+		{Name: "企业微信 Secret", Key: "wechat_secret", Value: "", Comment: "企业微信应用的 Secret"},
+		// Ollama 配置
+		{Name: "Ollama Host", Key: "ollama_host", Value: "http://localhost:11434", Comment: "Ollama 服务地址，如 http://127.0.0.1:11434"},
+		{Name: "Ollama Model", Key: "ollama_model", Value: "deepseek-r1:32b", Comment: "默认使用的大模型名称"},
 	}
-	if len(configs) == 0 {
-		configData := []Config{
-			{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
-			{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},
-			{Name: "主机分类同步", Key: "sync_inventory", Value: "1", Comment: "主机分类同步计划任务是否启用：1 启用,0 不启用"},
+
+	for _, cfgItem := range defaultConfigs {
+		var existing Config
+		err = o.QueryTable(new(Config)).Filter("Key", cfgItem.Key).One(&existing)
+		if err == orm.ErrNoRows {
+			if _, insertErr := o.Insert(&cfgItem); insertErr != nil {
+				logs.Info("Init config key %s error: %v", cfgItem.Key, insertErr)
+				continue
+			}
+			logs.Info("Init config key %s successfully!", cfgItem.Key)
 		}
-		_, err := o.InsertMulti(len(configData), configData)
-		if err != nil {
-			logs.Info("Init default config data error！")
-			return
-		}
-		logs.Info("Init default config data successfully!")
 	}
 	//默认菜单初始化
 	InitMenuData()
+	//检查并添加缺失的菜单项（用于版本升级）
+	CheckAndAddMenus()
 	//告警默认规则初始化 default rule
 	var cRule []Rule
 	allRule := new(Rule)
@@ -331,6 +360,53 @@ func DatabaseInit() {
 }
 
 func GetConfKey(v string) string {
+	// 优先从 .env 中读取（便于开发环境配置敏感信息且不提交到 git）
+	envConfigOnce.Do(func() {
+		file, err := os.Open(".env")
+		if err != nil {
+			// 没有 .env 文件时直接跳过，后面回退到 app.conf
+			envFileExists = false
+			return
+		}
+		defer file.Close()
+
+		envFileExists = true
+		envConfig = make(map[string]string)
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			// 去掉可能的引号
+			val = strings.Trim(val, `"'`)
+			if key != "" {
+				envConfig[key] = val // 即使 val 为空也认为是有效配置
+			}
+		}
+	})
+
+	// 如果存在 .env 文件，则所有配置完全由 .env 决定：
+	// - key 存在：返回对应值（可以是空字符串）
+	// - key 不存在：返回空字符串
+	if envFileExists {
+		if envConfig == nil {
+			return ""
+		}
+		if val, ok := envConfig[v]; ok {
+			return val
+		}
+		return ""
+	}
+
+	// 其次从 conf/app.conf 读取
 	cfg, err := ini.Load("./conf/app.conf")
 	if err != nil {
 		logs.Error(err)

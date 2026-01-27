@@ -45,14 +45,29 @@ func CreateWeekReport() error {
 	}
 	//遍历周报
 	for _, v := range list {
-		//启用周报
-		if v.Status == "1" && len(v.Cycle) != 0 && len(v.Items) != 0 {
+		//启用周报，只处理循环报表（scheduled模式），跳过实时报表（realtime模式）
+		if v.Status == "1" && len(v.Cycle) != 0 && (v.ReportMode == "" || v.ReportMode == "scheduled") {
+			// 检查报表类型和配置
+			hasConfig := false
+			if v.ReportType == "host" {
+				hasConfig = len(v.HostIds) > 0 && len(v.ItemIds) > 0
+			} else {
+				hasConfig = len(v.Items) > 0
+			}
+			if !hasConfig {
+				continue
+			}
 			cycList := strings.Split(v.Cycle, ",")
 			for _, vv := range cycList {
 				if vv == "week" {
 					start := time.Now()
 					//周报生成
-					err := TaskWeekReport(v)
+					var err error
+					if v.ReportType == "host" {
+						err = TaskHostReport(v)
+					} else {
+						err = TaskWeekReport(v)
+					}
 					if err != nil {
 						logs.Error(err)
 						///update status failed
@@ -87,12 +102,28 @@ func CreateDayReport() error {
 		return err
 	}
 	for _, v := range list {
-		if v.Status == "1" && len(v.Cycle) != 0 && len(v.Items) != 0 {
+		// 只处理循环报表（scheduled模式），跳过实时报表（realtime模式）
+		if v.Status == "1" && len(v.Cycle) != 0 && (v.ReportMode == "" || v.ReportMode == "scheduled") {
+			// 检查报表类型和配置
+			hasConfig := false
+			if v.ReportType == "host" {
+				hasConfig = len(v.HostIds) > 0 && len(v.ItemIds) > 0
+			} else {
+				hasConfig = len(v.Items) > 0
+			}
+			if !hasConfig {
+				continue
+			}
 			cycList := strings.Split(v.Cycle, ",")
 			for _, vv := range cycList {
 				if vv == "day" {
 					start := time.Now()
-					err := TaskDayReport(v)
+					var err error
+					if v.ReportType == "host" {
+						err = TaskHostReport(v)
+					} else {
+						err = TaskDayReport(v)
+					}
 					if err != nil {
 						logs.Error(err)
 						//更新report状态

@@ -180,7 +180,7 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 		var user Manager
 		var plist []Manager
 		_, err = o.QueryTable(user).Filter("id__in", ids).All(&plist, "id", "username",
-			"email", "wechat", "phone", "ding_talk")
+			"email", "wechat", "wechat_robot_key", "phone", "ding_talk")
 		if err != nil {
 			return []string{}, err
 		}

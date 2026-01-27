@@ -81,12 +81,13 @@ type Manager struct {
 	Status    int64     `orm:"column(status)" json:"status"`
 	Role      string    `orm:"column(role);size(255)" json:"role"`
 	Operation string    `orm:"column(operation);size(255)" json:"operation"`
-	Email     string    `orm:"column(email);size(255)" json:"email"`
-	Wechat    string    `orm:"column(wechat);size(255)" json:"wechat"`
-	Phone     string    `orm:"column(phone);size(255)" json:"phone"`
-	DingTalk  string    `orm:"column(ding_talk);size(255)" json:"ding_talk"`
-	Created   time.Time `orm:"column(created);type(datetime);auto_now_add" json:"created"`
-	Updated   time.Time `orm:"column(updated);type(datetime);auto_now" json:"updated_at"`
+	Email         string    `orm:"column(email);size(255)" json:"email"`
+	Wechat        string    `orm:"column(wechat);size(255)" json:"wechat"`
+	WechatRobotKey string    `orm:"column(wechat_robot_key);size(255)" json:"wechat_robot_key"`
+	Phone         string    `orm:"column(phone);size(255)" json:"phone"`
+	DingTalk      string    `orm:"column(ding_talk);size(255)" json:"ding_talk"`
+	Created       time.Time `orm:"column(created);type(datetime);auto_now_add" json:"created"`
+	Updated       time.Time `orm:"column(updated);type(datetime);auto_now" json:"updated_at"`
 }
 
 // TableName string
@@ -138,9 +139,10 @@ func UpdateUser(m *Manager, tuser string) error {
 		v.Email = m.Email
 		v.Phone = m.Phone
 		v.Wechat = m.Wechat
+		v.WechatRobotKey = m.WechatRobotKey
 		v.DingTalk = m.DingTalk
 		v.Status = m.Status
-		_, err = o.Update(m, "Password", "Role", "Email", "Wechat", "Phone", "DingTalk")
+		_, err = o.Update(m, "Password", "Role", "Email", "Wechat", "WechatRobotKey", "Phone", "DingTalk")
 		if err != nil {
 			return err
 		}
@@ -151,8 +153,9 @@ func UpdateUser(m *Manager, tuser string) error {
 	v.Email = m.Email
 	v.Phone = m.Phone
 	v.Wechat = m.Wechat
+	v.WechatRobotKey = m.WechatRobotKey
 	v.DingTalk = m.DingTalk
-	_, err = o.Update(m, "Role", "Email", "Wechat", "Phone", "DingTalk")
+	_, err = o.Update(m, "Role", "Email", "Wechat", "WechatRobotKey", "Phone", "DingTalk")
 	if err != nil {
 		return err
 	}
@@ -215,7 +218,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	_, err = o.QueryTable(al).
 		Limit(limits, (pages-1)*limits).SetCond(cond).
 		All(&users, "id", "username", "role", "avatar", "email", "ding_talk",
-			"phone", "created", "status", "wechat")
+			"phone", "created", "status", "wechat", "wechat_robot_key")
 	if err != nil {
 		return 0, []Manager{}, err
 	}

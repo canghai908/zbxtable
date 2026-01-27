@@ -40,20 +40,33 @@ func GetALlReport() (cnt int64, system []Report, err error) {
 }
 
 // GetAllTopology t
-func GetAllReportsLimt(page, limit, name string) (cnt int64, topo []Report, err error) {
+func GetAllReportsLimt(page, limit, name, reportType string) (cnt int64, topo []Report, err error) {
 	o := orm.NewOrm()
 	var topologys []Report
 	var CountTopologys []Report
 	al := new(Report)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
+	query := o.QueryTable(al)
 	//count topology
-	_, err = o.QueryTable(al).Filter("name__contains", name).All(&CountTopologys)
+	if name != "" {
+		query = query.Filter("name__contains", name)
+	}
+	if reportType != "" {
+		query = query.Filter("report_type", reportType)
+	}
+	_, err = query.All(&CountTopologys)
 	if err != nil {
 		return 0, []Report{}, err
 	}
-	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").
-		Filter("name__contains", name).All(&topologys)
+	query = o.QueryTable(al)
+	if name != "" {
+		query = query.Filter("name__contains", name)
+	}
+	if reportType != "" {
+		query = query.Filter("report_type", reportType)
+	}
+	_, err = query.Limit(limits, (pages-1)*limits).OrderBy("created_at").All(&topologys)
 	if err != nil {
 		logs.Debug(err)
 		return 0, []Report{}, err
@@ -89,7 +102,7 @@ func UpdateReportByID(m *Report) (err error) {
 	m.Items = utils.VAarToStr(m.Items)
 	m.Cycle = utils.VAarToStr(m.Cycle)
 	_, err = o.Update(m, "Name", "Emails", "Items",
-		"LinkBandWidth", "Cycle", "Status", "Desc")
+		"LinkBandWidth", "HostIds", "ItemIds", "Cycle", "Status", "Desc", "Start", "End", "ReportMode")
 	if err != nil {
 		return err
 	}
@@ -105,48 +118,106 @@ func CheckNowByID(m *Report) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(v.Cycle) != 0 {
-		cycle := strings.Split(v.Cycle, ",")
-		for _, vv := range cycle {
-			//week
-			if vv == "week" {
-				start := time.Now()
-				err := TaskWeekReport(v)
-				if err != nil {
-					logs.Error(err)
-					return err
-				}
-				//更新report状态
-				v.ExecStatus = strconv.Itoa(Success)
-				v.StartAt = start
-				v.EndAt = time.Now()
-				err = UpdateReportExecStatusByID(&v)
-				if err != nil {
-					logs.Error(err)
-					return err
-				}
+
+	// 实时报表：直接生成，不需要周期
+	if v.ReportMode == "realtime" && v.ReportType == "host" {
+		start := time.Now()
+		// 设置执行状态为处理中
+		v.ExecStatus = strconv.Itoa(Running)
+		v.StartAt = start
+		if err := UpdateReportExecStatusByID(&v); err != nil {
+			logs.Error(err)
+			return err
+		}
+
+		// 实时报表使用配置的开始和结束时间，设置一个临时的Cycle用于文件命名
+		vTemp := v
+		if len(vTemp.Cycle) == 0 {
+			vTemp.Cycle = "realtime" // 用于文件命名区分
+		}
+		taskErr := TaskHostReport(vTemp)
+		if taskErr != nil {
+			logs.Error(taskErr)
+			v.ExecStatus = strconv.Itoa(Failed)
+			v.EndAt = time.Now()
+			UpdateReportExecStatusByID(&v)
+			return taskErr
+		}
+		// 更新 report 状态
+		v.ExecStatus = strconv.Itoa(Success)
+		v.EndAt = time.Now()
+		if err := UpdateReportExecStatusByID(&v); err != nil {
+			logs.Error(err)
+			return err
+		}
+		return nil
+	}
+
+	// 循环报表：需要配置周期
+	if len(v.Cycle) == 0 {
+		return nil
+	}
+
+	cycle := strings.Split(v.Cycle, ",")
+
+	// 根据周期分别生成报表：
+	// - 流量报表：day -> TaskDayReport，week -> TaskWeekReport
+	// - 主机报表：day/week 都调用 TaskHostReport，但每次只传递当前周期，避免重复逻辑
+	for _, vv := range cycle {
+		// day
+		if vv == "day" {
+			start := time.Now()
+			var taskErr error
+			if v.ReportType == "host" {
+				// 只针对当前周期生成主机报表
+				vDay := v
+				vDay.Cycle = "day"
+				taskErr = TaskHostReport(vDay)
+			} else {
+				taskErr = TaskDayReport(v)
 			}
-			//day
-			if vv == "day" {
-				start := time.Now()
-				err := TaskDayReport(v)
-				if err != nil {
-					logs.Error(err)
-					return err
-				}
-				//更新report状态
-				v.ExecStatus = strconv.Itoa(Success)
-				v.StartAt = start
-				v.EndAt = time.Now()
-				err = UpdateReportExecStatusByID(&v)
-				if err != nil {
-					logs.Error(err)
-					return err
-				}
+			if taskErr != nil {
+				logs.Error(taskErr)
+				return taskErr
+			}
+			// 更新 report 状态
+			v.ExecStatus = strconv.Itoa(Success)
+			v.StartAt = start
+			v.EndAt = time.Now()
+			if err := UpdateReportExecStatusByID(&v); err != nil {
+				logs.Error(err)
+				return err
+			}
+		}
+
+		// week
+		if vv == "week" {
+			start := time.Now()
+			var taskErr error
+			if v.ReportType == "host" {
+				// 只针对当前周期生成主机报表
+				vWeek := v
+				vWeek.Cycle = "week"
+				taskErr = TaskHostReport(vWeek)
+			} else {
+				taskErr = TaskWeekReport(v)
+			}
+			if taskErr != nil {
+				logs.Error(taskErr)
+				return taskErr
+			}
+			// 更新 report 状态
+			v.ExecStatus = strconv.Itoa(Success)
+			v.StartAt = start
+			v.EndAt = time.Now()
+			if err := UpdateReportExecStatusByID(&v); err != nil {
+				logs.Error(err)
+				return err
 			}
 		}
 	}
-	return
+
+	return nil
 }
 
 // UpdateTopologyByID updates Alarm by Id and returns error if

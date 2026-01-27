@@ -74,6 +74,7 @@ func (c *UserController) Post() {
 	role := gjson.Get(string(c.Ctx.Input.RequestBody), "role").String()
 	email := gjson.Get(string(c.Ctx.Input.RequestBody), "email").String()
 	wechat := gjson.Get(string(c.Ctx.Input.RequestBody), "wechat").String()
+	wechat_robot_key := gjson.Get(string(c.Ctx.Input.RequestBody), "wechat_robot_key").String()
 	phone := gjson.Get(string(c.Ctx.Input.RequestBody), "phone").String()
 	ding_talk := gjson.Get(string(c.Ctx.Input.RequestBody), "ding_talk").String()
 	p, _ := utils.PasswordHash(password)
@@ -87,7 +88,7 @@ func (c *UserController) Post() {
 		operation = "[]"
 	}
 	v := models.Manager{Username: username, Password: p, Operation: operation,
-		Email: email, Wechat: wechat, Phone: phone, DingTalk: ding_talk,
+		Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key, Phone: phone, DingTalk: ding_talk,
 		Status: 0, Role: role, Created: time.Now(),
 		Avatar: "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif",
 	}
@@ -128,6 +129,7 @@ func (c *UserController) Put() {
 	role := gjson.Get(string(c.Ctx.Input.RequestBody), "role").String()
 	email := gjson.Get(string(c.Ctx.Input.RequestBody), "email").String()
 	wechat := gjson.Get(string(c.Ctx.Input.RequestBody), "wechat").String()
+	wechat_robot_key := gjson.Get(string(c.Ctx.Input.RequestBody), "wechat_robot_key").String()
 	phone := gjson.Get(string(c.Ctx.Input.RequestBody), "phone").String()
 	dingTalk := gjson.Get(string(c.Ctx.Input.RequestBody), "ding_talk").String()
 	var operation string
@@ -146,7 +148,7 @@ func (c *UserController) Put() {
 		pass = ""
 	}
 
-	v := models.Manager{ID: id, Password: pass, Email: email, Wechat: wechat,
+	v := models.Manager{ID: id, Password: pass, Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key,
 		Phone: phone, DingTalk: dingTalk, Role: role, Operation: operation}
 	err = models.UpdateUser(&v, Tuser)
 	if err != nil {

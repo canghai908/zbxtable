@@ -103,13 +103,18 @@ func SendEmailAlert(event *Event, user Manager) error {
 		logs.Error(err)
 		return err
 	}
-	//tos := strings.Split(m.Emails, ",")
-	from := beego.AppConfig.String("email_from")
-	nickname := beego.AppConfig.String("email_nickname")
-	secret := beego.AppConfig.String("email_secret")
-	host := beego.AppConfig.String("email_host")
-	port, _ := beego.AppConfig.Int("email_port")
-	isSSL, _ := beego.AppConfig.Bool("email_isSSl")
+	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
+	from := GetConfigValueByKey("email_from", beego.AppConfig.String("email_from"))
+	nickname := GetConfigValueByKey("email_nickname", beego.AppConfig.String("email_nickname"))
+	secret := GetConfigValueByKey("email_secret", beego.AppConfig.String("email_secret"))
+	host := GetConfigValueByKey("email_host", beego.AppConfig.String("email_host"))
+	portStr := GetConfigValueByKey("email_port", beego.AppConfig.String("email_port"))
+	if portStr == "" {
+		portStr = "465"
+	}
+	port, _ := strconv.Atoi(portStr)
+	isSSlStr := GetConfigValueByKey("email_isSSl", beego.AppConfig.String("email_isSSl"))
+	isSSL := strings.ToLower(isSSlStr) == "true"
 	auth := smtp.PlainAuth("", from, secret, host)
 	at := smtp.CRAMMD5Auth(from, secret)
 	e := email.NewEmail()

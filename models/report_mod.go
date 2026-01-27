@@ -9,13 +9,18 @@ type Report struct {
 	ReportType    string    `orm:"column(report_type);size(255)" json:"report_type"`
 	Items         string    `orm:"column(items);size(200)" json:"items"`
 	LinkBandWidth string    `orm:"column(link_band_width);size(200)" json:"linkbandwidth"`
+	HostIds       string    `orm:"column(host_ids);type(text)" json:"host_ids"` // 主机ID列表，JSON格式
+	ItemIds       string    `orm:"column(item_ids);type(text)" json:"item_ids"` // 指标ID列表，JSON格式
 	Cycle         string    `orm:"column(cycle);size(200)" json:"cycle"`
 	Desc          string    `orm:"column(desc);size(200)" json:"desc"`
 	Emails        string    `orm:"column(emails);size(240)" json:"emails"`
-	Status        string    `orm:"column(status);size(50);" json:"status"`            //0 禁用 1 启用
-	ExecStatus    string    `orm:"column(exec_status);default(0)" json:"exec_status"` //
-	StartAt       time.Time `orm:"column(start_at);type(datetime);null" json:"start_at"`
-	EndAt         time.Time `orm:"column(end_at);type(datetime);null" json:"end_at"`
+	Status        string    `orm:"column(status);size(50);" json:"status"`                             //0 禁用 1 启用
+	ExecStatus    string    `orm:"column(exec_status);default(0)" json:"exec_status"`                  //
+	ReportMode    string    `orm:"column(report_mode);size(50);default(scheduled)" json:"report_mode"` // realtime: 实时报表, scheduled: 循环报表
+	Start         time.Time `orm:"column(start);type(datetime);null" json:"start"`                     // 报表配置的开始时间
+	End           time.Time `orm:"column(end);type(datetime);null" json:"end"`                         // 报表配置的结束时间
+	StartAt       time.Time `orm:"column(start_at);type(datetime);null" json:"start_at"`               // 报表执行开始时间
+	EndAt         time.Time `orm:"column(end_at);type(datetime);null" json:"end_at"`                   // 报表执行结束时间
 	CreatedAt     time.Time `orm:"auto_now_add;column(created_at);type(datetime)" json:"created_at"`
 	UpdatedAt     time.Time `orm:"auto_now;column(updated_at);type(datetime)" json:"updated_at"`
 }

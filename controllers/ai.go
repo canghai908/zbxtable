@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/astaxie/beego"
+	"zbxtable/models"
 )
 
 type AIController struct {
@@ -76,7 +77,7 @@ func (c *AIController) Chat() {
 		Messages []Message `json:"messages"`
 		Stream   bool      `json:"stream"`
 	}{
-		Model:  beego.AppConfig.DefaultString("ollama_model", "deepseek-r1:32b"),
+		Model:  models.GetConfigValueByKey("ollama_model", beego.AppConfig.DefaultString("ollama_model", "deepseek-r1:32b")),
 		Stream: true,
 		Messages: []Message{
 			systemPrompt,
@@ -96,8 +97,8 @@ func (c *AIController) Chat() {
 		return
 	}
 
-	// 从配置文件获取Ollama地址
-	ollamaHost := beego.AppConfig.DefaultString("ollama_host", "http://localhost:11434")
+	// 从配置或系统配置表获取Ollama地址
+	ollamaHost := models.GetConfigValueByKey("ollama_host", beego.AppConfig.DefaultString("ollama_host", "http://localhost:11434"))
 	ollamaURL := fmt.Sprintf("%s/api/chat", ollamaHost)
 
 	// 发送请求到Ollama

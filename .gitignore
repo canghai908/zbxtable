@@ -18,4 +18,9 @@ runtime/*
 logs/*
 packfile/staticFile.go
 /web/
+/download/
 /zbxtable.exe
+tmp/build-errors.log
+tmp/main.exe
+msty.ttf
+.env
