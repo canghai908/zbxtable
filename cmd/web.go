@@ -12,10 +12,11 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"zbxtable/models"
 	"zbxtable/packfile"
-	"zbxtable/routers"
-	"zbxtable/utils"
+	"zbxtable/api/v1"
+	"zbxtable/pkg/utils"
+	
+	model "zbxtable/internal/model"
 
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/sirupsen/logrus"
@@ -55,7 +56,7 @@ var (
 
 // checkInstallStatus 检查安装状态
 func checkInstallStatus() bool {
-	confPath := "./conf/app.conf"
+	confPath := "./config/app.conf"
 	_, err := os.Stat(confPath)
 	if err != nil {
 		return false
@@ -105,7 +106,7 @@ func runWeb(*cli.Context) error {
 	if !installed {
 		utils.Log.Info("系统未安装，启动安装引导模式")
 		// 未安装时，只启动 Web 服务器，不连接数据库
-		r := routers.RouterInitGin()
+		r := v1.InitRouter()
 		httpport := "8085"
 		utils.Log.Info("Starting Gin server in installation mode on port:", httpport)
 		utils.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
@@ -116,28 +117,28 @@ func runWeb(*cli.Context) error {
 	// 已安装，加载配置文件并连接数据库
 	utils.Log.Info("系统已安装，加载配置并连接数据库")
 	var err error
-	webCfg, err = ini.Load("./conf/app.conf")
+	webCfg, err = ini.Load("./config/app.conf")
 	if err != nil {
 		utils.Log.Error("Failed to load config file:", err)
 		os.Exit(1)
 	}
 	utils.Log.Info(motd)
-	models.ModelsInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
+	model.ModelsInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
 		InitConfig("zabbix_token"),
 		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
 		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"),
 		InitConfig("redis_host"), InitConfig("redis_port"),
 		InitConfig("redis_pass"), InitConfig("redis_db"))
 
-	models.InitTask()
-	defer models.StopTask()
-	models.InitSenderWorker()
-	go models.ConsumeMail()
-	go models.ConsumeWechat()
-	go models.ConsumeWechatRobot()
+	model.InitTask()
+	defer model.StopTask()
+	model.InitSenderWorker()
+	go model.ConsumeMail()
+	go model.ConsumeWechat()
+	go model.ConsumeWechatRobot()
 
 	// 直接使用 Gin 框架
-	r := routers.RouterInitGin()
+	r := v1.InitRouter()
 	httpport := InitConfig("httpport")
 	if httpport == "" {
 		httpport = "8085"
@@ -150,7 +151,7 @@ func runWeb(*cli.Context) error {
 // initLoggerSafe 安全地初始化日志（不依赖配置文件）
 func initLoggerSafe() error {
 	// 尝试加载配置文件
-	cfg, err := ini.Load("./conf/app.conf")
+	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
 		// 配置文件不存在，使用标准输出（便于查看启动信息）
 		utils.Log = logrus.New()
@@ -204,7 +205,7 @@ func initLoggerSafe() error {
 // checkWeb 是否需要释放web资源目录
 func restoreAssets() error {
 	//判断静态资源目录是否存在，不存在则释放
-	files := []string{"web", "template", "conf"} // 设置需要释放的目录
+	files := []string{"web", "template", "config"} // 设置需要释放的目录
 	for _, file := range files {
 		// 判断目录是否存在
 		ex, err := utils.PathExists("./" + file)

@@ -15,6 +15,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var (
+	API = &zabbix.API{}
+)
+
 // tpl t
 type EventTpl struct {
 	HostsID       string `json:"host_id"`

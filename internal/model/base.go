@@ -1,4 +1,4 @@
-package models
+﻿package models
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"zbxtable/utils"
+	"zbxtable/pkg/utils"
 
 	zabbix "github.com/canghai908/zabbix-go"
 	_ "github.com/go-sql-driver/mysql"

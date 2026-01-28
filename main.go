@@ -1,13 +1,14 @@
-//go:generate go-bindata -o=packfile/staticFile.go -pkg=packfile ./web/... ./template/... ./conf/...
+//go:generate go-bindata -o=packfile/staticFile.go -pkg=packfile ./web/... ./template/... ./config/...
 package main
 
 import (
 	"fmt"
-	"github.com/json-iterator/go/extra"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"zbxtable/cmd"
+
+	"github.com/json-iterator/go/extra"
+	"github.com/urfave/cli/v2"
 )
 
 // AppVersion version
@@ -39,7 +40,6 @@ func main() {
 		cmd.Web,
 		cmd.Install,
 		cmd.Update,
-		//cmd.Init,
 		cmd.Uninstall,
 	}
 	app.Run(os.Args)

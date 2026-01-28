@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"os"
-	"zbxtable/models"
+	"zbxtable/internal/model"
 
 	"github.com/pterm/pterm"
 	"github.com/sanbornm/go-selfupdate/selfupdate"

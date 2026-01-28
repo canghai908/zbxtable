@@ -1,4 +1,4 @@
-package controllers
+package handler
 
 import (
 	"crypto/tls"
@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"zbxtable/models"
+	models "zbxtable/internal/model"
 
 	"github.com/canghai908/zabbix-go"
 	"github.com/gin-gonic/gin"
