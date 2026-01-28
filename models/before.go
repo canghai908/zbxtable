@@ -6,7 +6,7 @@ import (
 	"zbxtable/utils"
 )
 
-func MsAdd(tenantid string, message []byte) (int64, error) {
+func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error) {
 	//replace " \
 	p0 := strings.Replace(string(message), `\`, `\\`, -1)
 	p1 := strings.Replace(p0, `"`, `\"`, -1)
@@ -23,6 +23,7 @@ func MsAdd(tenantid string, message []byte) (int64, error) {
 		return 0, err
 	}
 	var meal = Alarm{
+		ZabbixInstanceID: zabbixInstanceID,
 		TenantID:      tenantid,
 		HostID:        mes.HostsID,
 		Hostname:      mes.Hostname,

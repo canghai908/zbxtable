@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
+	"zbxtable/utils"
 )
 
 // item link to inventory
@@ -44,20 +42,18 @@ func (t *System) TableName() string {
 
 // GetSystemByID 根据id获取系统列表
 func GetSystemByID(id int64) (v *System, err error) {
-	o := orm.NewOrm()
-	v = &System{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &System{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // GetALlSystem 获取所有系统列表
 func GetALlSystem() (cnt int64, system []System, err error) {
-	o := orm.NewOrm()
 	var sys []System
-	al := new(System)
-	_, err = o.QueryTable(al).All(&sys)
+	err = DB.Find(&sys).Error
 	if err != nil {
 		return 0, []System{}, err
 	}
@@ -67,26 +63,26 @@ func GetALlSystem() (cnt int64, system []System, err error) {
 
 // UpdateSystem 更新系统分类及指标
 func UpdateSystem(m *System) (err error) {
-	o := orm.NewOrm()
-	v := System{ID: m.ID}
-	err = o.Read(&v)
+	var v System
+	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
 		return err
 	}
-	v.CPUCore = m.CPUCore
-	v.CPUUtilizationID = m.CPUUtilizationID
-	v.GroupID = m.GroupID
-	v.MemoryTotalID = m.MemoryTotalID
-	v.MemoryUsedID = m.MemoryUsedID
-	v.MemoryUtilizationID = m.MemoryUtilizationID
-	v.UptimeID = m.UptimeID
-	v.Model = m.Model
-	v.PingTemplateID = m.PingTemplateID
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
-	_, err = o.Update(m, "CPUCore", "CPUUtilizationID", "GroupID", "MemoryTotalID",
-		"MemoryUsedID", "MemoryUtilizationID", "UpdatedAt", "CreatedAt", "UptimeID",
-		"Model", "PingTemplateID")
+	err = DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+		"cpu_core":              m.CPUCore,
+		"cpu_utilization_id":    m.CPUUtilizationID,
+		"group_id":              m.GroupID,
+		"memory_total_id":       m.MemoryTotalID,
+		"memory_used_id":        m.MemoryUsedID,
+		"memory_utilization_id": m.MemoryUtilizationID,
+		"uptime_id":             m.UptimeID,
+		"model":                 m.Model,
+		"ping_template_id":      m.PingTemplateID,
+		"updated_at":            m.UpdatedAt,
+		"created_at":            m.CreatedAt,
+	}).Error
 	if err != nil {
 		return err
 	}
@@ -95,19 +91,20 @@ func UpdateSystem(m *System) (err error) {
 
 // SystemInit 初始化指标
 func SystemInit(id int64) error {
-	o := orm.NewOrm()
-	v := &System{ID: id}
-	err := o.Read(v)
+	var v System
+	err := DB.Where("id = ?", id).First(&v).Error
 	if err != nil {
 		return err
 	}
 	list := strings.Split(v.GroupID, ",")
-	err = HostTypeSet(v, list)
+	err = HostTypeSet(&v, list)
 	if err != nil {
 		return err
 	}
-	vt := System{ID: id, Status: 1, InitedAt: time.Now()}
-	_, err = o.Update(&vt, "status", "inited_at")
+	err = DB.Model(&System{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":    1,
+		"inited_at": time.Now(),
+	}).Error
 	if err != nil {
 		return err
 	}
@@ -166,7 +163,7 @@ func HostTypeSet(s *System, groupId []string) error {
 		"inventory_mode": 1,
 		"inventory":      InventoryPara})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return err
 	}
 	//其他指标绑定
@@ -187,7 +184,7 @@ func HostTypeSet(s *System, groupId []string) error {
 			continue
 		}
 		if err := ItemToInventory(item.ID, item.Link); err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			continue
 		}
 	}

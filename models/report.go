@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 	"zbxtable/utils"
-
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 )
 
 // TableName alarm
@@ -18,20 +15,18 @@ func (t *Report) TableName() string {
 
 // GetReportsByID f
 func GetReportsByID(id int) (v *Report, err error) {
-	o := orm.NewOrm()
-	v = &Report{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Report{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // get all
 func GetALlReport() (cnt int64, system []Report, err error) {
-	o := orm.NewOrm()
 	var sys []Report
-	al := new(Report)
-	_, err = o.QueryTable(al).All(&sys)
+	err = DB.Find(&sys).Error
 	if err != nil {
 		return 0, []Report{}, err
 	}
@@ -41,68 +36,76 @@ func GetALlReport() (cnt int64, system []Report, err error) {
 
 // GetAllTopology t
 func GetAllReportsLimt(page, limit, name, reportType string) (cnt int64, topo []Report, err error) {
-	o := orm.NewOrm()
 	var topologys []Report
-	var CountTopologys []Report
-	al := new(Report)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	query := o.QueryTable(al)
-	//count topology
+	if limits == 0 {
+		limits = 10
+	}
+	if pages == 0 {
+		pages = 1
+	}
+
+	query := DB.Model(&Report{})
+
 	if name != "" {
-		query = query.Filter("name__contains", name)
+		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
 	if reportType != "" {
-		query = query.Filter("report_type", reportType)
+		query = query.Where("report_type = ?", reportType)
 	}
-	_, err = query.All(&CountTopologys)
+
+	// 获取总数
+	err = query.Count(&cnt).Error
 	if err != nil {
 		return 0, []Report{}, err
 	}
-	query = o.QueryTable(al)
-	if name != "" {
-		query = query.Filter("name__contains", name)
-	}
-	if reportType != "" {
-		query = query.Filter("report_type", reportType)
-	}
-	_, err = query.Limit(limits, (pages-1)*limits).OrderBy("created_at").All(&topologys)
+
+	// 获取分页数据
+	offset := (pages - 1) * limits
+	err = query.Order("created_at").Limit(limits).Offset(offset).Find(&topologys).Error
 	if err != nil {
-		logs.Debug(err)
 		return 0, []Report{}, err
 	}
-	cnt = int64(len(CountTopologys))
 	return cnt, topologys, nil
 }
 
 // AddTopology insert a new ZmsTopology into database and returns
 // last inserted Id on success.
 func AddReport(m *Report) (id int64, err error) {
-	o := orm.NewOrm()
 	m.Items = utils.VAarToStr(m.Items)
 	m.Cycle = utils.VAarToStr(m.Cycle)
 	fmt.Println(m.Items, m.Cycle)
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
-		logs.Debug(err)
 		return 0, err
 	}
-	return id, err
+	return int64(m.ID), err
 }
 
 // UpdateTopologyByID updates Alarm by Id and returns error if
 func UpdateReportByID(m *Report) (err error) {
-	o := orm.NewOrm()
-	v := Report{ID: m.ID}
-	// ascertain id exists in the database
-	err = o.Read(&v)
+	var v Report
+	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
 		return err
 	}
 	m.Items = utils.VAarToStr(m.Items)
 	m.Cycle = utils.VAarToStr(m.Cycle)
-	_, err = o.Update(m, "Name", "Emails", "Items",
-		"LinkBandWidth", "HostIds", "ItemIds", "Cycle", "Status", "Desc", "Start", "End", "ReportMode")
+	err = DB.Model(&Report{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+		"name":         m.Name,
+		"emails":       m.Emails,
+		"items":        m.Items,
+		"linkbandwidth": m.LinkBandWidth,
+		"host_ids":     m.HostIds,
+		"item_ids":     m.ItemIds,
+		"cycle":        m.Cycle,
+		"status":       m.Status,
+		"desc":         m.Desc,
+		"start":        m.Start,
+		"end":          m.End,
+		"report_mode":  m.ReportMode,
+	}).Error
 	if err != nil {
 		return err
 	}
@@ -111,10 +114,8 @@ func UpdateReportByID(m *Report) (err error) {
 
 // UpdateTopologyByID updates Alarm by Id and returns error if
 func CheckNowByID(m *Report) (err error) {
-	o := orm.NewOrm()
-	v := Report{ID: m.ID}
-	// ascertain id exists in the database
-	err = o.Read(&v)
+	var v Report
+	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
 		return err
 	}
@@ -126,7 +127,7 @@ func CheckNowByID(m *Report) (err error) {
 		v.ExecStatus = strconv.Itoa(Running)
 		v.StartAt = start
 		if err := UpdateReportExecStatusByID(&v); err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return err
 		}
 
@@ -137,7 +138,7 @@ func CheckNowByID(m *Report) (err error) {
 		}
 		taskErr := TaskHostReport(vTemp)
 		if taskErr != nil {
-			logs.Error(taskErr)
+			utils.Log.Error(taskErr)
 			v.ExecStatus = strconv.Itoa(Failed)
 			v.EndAt = time.Now()
 			UpdateReportExecStatusByID(&v)
@@ -147,7 +148,7 @@ func CheckNowByID(m *Report) (err error) {
 		v.ExecStatus = strconv.Itoa(Success)
 		v.EndAt = time.Now()
 		if err := UpdateReportExecStatusByID(&v); err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return err
 		}
 		return nil
@@ -177,7 +178,7 @@ func CheckNowByID(m *Report) (err error) {
 				taskErr = TaskDayReport(v)
 			}
 			if taskErr != nil {
-				logs.Error(taskErr)
+				utils.Log.Error(taskErr)
 				return taskErr
 			}
 			// 更新 report 状态
@@ -185,7 +186,7 @@ func CheckNowByID(m *Report) (err error) {
 			v.StartAt = start
 			v.EndAt = time.Now()
 			if err := UpdateReportExecStatusByID(&v); err != nil {
-				logs.Error(err)
+				utils.Log.Error(err)
 				return err
 			}
 		}
@@ -203,7 +204,7 @@ func CheckNowByID(m *Report) (err error) {
 				taskErr = TaskWeekReport(v)
 			}
 			if taskErr != nil {
-				logs.Error(taskErr)
+				utils.Log.Error(taskErr)
 				return taskErr
 			}
 			// 更新 report 状态
@@ -211,7 +212,7 @@ func CheckNowByID(m *Report) (err error) {
 			v.StartAt = start
 			v.EndAt = time.Now()
 			if err := UpdateReportExecStatusByID(&v); err != nil {
-				logs.Error(err)
+				utils.Log.Error(err)
 				return err
 			}
 		}
@@ -222,16 +223,16 @@ func CheckNowByID(m *Report) (err error) {
 
 // UpdateTopologyByID updates Alarm by Id and returns error if
 func UpdateReportExecStatusByID(m *Report) (err error) {
-	o := orm.NewOrm()
-	v := Report{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		v.ExecStatus = m.ExecStatus
-		v.StartAt = m.StartAt
-		v.EndAt = m.EndAt
-		_, err = o.Update(m, "ExecStatus", "StartAt", "EndAt")
+	var v Report
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		err = DB.Model(&Report{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+			"exec_status": m.ExecStatus,
+			"start_at":    m.StartAt,
+			"end_at":      m.EndAt,
+		}).Error
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 		}
 	}
 	return
@@ -239,18 +240,18 @@ func UpdateReportExecStatusByID(m *Report) (err error) {
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
 func UpdateReportsStatusByID(m *Report) (err error) {
-	o := orm.NewOrm()
-	v := Report{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
+	var v Report
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		newStatus := "1"
 		if v.Status == "0" {
-			m.Status = "1"
+			newStatus = "1"
 		} else {
-			m.Status = "0"
+			newStatus = "0"
 		}
-		_, err = o.Update(m, "Status")
+		err = DB.Model(&Report{}).Where("id = ?", m.ID).Update("status", newStatus).Error
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 		}
 	}
 	return
@@ -259,14 +260,14 @@ func UpdateReportsStatusByID(m *Report) (err error) {
 // DeleteAlarm deletes Alarm by Id and returns error if
 // the record to be deleted doesn't exist
 func DeleteReport(id int) (err error) {
-	o := orm.NewOrm()
-	v := Report{ID: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Delete(&Report{ID: id}); err == nil {
-			logs.Debug("Number of records deleted in database:", num)
+	var v Report
+	err = DB.Where("id = ?", id).First(&v).Error
+	if err == nil {
+		result := DB.Delete(&Report{}, id)
+		if result.Error != nil {
+			return result.Error
 		}
+		utils.Log.Debug("Number of records deleted in database:", result.RowsAffected)
 	}
 	return
 }

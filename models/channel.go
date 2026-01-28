@@ -1,34 +1,25 @@
 package models
 
 import (
-	"context"
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 	"zbxtable/utils"
 
 	"github.com/Knetic/govaluate"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 )
 
 // alert gen by rules
 func GenAlert(alarm *Alarm) bool {
-	o := orm.NewOrm()
 	var rules []Rule
-	al := new(Rule)
-	//cond
-	cond := orm.NewCondition()
-	//tenant
-	cond = cond.And("tenant_id__icontains", alarm.TenantID)
-	//alert rule
-	cond = cond.And("m_type", "1")
-	//enable rule
-	cond = cond.And("status", "0")
-	_, err := o.QueryTable(al).SetCond(cond).
-		All(&rules, "id", "name", "conditions", "tenant_id", "note", "s_week",
-			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created")
+	query := DB.Model(&Rule{}).
+		Where("tenant_id LIKE ?", "%"+alarm.TenantID+"%").
+		Where("m_type = ?", "1").
+		Where("status = ?", "0")
+	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+		Find(&rules).Error
 	if err != nil {
 		return true
 	}
@@ -84,31 +75,43 @@ func GenAlert(alarm *Alarm) bool {
 		ala := Alarm{ID: alarm.ID, NotifyStatus: strconv.Itoa(NotifyDefault)}
 		_, err := UpdateAlarmStatus(&ala)
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return false
 		}
 		//select default rule
-		o := orm.NewOrm()
+		// 优先查找匹配当前租户的默认规则
 		var rules []Rule
-		al := new(Rule)
-		//cond
-		cond := orm.NewCondition()
-		//tenant
-		cond = cond.And("tenant_id__icontains", alarm.TenantID)
-		//alert rule
-		cond = cond.And("m_type", "2")
-		//enable rule
-		cond = cond.And("status", "0")
-		_, err = o.QueryTable(al).SetCond(cond).
-			All(&rules, "id", "name", "conditions", "tenant_id", "note", "s_week",
-				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created")
+		fmt.Println("CCC", alarm.TenantID)
+		query := DB.Model(&Rule{}).
+			Where("tenant_id LIKE ?", "%"+alarm.TenantID+"%").
+			Where("m_type = ?", "1").
+			Where("status = ?", "0").Debug()
+		err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+			Find(&rules).Error
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return false
 		}
+
+		// 如果没有找到匹配租户的默认规则，则查找全局默认规则（tenant_id 为空或 "*"）
+		if len(rules) == 0 {
+			query = DB.Model(&Rule{}).
+				Where("m_type = ?", "2").
+				Where("status = ?", "0").
+				Where("(tenant_id = ? OR tenant_id = ? OR tenant_id IS NULL)", "", "*")
+			err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+				Find(&rules).Error
+			if err != nil {
+				utils.Log.Error(err)
+				return false
+			}
+		}
+
 		//default rule disable
 		if len(rules) == 0 {
-			logs.Error(errors.New("default rule is null"))
+			utils.Log.Errorf("default rule is null for tenant: %s", alarm.TenantID)
 			return false
 		}
 		//event
@@ -146,15 +149,13 @@ func GenAlert(alarm *Alarm) bool {
 
 // GetEventUser 查找事件用户信息
 func GetEventUser(groupIds, userIds string) (list []string, err error) {
-	o := orm.NewOrm()
 	//用户组信息,判断用户组是否为空
 	var guidList []string
 	if groupIds != "" {
-		var group UserGroup
 		var gList []UserGroup
 		//组分隔
 		gids := strings.Split(groupIds, ",")
-		_, err = o.QueryTable(group).Filter("id__in", gids).All(&gList)
+		err = DB.Where("id IN ?", gids).Find(&gList).Error
 		if err != nil {
 			return
 		}
@@ -177,10 +178,9 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 	}
 	//get all userids unique
 	if len(ids) != 0 {
-		var user Manager
 		var plist []Manager
-		_, err = o.QueryTable(user).Filter("id__in", ids).All(&plist, "id", "username",
-			"email", "wechat", "wechat_robot_key", "phone", "ding_talk")
+		err = DB.Where("id IN ?", ids).Select("id", "username",
+			"email", "wechat", "wechat_robot_key", "phone", "ding_talk").Find(&plist).Error
 		if err != nil {
 			return []string{}, err
 		}
@@ -194,7 +194,6 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 	return []string{}, err
 }
 func sendEvent(event *Event) {
-	var ctx = context.Background()
 	if len(event.Channel) == 0 {
 		return
 	}
@@ -209,14 +208,14 @@ func sendEvent(event *Event) {
 			alarm = Alarm{ID: event.ID, NotifyStatus: strconv.Itoa(NotifyMuted)}
 			_, err := UpdateAlarmStatus(&alarm)
 			if err != nil {
-				logs.Error(err)
+				utils.Log.Error(err)
 			}
 			continue
 		}
 		//GetEventUser
 		toUsers, err := GetEventUser(event.GroupIds, event.UserIds)
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return
 		}
 		if len(toUsers) == 0 {
@@ -225,9 +224,9 @@ func sendEvent(event *Event) {
 		userList := strings.Join(toUsers, ",")
 		event.ToUsers = userList
 		p, _ := json.Marshal(event)
-		err = RDB.LPush(ctx, v, p).Err()
+		err = CacheLPush(v, p)
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return
 		}
 		//update alarm status
@@ -240,7 +239,7 @@ func sendEvent(event *Event) {
 		alarm = Alarm{ID: event.ID, NotifyStatus: notifyStatus}
 		_, err = UpdateAlarmStatus(&alarm)
 		if err != nil {
-			logs.Error(err)
+			utils.Log.Error(err)
 			return
 		}
 	}
@@ -248,21 +247,14 @@ func sendEvent(event *Event) {
 
 // mut
 func IsMuted(event *Event) bool {
-	o := orm.NewOrm()
 	var rules []Rule
-	al := new(Rule)
-	//cond
-	cond := orm.NewCondition()
-	//tenant
-	cond = cond.And("tenant_id__icontains", event.TenantID)
-	//mute rule
-	cond = cond.And("m_type", "3")
-	//enable mute rule
-	cond = cond.And("status", "0")
-	//屏蔽规则
-	_, err := o.QueryTable(al).SetCond(cond).
-		All(&rules, "id", "name", "conditions", "tenant_id", "note", "s_week",
-			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created")
+	query := DB.Model(&Rule{}).
+		Where("tenant_id LIKE ?", "%"+event.TenantID+"%").
+		Where("m_type = ?", "3").
+		Where("status = ?", "0")
+	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+		Find(&rules).Error
 	if err != nil {
 		return false
 	}
@@ -338,13 +330,13 @@ func MeetEventConditions(event *Event, rule *Rule) bool {
 		expression, err := govaluate.NewEvaluableExpression("'" + val + "'" + v.RFunc + "'" + v.Rvalue + "'")
 		if err != nil {
 			//return true and event not send！！
-			logs.Error(err)
+			utils.Log.Error(err)
 			continue
 		}
 		result, err := expression.Evaluate(nil)
 		if err != nil {
 			//return true and event not send！！
-			logs.Error(err)
+			utils.Log.Error(err)
 			continue
 		}
 		if result.(bool) {
@@ -406,13 +398,13 @@ func MeetConditions(alarm *Alarm, rule *Rule) bool {
 		expression, err := govaluate.NewEvaluableExpression("'" + val + "'" + v.RFunc + "'" + v.Rvalue + "'")
 		if err != nil {
 			//return true and event not send！！
-			logs.Error(err)
+			utils.Log.Error(err)
 			continue
 		}
 		result, err := expression.Evaluate(nil)
 		if err != nil {
 			//return true and event not send！！
-			logs.Error(err)
+			utils.Log.Error(err)
 			continue
 		}
 		if result.(bool) {

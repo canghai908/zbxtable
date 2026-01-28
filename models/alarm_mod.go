@@ -10,27 +10,27 @@ const (
 
 //Alarm struct
 type Alarm struct {
-	ID int `orm:"column(id);auto" json:"id"`
-	//v2 add begin
-	TenantID      string    `orm:"column(tenant_id);size(255)" json:"tenant_id"`
-	HostID        string    `orm:"column(host_id);size(255)" json:"host_id"`
-	Hostname      string    `orm:"column(hostname);size(255)" json:"hostname"`
-	Host          string    `orm:"column(host);size(200)" json:"host"`
-	HostsIP       string    `orm:"column(host_ip);size(200)" json:"host_ip"`
-	TriggerID     int64     `orm:"column(trigger_id);size(200)" json:"trigger_id"`
-	ItemID        int64     `orm:"column(item_id);size(200)" json:"item_id"`
-	ItemName      string    `orm:"column(item_name);type(text)" json:"item_name"`
-	ItemValue     string    `orm:"column(item_value);type(text)" json:"item_value"`
-	Hgroup        string    `orm:"column(hgroup);size(200)" json:"hgroup"`
-	OccurTime     time.Time `orm:"column(occurtime);type(datetime)" json:"occur_time"`
-	Level         string    `orm:"column(level);size(200)" json:"level"`
-	Message       string    `orm:"column(message);type(text)" json:"message"`
-	Hkey          string    `orm:"column(hkey);size(3000)" json:"hkey"`
-	Detail        string    `orm:"column(detail);type(text)" json:"detail"`
-	EventID       int64     `orm:"column(event_id);size(200)" json:"eventid"`
-	EventDuration string    `orm:"column(event_duration);size(50)" json:"event_duration"`
-	Status        string    `orm:"column(status);size(200)" json:"status"`
-	NotifyStatus  string    `orm:"column(notify_status);size(10)" json:"notify_status"`
+	ID               int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ZabbixInstanceID int       `gorm:"column:zabbix_instance_id;index" json:"zabbix_instance_id"`
+	TenantID         string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
+	HostID           string    `gorm:"column:host_id;size:255" json:"host_id"`
+	Hostname         string    `gorm:"column:hostname;size:255" json:"hostname"`
+	Host             string    `gorm:"column:host;size:200" json:"host"`
+	HostsIP          string    `gorm:"column:host_ip;size:200" json:"host_ip"`
+	TriggerID        int64     `gorm:"column:trigger_id" json:"trigger_id"`
+	ItemID           int64     `gorm:"column:item_id" json:"item_id"`
+	ItemName         string    `gorm:"column:item_name;type:text" json:"item_name"`
+	ItemValue        string    `gorm:"column:item_value;type:text" json:"item_value"`
+	Hgroup           string    `gorm:"column:hgroup;size:200" json:"hgroup"`
+	OccurTime        time.Time `gorm:"column:occurtime;type:datetime" json:"occur_time"`
+	Level            string    `gorm:"column:level;size:200" json:"level"`
+	Message          string    `gorm:"column:message;type:text" json:"message"`
+	Hkey             string    `gorm:"column:hkey;size:3000" json:"hkey"`
+	Detail           string    `gorm:"column:detail;type:text" json:"detail"`
+	EventID          int64     `gorm:"column:event_id" json:"eventid"`
+	EventDuration    string    `gorm:"column:event_duration;size:50" json:"event_duration"`
+	Status           string    `gorm:"column:status;size:200" json:"status"`
+	NotifyStatus     string    `gorm:"column:notify_status;size:10" json:"notify_status"`
 }
 
 //ListQueryAlarm query

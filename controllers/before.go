@@ -1,19 +1,17 @@
 package controllers
 
 import (
-	"github.com/astaxie/beego/logs"
 	"io"
 	"net/http/pprof"
 
 	//
 	"strconv"
 	"time"
+	"zbxtable/models"
 	"zbxtable/utils"
 
 	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/orm"
 	jwtbeego "github.com/canghai908/jwt-beego"
-	"zbxtable/models"
 )
 
 // BeforeUserController sd
@@ -48,12 +46,11 @@ func (u *BeforeUserController) Login() {
 	SessionTimeout, err = strconv.ParseInt(models.GetConfKey("timeout"), 10, 32)
 	//SessionTimeout=
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		SessionTimeout = 12
 	}
-	o := orm.NewOrm()
 	//find one
-	err = o.QueryTable(Manager).Filter("username", manager.Username).One(Manager)
+	err = models.DB.Where("username = ?", manager.Username).First(Manager).Error
 	if err != nil {
 		res.Code = 400
 		res.Message = "用户名或密码错误"
@@ -157,7 +154,8 @@ func (u *BeforeUserController) Receive() {
 		u.Data["json"] = res
 		u.ServeJSON()
 	}
-	id, err := models.MsAdd(tenantid, body)
+	// Beego 旧入口：无法推断 zabbix_instance_id，置 0（仍按 tenant 规则处理）
+	id, err := models.MsAdd(tenantid, 0, body)
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()

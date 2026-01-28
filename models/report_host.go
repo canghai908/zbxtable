@@ -533,7 +533,7 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 			}
 		} else {
 			// 没有有效的 ItemID，同样给出提示
-			pdf.SetX(10)
+		pdf.SetX(10)
 			pdf.SetY(yPos + 20)
 			pdf.Cell(nil, "提示: 该指标缺少 ItemID，无法获取图表图片。")
 			yPos += 60

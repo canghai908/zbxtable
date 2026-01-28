@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/astaxie/beego/orm"
 	"time"
 )
 
@@ -11,47 +10,44 @@ func (t *Config) TableName() string {
 }
 
 type Config struct {
-	ID        int64     `orm:"column(id);auto" json:"id"`
-	Name      string    `orm:"column(name);size(255)" json:"name"`
-	Key       string    `orm:"column(key);size(255)" json:"key"`
-	Value     string    `orm:"column(value);size(255)" json:"value"`
-	Comment   string    `orm:"column(comment);size(255)" json:"comment"`
-	CreatedAt time.Time `orm:"column(created_at);type(datetime);auto_now_add" json:"created_at"`
-	UpdatedAt time.Time `orm:"column(updated_at);type(datetime);auto_now" json:"updated_at"`
+	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name      string    `gorm:"column:name;size:255" json:"name"`
+	Key       string    `gorm:"column:key;size:255" json:"key"`
+	Value     string    `gorm:"column:value;size:255" json:"value"`
+	Comment   string    `gorm:"column:comment;size:255" json:"comment"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 // GetConfigList 获取系统配置
 func GetConfigList() ([]Config, error) {
-	o := orm.NewOrm()
 	var v []Config
-	_, err := o.QueryTable(Config{}).OrderBy("ID").All(&v)
+	err := DB.Order("id").Find(&v).Error
 	if err != nil {
 		return nil, err
 	}
-	return v, err
+	return v, nil
 }
 
 // GetConfigOne 获取某一个配置
 func GetConfigOne(id int64) (v *Config, err error) {
-	o := orm.NewOrm()
-	v = &Config{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Config{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // UpdateConfig 更新系统配置
 func UpdateConfig(m *Config) (err error) {
-	o := orm.NewOrm()
-	v := Config{ID: m.ID}
+	var v Config
 	//数据面板独立配置
-	err = o.Read(&v)
+	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
 		return err
 	}
-	v.Value = m.Value
-	_, err = o.Update(m, "Value")
+	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("value", m.Value).Error
 	if err != nil {
 		return err
 	}
@@ -68,17 +64,18 @@ func UpdateConfig(m *Config) (err error) {
 
 // 数据面板控制
 func updateZbxDash(m *Config) (err error) {
-	o := orm.NewOrm()
-	menu := Menu{Router: "dash"}
-	if o.Read(&menu, "Router") == nil {
-		switch m.Value {
-		case "0":
-			menu.IsAvailable = true
-		case "1":
-			menu.IsAvailable = false
-		}
+	var menu Menu
+	err = DB.Where("router = ?", "dash").First(&menu).Error
+	if err != nil {
+		return err
 	}
-	_, err = o.Update(&menu, "IsAvailable")
+	switch m.Value {
+	case "0":
+		menu.IsAvailable = true
+	case "1":
+		menu.IsAvailable = false
+	}
+	err = DB.Model(&Menu{}).Where("router = ?", "dash").Update("is_available", menu.IsAvailable).Error
 	if err != nil {
 		return err
 	}
@@ -87,9 +84,8 @@ func updateZbxDash(m *Config) (err error) {
 
 // GetConfigValueByKey 根据 key 获取配置值，如果不存在或出错则返回默认值
 func GetConfigValueByKey(key string, defaultVal string) string {
-	o := orm.NewOrm()
 	var c Config
-	err := o.QueryTable(new(Config)).Filter("Key", key).One(&c)
+	err := DB.Where("`key` = ?", key).First(&c).Error
 	if err == nil && c.Value != "" {
 		return c.Value
 	}

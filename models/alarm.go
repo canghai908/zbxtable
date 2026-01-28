@@ -3,8 +3,6 @@ package models
 import (
 	"strconv"
 	"time"
-
-	"github.com/astaxie/beego/orm"
 )
 
 // TableName alarm
@@ -15,80 +13,77 @@ func (t *Alarm) TableName() string {
 // AddAlarm insert a new Alarm into database and returns
 // last inserted Id on success.
 func AddAlarm(m *Alarm) (id int64, err error) {
-	o := orm.NewOrm()
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
 		return 0, err
 	}
-	return id, nil
+	return int64(m.ID), nil
 }
 
 // //update alarm notifystatus
 func UpdateAlarmStatus(m *Alarm) (id int64, err error) {
-	o := orm.NewOrm()
-	//user
-	v := Alarm{ID: m.ID}
-	err = o.Read(&v)
+	err = DB.Model(&Alarm{}).Where("id = ?", m.ID).Update("notify_status", m.NotifyStatus).Error
 	if err != nil {
 		return 0, err
 	}
-	v.NotifyStatus = m.NotifyStatus
-	id, err = o.Update(m, "NotifyStatus")
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return int64(m.ID), nil
 }
 
 // GetAlarmByID retrieves Alarm by Id. Returns error if
 // Id doesn't exist
 func GetAlarmByID(id int) (v *Alarm, err error) {
-	o := orm.NewOrm()
-	v = &Alarm{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Alarm{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // GetAllAlarm retrieves all Alarm matches certain condition. Returns empty list if
 // no records exist
 func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status, level string) (cnt int64, al []Alarm, err error) {
-	o := orm.NewOrm()
 	var alarms []Alarm
-	var CountAlarms []Alarm
-	qs := o.QueryTable(new(Alarm))
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
+	if limits == 0 {
+		limits = 10
+	}
+	if pages == 0 {
+		pages = 1
+	}
 
-	//count alarms
-	cond := orm.NewCondition()
+	query := DB.Model(&Alarm{}).Where("occurtime >= ? AND occurtime <= ?", begin, end)
+	// 默认按“当前激活的 Zabbix”过滤（避免多 Zabbix 场景下混淆）
+	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+		query = query.Where("zabbix_instance_id = ?", inst.ID)
+	}
+
 	if hosts != "" {
-		cond = cond.And("host__icontains", hosts)
+		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
 	if tenant_id != "" {
-		cond = cond.And("tenant_id", tenant_id)
+		query = query.Where("tenant_id = ?", tenant_id)
 	}
 	if status != "" {
-		cond = cond.And("status", status)
+		query = query.Where("status = ?", status)
 	}
 	if level != "" {
-		cond = cond.And("level", level)
+		query = query.Where("level = ?", level)
 	}
 	if ip != "" {
-		cond = cond.And("host_ip__icontains", ip)
+		query = query.Where("host_ip LIKE ?", "%"+ip+"%")
 	}
 
-	qs = qs.Filter("occurtime__gte", begin).Filter("occurtime__lte", end).SetCond(cond)
-
 	// 获取总数
-	cnt, err = qs.All(&CountAlarms)
+	err = query.Count(&cnt).Error
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
 
 	// 获取分页数据
-	_, err = qs.Limit(limits, (pages-1)*limits).OrderBy("-occurtime").All(&alarms)
+	offset := (pages - 1) * limits
+	err = query.Order("occurtime DESC").Limit(limits).Offset(offset).Find(&alarms).Error
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
@@ -98,9 +93,16 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 
 // get alarm tenant list
 func GetAlarmTenant() (cnt int64, data interface{}, err error) {
-	o := orm.NewOrm()
-	var maps []orm.Params
-	num, err := o.Raw("select distinct zbxtable_alarm.tenant_id from zbxtable_alarm;").Values(&maps)
+	type TenantResult struct {
+		TenantID string `gorm:"column:tenant_id"`
+	}
+	var results []TenantResult
+	query := DB.Model(&Alarm{})
+	// 仅返回当前激活 Zabbix 下的租户列表
+	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+		query = query.Where("zabbix_instance_id = ?", inst.ID)
+	}
+	err = query.Select("DISTINCT tenant_id").Find(&results).Error
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
@@ -109,42 +111,35 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 		TenantID string `json:"tenant_id"`
 	}
 	var ss []list
-	var p list
-	if num > 0 {
-		for i := 0; i < len(maps); i++ {
-			p.ID = i
-			p.TenantID = maps[i]["tenant_id"].(string)
-			ss = append(ss, p)
-		}
+	for i, result := range results {
+		ss = append(ss, list{ID: i, TenantID: result.TenantID})
 	}
-	return num, ss, nil
+	return int64(len(ss)), ss, nil
 }
 
 // ExportAlarm export
 func ExportAlarm(begin, end time.Time,
 	hosts, tenant_id, status, level string) ([]byte, error) {
-	o := orm.NewOrm()
 	var alarms []Alarm
-	al := new(Alarm)
 	intbegin := begin.Unix()
 	intend := end.Unix()
-	//count alarms
-	cond := orm.NewCondition()
+
+	query := DB.Model(&Alarm{}).Where("occurtime >= ? AND occurtime <= ?", begin, end)
+
 	if hosts != "" {
-		cond = cond.And("host__icontains", hosts)
+		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
 	if tenant_id != "" {
-		cond = cond.And("tenant_id", tenant_id)
+		query = query.Where("tenant_id = ?", tenant_id)
 	}
 	if status != "" {
-		cond = cond.And("status", status)
+		query = query.Where("status = ?", status)
 	}
 	if level != "" {
-		cond = cond.And("level", level)
+		query = query.Where("level = ?", level)
 	}
-	_, err := o.QueryTable(al).Filter("occurtime__gte", begin).Filter("occurtime__lte", end).
-		SetCond(cond).
-		OrderBy("-occurtime").All(&alarms)
+
+	err := query.Order("occurtime DESC").Find(&alarms).Error
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,65 +153,67 @@ func ExportAlarm(begin, end time.Time,
 
 // AnalysisAlarm all alarm
 func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, pie []Pie, na []string, va []int, err error) {
-	o := orm.NewOrm()
 	strbeing := begin.Format("2006-01-02 15:04:05")
 	strend := end.Format("2006-01-02 15:04:05")
-	var maps []orm.Params
 	var ss []string
 	dpie := []Pie{}
-	//饼图数据
-	var num int64
 
-	baseQueryPie := "SELECT level, COUNT(DISTINCT id) AS level_count " +
-		"FROM zbxtable_alarm WHERE occurtime >= ? AND occurtime <= ? " +
-		"AND (STATUS='故障' or STATUS='1') "
+	// 饼图数据查询
+	type LevelCount struct {
+		Level      string `gorm:"column:level"`
+		LevelCount int    `gorm:"column:level_count"`
+	}
+	var levelCounts []LevelCount
 
-	var paramsPie []interface{}
-	paramsPie = append(paramsPie, strbeing, strend)
+	query := DB.Model(&Alarm{}).
+		Select("level, COUNT(DISTINCT id) AS level_count").
+		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
+		Where("(status = ? OR status = ?)", "故障", "1")
 
-	if tenant_id != "" {
-		baseQueryPie += "AND tenant_id = ? "
-		paramsPie = append(paramsPie, tenant_id)
+	// 默认按“当前激活的 Zabbix”过滤
+	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+		query = query.Where("zabbix_instance_id = ?", inst.ID)
 	}
 
-	baseQueryPie += "GROUP BY level ORDER BY level_count DESC"
+	if tenant_id != "" {
+		query = query.Where("tenant_id = ?", tenant_id)
+	}
 
-	num, err = o.Raw(baseQueryPie, paramsPie...).Values(&maps)
-
-	if err == nil && num > 0 {
-		for i := 0; i < len(maps); i++ {
-			ss = append(ss, maps[i]["level"].(string))
-			va, _ := strconv.Atoi(maps[i]["level_count"].(string))
-			n := Pie{Value: va, Name: maps[i]["level"].(string)}
-			dpie = append(dpie, n)
+	err = query.Group("level").Order("level_count DESC").Find(&levelCounts).Error
+	if err == nil && len(levelCounts) > 0 {
+		for _, lc := range levelCounts {
+			ss = append(ss, lc.Level)
+			dpie = append(dpie, Pie{Value: lc.LevelCount, Name: lc.Level})
 		}
 	}
 
-	//修改top10数据查询
-	var map1s []orm.Params
+	// Top10 主机查询
+	type HostCount struct {
+		Hostname  string `gorm:"column:hostname"`
+		HostCount int    `gorm:"column:host_count"`
+	}
+	var hostCounts []HostCount
+
+	hostQuery := DB.Model(&Alarm{}).
+		Select("hostname, COUNT(DISTINCT id) AS host_count").
+		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
+		Where("(status = ? OR status = ?)", "故障", "1")
+
+	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+		hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ID)
+	}
+
+	if tenant_id != "" {
+		hostQuery = hostQuery.Where("tenant_id = ?", tenant_id)
+	}
+
+	err = hostQuery.Group("hostname").Order("host_count DESC").Limit(10).Find(&hostCounts).Error
 	var name []string
 	var values []int
-	var num1 int64
-	// mysql8 修复：SELECT 和 GROUP BY 字段保持一致，使用 hostname
-	if tenant_id == "" {
-		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing +
-			"' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or STATUS='1') GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
-			Values(&map1s)
-	} else {
-		num1, err = o.Raw("SELECT hostname, COUNT(DISTINCT id) AS host_count FROM zbxtable_alarm WHERE  occurtime >='" +
-			strbeing +
-			"' and occurtime <='" + strend +
-			"' AND (STATUS='故障' or STATUS='1') AND  tenant_id ='" +
-			tenant_id + "' GROUP BY hostname ORDER BY host_count DESC LIMIT 10;").
-			Values(&map1s)
-	}
-	if err == nil && num1 > 0 {
-		for i := 0; i < len(map1s); i++ {
-			name = append(name, map1s[i]["hostname"].(string))
-			va, _ := strconv.Atoi(map1s[i]["host_count"].(string))
-			values = append(values, va)
+	if err == nil && len(hostCounts) > 0 {
+		for _, hc := range hostCounts {
+			name = append(name, hc.Hostname)
+			values = append(values, hc.HostCount)
 		}
 	}
 

@@ -8,13 +8,13 @@ func (t *TopologyData) TableName() string {
 }
 
 type TopologyData struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	PID       string    `orm:"column(pid);size(60)" json:"pid"`
-	VType     string    `orm:"column(v_type);size(60)" json:"v_type"`
-	Type      string    `orm:"column(type);size(60)" json:"type"`
-	TID       string    `orm:"column(tid);size(60)" json:"tid"`
-	CreatedAt time.Time `orm:"column(created_at);auto_now_add;type(datetime)" json:"created_at"`
-	UpdatedAt time.Time `orm:"column(updated_at);auto_now;type(datetime)" json:"updated_at"`
+	ID        int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	PID       string    `gorm:"column:pid;size:60" json:"pid"`
+	VType     string    `gorm:"column:v_type;size:60" json:"v_type"`
+	Type      string    `gorm:"column:type;size:60" json:"type"`
+	TID       string    `gorm:"column:tid;size:60" json:"tid"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 type AllEdge []AEdge

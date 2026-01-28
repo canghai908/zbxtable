@@ -246,7 +246,7 @@ func WriteConf(zabbix_web, zabbix_user, zabbix_pass,
 	cfg.Section("").Key("appname").Comment = "zbxtable"
 	//migrate  httpport
 	if httpport == "" {
-		cfg.Section("").NewKey("httpport", "8084")
+		cfg.Section("").NewKey("httpport", "8085")
 	} else {
 		cfg.Section("").NewKey("httpport", httpport)
 	}

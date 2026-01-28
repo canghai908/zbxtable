@@ -3,22 +3,20 @@ package models
 import (
 	"strconv"
 	"time"
-
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
+	"zbxtable/utils"
 )
 
 type TaskLog struct {
-	Id        int       `orm:"column(id);auto" json:"id"`
-	ReportID  int       `orm:"column(report_id);default(0)" json:"report_id"`            // 任务id
-	Name      string    `orm:"column(name);varchar(200);null" json:"name"`               // 任务名称
-	Cycle     string    `orm:"column(cycle);varchar(64);null" json:"cycle"`              // crontab
-	StartTime time.Time `orm:"column(start_time);type(datetime);null" json:"start_time"` // 开始执行时间
-	EndTime   time.Time `orm:"column(end_time);type(datetime);null" json:"end_time"`     // 执行完成（失败）时间
-	Status    int       `orm:"column(status);default(0)" json:"status"`                  // 状态 0:执行失败 1:执行中  2:执行完毕 3:任务取消(上次任务未执行完成) 4:异步执行
-	Result    string    `orm:"column(result);size(200);null" json:"result"`
-	Files     string    `orm:"column(files);size(200);null" json:"files"`
-	TotalTime int64     `orm:"column(total_time);default(0)" json:"total_time"` // 执行总时长
+	Id        int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ReportID  int       `gorm:"column:report_id;default:0" json:"report_id"`
+	Name      string    `gorm:"column:name;size:200" json:"name"`
+	Cycle     string    `gorm:"column:cycle;size:64" json:"cycle"`
+	StartTime time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
+	EndTime   time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
+	Status    int       `gorm:"column:status;default:0" json:"status"`
+	Result    string    `gorm:"column:result;size:200" json:"result"`
+	Files     string    `gorm:"column:files;size:200" json:"files"`
+	TotalTime int64     `gorm:"column:total_time;default:0" json:"total_time"`
 }
 
 // SystemList struct
@@ -57,25 +55,22 @@ func CreateTaskLog(taskModel Report, status int) (int64, error) {
 // AddTopology insert a new ZmsTopology into database and returns
 // last inserted Id on success.
 func (m *TaskLog) Create() (id int64, err error) {
-	o := orm.NewOrm()
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return 0, err
 	}
-	return id, err
+	return int64(m.Id), err
 }
 
 func (taskLog *TaskLog) Update(m *Report) (int64, error) {
 	// UpdateTopologyByID updates Alarm by Id and returns error if
-	o := orm.NewOrm()
-	v := Report{ID: m.ID}
-	var err error
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			logs.Debug("Number of records updated in database:", num)
+	var v Report
+	err := DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		result := DB.Model(&Report{}).Where("id = ?", m.ID).Updates(m)
+		if result.Error == nil {
+			utils.Log.Debug("Number of records updated in database:", result.RowsAffected)
 		}
 		return int64(m.ID), nil
 	}
@@ -83,32 +78,42 @@ func (taskLog *TaskLog) Update(m *Report) (int64, error) {
 }
 
 func GetTaskLogList(page, limit, report_id string) (cnt int64, topo []TaskLog, err error) {
-	o := orm.NewOrm()
 	var tasklog []TaskLog
-	var count []TaskLog
-	al := new(TaskLog)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	//count topology
-	_, err = o.QueryTable(al).Filter("report_id", report_id).All(&count)
-	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("-start_time").Filter("report_id", report_id).All(&tasklog)
+	if limits == 0 {
+		limits = 10
+	}
+	if pages == 0 {
+		pages = 1
+	}
+
+	query := DB.Model(&TaskLog{}).Where("report_id = ?", report_id)
+
+	// 获取总数
+	err = query.Count(&cnt).Error
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return 0, []TaskLog{}, err
 	}
-	cnt = int64(len(count))
+
+	// 获取分页数据
+	offset := (pages - 1) * limits
+	err = query.Order("start_time DESC").Limit(limits).Offset(offset).Find(&tasklog).Error
+	if err != nil {
+		utils.Log.Debug(err)
+		return 0, []TaskLog{}, err
+	}
 	return cnt, tasklog, nil
 }
 
 func (taskLog *TaskLog) Clear() (int64, error) {
-	o := orm.NewOrm()
-	al := new(TaskLog)
-	id, err := o.QueryTable(al).Delete()
-	if err != nil {
-		logs.Debug(err)
-		return 0, err
+	result := DB.Delete(&TaskLog{})
+	if result.Error != nil {
+		utils.Log.Debug(result.Error)
+		return 0, result.Error
 	}
-	return id, err
+	return result.RowsAffected, nil
 }
 
 //// 删除N个月前的日志
@@ -127,15 +132,9 @@ func (taskLog *TaskLog) Clear() (int64, error) {
 // DeleteAlarm deletes Alarm by Id and returns error if
 // the record to be deleted doesn't exist
 func DeleteTaskLog(id int) (err error) {
-	o := orm.NewOrm()
-	v := TaskLog{Id: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		_, err = o.Delete(&TaskLog{Id: id})
-		if err != nil {
-			return err
-		}
-		return nil
+	err = DB.Delete(&TaskLog{}, id).Error
+	if err != nil {
+		return err
 	}
 	return nil
 }

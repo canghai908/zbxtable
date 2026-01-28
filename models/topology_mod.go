@@ -3,13 +3,13 @@ package models
 import "time"
 
 type Topology struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Nodes     string    `orm:"column(nodes);type(text)" json:"nodes"`
-	Edges     string    `orm:"column(edges);type(text)" json:"edges"`
-	Topology  string    `orm:"column(topology);size(200)" json:"topology"`
-	Status    string    `orm:"column(status);size(10)" json:"status"`
-	CreatedAt time.Time `orm:"column(created_at);auto_now_add;type(datetime)" json:"created_at"`
-	UpdatedAt time.Time `orm:"column(updated_at);auto_now;type(datetime)" json:"updated_at"`
+	ID        int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Nodes     string    `gorm:"column:nodes;type:text" json:"nodes"`
+	Edges     string    `gorm:"column:edges;type:text" json:"edges"`
+	Topology  string    `gorm:"column:topology;size:200" json:"topology"`
+	Status    string    `gorm:"column:status;size:10" json:"status"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 //TableName Topology

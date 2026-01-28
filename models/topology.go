@@ -2,48 +2,59 @@ package models
 
 import (
 	"bufio"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 	"os"
 	"strconv"
 	"strings"
+	"zbxtable/utils"
 )
 
 // GetZmsTopologyById retrieves ZmsTopology by Id. Returns error if
 // Id doesn't exist
 func GetTopologyById(id int) (v *Topology, err error) {
-	o := orm.NewOrm()
-	v = &Topology{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Topology{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // GetAllTopology t
 func GetAllTopology(page, limit, name string) (cnt int64, topo []Topology, err error) {
-	o := orm.NewOrm()
 	var topologys []Topology
-	var CountTopologys []Topology
-	al := new(Topology)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	//count topology
-	_, err = o.QueryTable(al).Filter("topology__contains", name).All(&CountTopologys)
-	_, err = o.QueryTable(al).Limit(limits, (pages-1)*limits).OrderBy("created_at").Filter("topology__contains", name).All(&topologys)
+	if limits == 0 {
+		limits = 10
+	}
+	if pages == 0 {
+		pages = 1
+	}
+
+	query := DB.Model(&Topology{})
+	if name != "" {
+		query = query.Where("topology LIKE ?", "%"+name+"%")
+	}
+
+	// 获取总数
+	err = query.Count(&cnt).Error
 	if err != nil {
 		return 0, []Topology{}, err
 	}
-	cnt = int64(len(CountTopologys))
+
+	// 获取分页数据
+	offset := (pages - 1) * limits
+	err = query.Order("created_at").Limit(limits).Offset(offset).Find(&topologys).Error
+	if err != nil {
+		return 0, []Topology{}, err
+	}
 	return cnt, topologys, nil
 }
 
 // GetAllTopology t
 func GetDeployTopoly() (topo []*Topology, err error) {
-	o := orm.NewOrm()
 	var list []*Topology
-	topology := new(Topology)
-	_, err = o.QueryTable(topology).Filter("Status", "1").All(&list)
+	err = DB.Where("status = ?", "1").Find(&list).Error
 	if err != nil {
 		return []*Topology{}, err
 	}
@@ -53,23 +64,21 @@ func GetDeployTopoly() (topo []*Topology, err error) {
 // AddTopology insert a new ZmsTopology into database and returns
 // last inserted Id on success.
 func AddTopology(m *Topology) (id int64, err error) {
-	o := orm.NewOrm()
 	m.Status = "0"
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return 0, err
 	}
-	return id, err
+	return int64(m.ID), err
 }
 
 // UpdateTopologyByID updates Alarm by Id and returns error if
 func UpdateTopologyByID(m *Topology) (err error) {
-	o := orm.NewOrm()
-	v := Topology{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		_, err = o.Update(m)
+	var v Topology
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		err = DB.Model(&Topology{}).Where("id = ?", m.ID).Updates(m).Error
 		if err != nil {
 			return err
 		}
@@ -80,11 +89,10 @@ func UpdateTopologyByID(m *Topology) (err error) {
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
 func UpdateTopologyEdgesByID(m *Topology) (err error) {
-	o := orm.NewOrm()
-	v := Topology{ID: m.ID}
-	if err = o.Read(&v); err == nil {
-		v.Edges = m.Edges
-		_, err = o.Update(m, "Edges")
+	var v Topology
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		err = DB.Model(&Topology{}).Where("id = ?", m.ID).Update("edges", m.Edges).Error
 		if err != nil {
 			return err
 		}
@@ -95,12 +103,10 @@ func UpdateTopologyEdgesByID(m *Topology) (err error) {
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
 func UpdateTopologyNodesByID(m *Topology) (err error) {
-	o := orm.NewOrm()
-	v := Topology{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		v.Nodes = m.Nodes
-		_, err = o.Update(m, "Nodes")
+	var v Topology
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		err = DB.Model(&Topology{}).Where("id = ?", m.ID).Update("nodes", m.Nodes).Error
 		if err != nil {
 			return err
 		}
@@ -111,16 +117,16 @@ func UpdateTopologyNodesByID(m *Topology) (err error) {
 
 // UpdateTopologyEdgesByID updates Alarm by Id and returns error if
 func UpdateTopologyStatusByID(m *Topology) (err error) {
-	o := orm.NewOrm()
-	v := Topology{ID: m.ID}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
+	var v Topology
+	err = DB.Where("id = ?", m.ID).First(&v).Error
+	if err == nil {
+		newStatus := "1"
 		if v.Status == "0" {
-			m.Status = "1"
+			newStatus = "1"
 		} else {
-			m.Status = "0"
+			newStatus = "0"
 		}
-		_, err = o.Update(m, "Status")
+		err = DB.Model(&Topology{}).Where("id = ?", m.ID).Update("status", newStatus).Error
 		if err != nil {
 			return err
 		}
@@ -131,13 +137,9 @@ func UpdateTopologyStatusByID(m *Topology) (err error) {
 // DeleteAlarm deletes Alarm by Id and returns error if
 // the record to be deleted doesn't exist
 func DeleteTopology(id int) (err error) {
-	o := orm.NewOrm()
-	v := Topology{ID: id}
-	if err = o.Read(&v); err == nil {
-		_, err = o.Delete(&Topology{ID: id})
-		if err != nil {
-			return err
-		}
+	err = DB.Delete(&Topology{}, id).Error
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -152,18 +154,18 @@ func GetTopologyFromWeather() (Data, error) {
 		"output":          OutputPar,
 		"searchInventory": SearchInventoryInventoryPar})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return Data{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return Data{}, err
 	}
 	var hb ListHosts
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return Data{}, err
 	}
 
@@ -171,7 +173,7 @@ func GetTopologyFromWeather() (Data, error) {
 	var lines [][]string
 	f, err := os.Open("./part.conf")
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return Data{}, err
 	}
 	defer f.Close()

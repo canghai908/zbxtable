@@ -253,7 +253,8 @@ func FormatSpeed(traf string) (size string) {
 	case traffic < (1000 * 1000 * 1000 * 1000 * 1000):
 		return fmt.Sprintf("%d%s", traffic/int64(1000*1000*1000*1000), "T")
 	default:
-		return fmt.Sprintf("%d%s", "1G")
+		// 超过范围时保持一个可读的兜底值
+		return "1G"
 	}
 }
 

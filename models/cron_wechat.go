@@ -2,15 +2,14 @@ package models
 
 import (
 	"bytes"
-	"context"
 	"html/template"
 	"strconv"
 	"strings"
 	"time"
 	template2 "zbxtable/utils"
 
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
+	"zbxtable/utils"
+
 	"github.com/xen0n/go-workwx"
 )
 
@@ -36,14 +35,13 @@ func SendWechat(event *Event) {
 	defer func() {
 		<-WechatWorkerChan
 	}()
-	o := orm.NewOrm()
 	ids := strings.Split(event.ToUsers, ",")
-	var user Manager
 	var plist []Manager
-	_, err := o.QueryTable(user).Filter("id__in", ids).
-		All(&plist, "id", "username", "email", "wechat", "phone", "ding_talk")
+	err := DB.Where("id IN ?", ids).
+		Select("id", "username", "email", "wechat", "phone", "ding_talk").
+		Find(&plist).Error
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 	}
 	var tplname string
 	if event.Status == "0" {
@@ -55,13 +53,13 @@ func SendWechat(event *Event) {
 	event.Status = template2.AlertType(event.Status)
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return
 	}
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, event)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return
 	}
 	for _, v := range plist {
@@ -92,7 +90,7 @@ func SendWechatAlert(user Manager, event *Event, content string) error {
 	//add event log
 	_, err = AddEventLog(&elog)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 	}
 	//update alalrm status
 	return nil
@@ -101,19 +99,18 @@ func SendWechatAlert(user Manager, event *Event, content string) error {
 func PopAllWechat() []*Event {
 	ret := []*Event{}
 	for {
-		var ctx = context.Background()
-		reply, err := RDB.RPop(ctx, "wechat").Result()
+		reply, err := CacheRPop("wechat")
 		if err != nil {
 			break
 		}
 		if reply == "" || reply == "nil" {
-			continue
+			break
 		}
 
 		var mail Event
 		err = json.Unmarshal([]byte(reply), &mail)
 		if err != nil {
-			logs.Error(err, reply)
+			utils.Log.Error(err, reply)
 			continue
 		}
 		ret = append(ret, &mail)

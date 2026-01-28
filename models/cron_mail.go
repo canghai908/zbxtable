@@ -2,7 +2,6 @@ package models
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"html/template"
@@ -12,10 +11,8 @@ import (
 	"time"
 	template2 "zbxtable/utils"
 
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
-	redis "github.com/go-redis/redis/v8"
+	"zbxtable/utils"
+
 	"github.com/jordan-wright/email"
 )
 
@@ -41,14 +38,13 @@ func SendMail(mail *Event) {
 	defer func() {
 		<-MailWorkerChan
 	}()
-	o := orm.NewOrm()
 	ids := strings.Split(mail.ToUsers, ",")
-	var user Manager
 	var plist []Manager
-	_, err := o.QueryTable(user).Filter("id__in", ids).
-		All(&plist, "id", "username", "email", "wechat", "phone", "ding_talk")
+	err := DB.Where("id IN ?", ids).
+		Select("id", "username", "email", "wechat", "phone", "ding_talk").
+		Find(&plist).Error
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 	}
 	mail.Level = template2.AlertSeverityTo(mail.Level)
 	mail.Status = template2.AlertType(mail.Status)
@@ -60,22 +56,19 @@ func SendMail(mail *Event) {
 func PopAllMail() []*Event {
 	ret := []*Event{}
 	for {
-		var ctx = context.Background()
-		reply, err := RDB.RPop(ctx, "mail").Result()
+		reply, err := CacheRPop("mail")
 		if err != nil {
-			if err != redis.Nil {
-				logs.Error(err)
-			}
+			utils.Log.Error(err)
 			break
 		}
 		if reply == "" || reply == "nil" {
-			continue
+			break
 		}
 
 		var mail Event
 		err = json.Unmarshal([]byte(reply), &mail)
 		if err != nil {
-			logs.Error(err, reply)
+			utils.Log.Error(err, reply)
 			continue
 		}
 		ret = append(ret, &mail)
@@ -94,26 +87,26 @@ func SendEmailAlert(event *Event, user Manager) error {
 	}
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return err
 	}
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, event) //将str的值合成到tmpl模版的{{.}}中，并将合成得到的文本输入到os.Stdout,返回hello, world
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return err
 	}
 	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
-	from := GetConfigValueByKey("email_from", beego.AppConfig.String("email_from"))
-	nickname := GetConfigValueByKey("email_nickname", beego.AppConfig.String("email_nickname"))
-	secret := GetConfigValueByKey("email_secret", beego.AppConfig.String("email_secret"))
-	host := GetConfigValueByKey("email_host", beego.AppConfig.String("email_host"))
-	portStr := GetConfigValueByKey("email_port", beego.AppConfig.String("email_port"))
+	from := GetConfigValueByKey("email_from", GetConfKey("email_from"))
+	nickname := GetConfigValueByKey("email_nickname", GetConfKey("email_nickname"))
+	secret := GetConfigValueByKey("email_secret", GetConfKey("email_secret"))
+	host := GetConfigValueByKey("email_host", GetConfKey("email_host"))
+	portStr := GetConfigValueByKey("email_port", GetConfKey("email_port"))
 	if portStr == "" {
 		portStr = "465"
 	}
 	port, _ := strconv.Atoi(portStr)
-	isSSlStr := GetConfigValueByKey("email_isSSl", beego.AppConfig.String("email_isSSl"))
+	isSSlStr := GetConfigValueByKey("email_isSSl", GetConfKey("email_isSSl"))
 	isSSL := strings.ToLower(isSSlStr) == "true"
 	auth := smtp.PlainAuth("", from, secret, host)
 	at := smtp.CRAMMD5Auth(from, secret)
@@ -149,7 +142,7 @@ func SendEmailAlert(event *Event, user Manager) error {
 	//add event log
 	_, err = AddEventLog(&elog)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 	}
 	return nil
 }

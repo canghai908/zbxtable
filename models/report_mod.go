@@ -4,25 +4,25 @@ import "time"
 
 // Reports
 type Report struct {
-	ID            int       `orm:"column(id);auto" json:"id"`
-	Name          string    `orm:"column(name);size(255)" json:"name"`
-	ReportType    string    `orm:"column(report_type);size(255)" json:"report_type"`
-	Items         string    `orm:"column(items);size(200)" json:"items"`
-	LinkBandWidth string    `orm:"column(link_band_width);size(200)" json:"linkbandwidth"`
-	HostIds       string    `orm:"column(host_ids);type(text)" json:"host_ids"` // 主机ID列表，JSON格式
-	ItemIds       string    `orm:"column(item_ids);type(text)" json:"item_ids"` // 指标ID列表，JSON格式
-	Cycle         string    `orm:"column(cycle);size(200)" json:"cycle"`
-	Desc          string    `orm:"column(desc);size(200)" json:"desc"`
-	Emails        string    `orm:"column(emails);size(240)" json:"emails"`
-	Status        string    `orm:"column(status);size(50);" json:"status"`                             //0 禁用 1 启用
-	ExecStatus    string    `orm:"column(exec_status);default(0)" json:"exec_status"`                  //
-	ReportMode    string    `orm:"column(report_mode);size(50);default(scheduled)" json:"report_mode"` // realtime: 实时报表, scheduled: 循环报表
-	Start         time.Time `orm:"column(start);type(datetime);null" json:"start"`                     // 报表配置的开始时间
-	End           time.Time `orm:"column(end);type(datetime);null" json:"end"`                         // 报表配置的结束时间
-	StartAt       time.Time `orm:"column(start_at);type(datetime);null" json:"start_at"`               // 报表执行开始时间
-	EndAt         time.Time `orm:"column(end_at);type(datetime);null" json:"end_at"`                   // 报表执行结束时间
-	CreatedAt     time.Time `orm:"auto_now_add;column(created_at);type(datetime)" json:"created_at"`
-	UpdatedAt     time.Time `orm:"auto_now;column(updated_at);type(datetime)" json:"updated_at"`
+	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name          string    `gorm:"column:name;size:255" json:"name"`
+	ReportType    string    `gorm:"column:report_type;size:255" json:"report_type"`
+	Items         string    `gorm:"column:items;size:200" json:"items"`
+	LinkBandWidth string    `gorm:"column:link_band_width;size:200" json:"linkbandwidth"`
+	HostIds       string    `gorm:"column:host_ids;type:text" json:"host_ids"`
+	ItemIds       string    `gorm:"column:item_ids;type:text" json:"item_ids"`
+	Cycle         string    `gorm:"column:cycle;size:200" json:"cycle"`
+	Desc          string    `gorm:"column:desc;size:200" json:"desc"`
+	Emails        string    `gorm:"column:emails;size:240" json:"emails"`
+	Status        string    `gorm:"column:status;size:50" json:"status"`
+	ExecStatus    string    `gorm:"column:exec_status;default:0" json:"exec_status"`
+	ReportMode    string    `gorm:"column:report_mode;size:50;default:scheduled" json:"report_mode"`
+	Start         time.Time `gorm:"column:start;type:datetime" json:"start"`
+	End           time.Time `gorm:"column:end;type:datetime" json:"end"`
+	StartAt       time.Time `gorm:"column:start_at;type:datetime" json:"start_at"`
+	EndAt         time.Time `gorm:"column:end_at;type:datetime" json:"end_at"`
+	CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 //SystemList struct

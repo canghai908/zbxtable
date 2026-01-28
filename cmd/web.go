@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"crypto/tls"
 	"database/sql"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,25 +17,25 @@ import (
 	"zbxtable/routers"
 	"zbxtable/utils"
 
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/config"
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/toolbox"
-	"github.com/canghai908/zabbix-go"
+	zabbix "github.com/canghai908/zabbix-go"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 )
 
 const motd = `
-
-$$$$$$$$\ $$$$$$$\  $$\   $$\ $$$$$$$$\  $$$$$$\  $$$$$$$\  $$\       $$$$$$$$\ 
-\____$$  |$$  __$$\ $$ |  $$ |\__$$  __|$$  __$$\ $$  __$$\ $$ |      $$  _____|
-    $$  / $$ |  $$ |\$$\ $$  |   $$ |   $$ /  $$ |$$ |  $$ |$$ |      $$ |      
-   $$  /  $$$$$$$\ | \$$$$  /    $$ |   $$$$$$$$ |$$$$$$$\ |$$ |      $$$$$\    
-  $$  /   $$  __$$\  $$  $$<     $$ |   $$  __$$ |$$  __$$\ $$ |      $$  __|   
- $$  /    $$ |  $$ |$$  /\$$\    $$ |   $$ |  $$ |$$ |  $$ |$$ |      $$ |      
-$$$$$$$$\ $$$$$$$  |$$ /  $$ |   $$ |   $$ |  $$ |$$$$$$$  |$$$$$$$$\ $$$$$$$$\ 
-\________|\_______/ \__|  \__|   \__|   \__|  \__|\_______/ \________|\________|
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║   ███████╗██████╗ ██╗  ██╗████████╗ █████╗ ██████╗ ██╗     ║
+║   ╚══███╔╝██╔══██╗╚██╗██╔╝╚══██╔══╝██╔══██╗██╔══██╗██║     ║
+║     ███╔╝ ██████╔╝ ╚███╔╝    ██║   ███████║██████╔╝██║     ║
+║    ███╔╝  ██╔══██╗ ██╔██╗    ██║   ██╔══██║██╔══██╗██║     ║
+║   ███████╗██████╔╝██╔╝ ██╗   ██║   ██║  ██║██████╔╝███████╗║
+║   ╚══════╝╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═════╝ ╚══════╝║
+║                                                               ║
+║              Zabbix Table Management System                   ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
 `
 
 var (
@@ -46,40 +46,158 @@ var (
 		Action: runWeb,
 	}
 
-	envConfig   map[string]string
-	initEnvOnce sync.Once
+	envConfig     map[string]string
+	initEnvOnce   sync.Once
 	envFileExists bool
+	webCfg        *ini.File
+	webAPI        *zabbix.API
 )
+
+// checkInstallStatus 检查安装状态
+func checkInstallStatus() bool {
+	confPath := "./conf/app.conf"
+	_, err := os.Stat(confPath)
+	if err != nil {
+		return false
+	}
+
+	cfg, err := ini.Load(confPath)
+	if err != nil {
+		return false
+	}
+
+	dbtype := cfg.Section("").Key("dbtype").String()
+	dbhost := cfg.Section("").Key("dbhost").String()
+	dbname := cfg.Section("").Key("dbname").String()
+
+	if dbtype == "" || dbhost == "" || dbname == "" {
+		return false
+	}
+
+	return true
+}
 
 // runWeb 启动web
 func runWeb(*cli.Context) error {
-	// 日志初始化
-	InitLogger()
-	logs.Info(motd)
+	// 日志初始化（使用默认配置，不依赖配置文件）
+	logErr := initLoggerSafe()
+	if logErr != nil {
+		// 如果日志初始化失败，至少输出到标准输出
+		fmt.Println("Warning: Logger initialization failed:", logErr)
+		fmt.Println("Using stdout for logging")
+		// 确保 Log 不为 nil
+		if utils.Log == nil {
+			utils.Log = logrus.New()
+			utils.Log.SetOutput(os.Stdout)
+			utils.Log.SetLevel(logrus.InfoLevel)
+			utils.Log.SetFormatter(&logrus.TextFormatter{
+				FullTimestamp:   true,
+				TimestampFormat: "2006-01-02 15:04:05",
+			})
+		}
+	}
+
 	// 释放静态资源目录
 	restoreAssets()
-	//检查配置文件是否存在
-	CheckConfExist()
-	//dev模式下开启swagger
-	if beego.BConfig.RunMode == "dev" {
-		beego.BConfig.WebConfig.DirectoryIndex = true
-		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
+
+	// 检查安装状态
+	installed := checkInstallStatus()
+	if !installed {
+		utils.Log.Info("系统未安装，启动安装引导模式")
+		// 未安装时，只启动 Web 服务器，不连接数据库
+		r := routers.RouterInitGin()
+		httpport := "8085"
+		utils.Log.Info("Starting Gin server in installation mode on port:", httpport)
+		utils.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
+		r.Run(":" + httpport)
+		return nil
 	}
+
+	// 已安装，加载配置文件并连接数据库
+	utils.Log.Info("系统已安装，加载配置并连接数据库")
+	var err error
+	webCfg, err = ini.Load("./conf/app.conf")
+	if err != nil {
+		utils.Log.Error("Failed to load config file:", err)
+		os.Exit(1)
+	}
+	utils.Log.Info(motd)
 	models.ModelsInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
 		InitConfig("zabbix_token"),
 		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
 		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"),
 		InitConfig("redis_host"), InitConfig("redis_port"),
 		InitConfig("redis_pass"), InitConfig("redis_db"))
-	routers.RouterInit()
+
 	models.InitTask()
-	toolbox.StartTask()
-	defer toolbox.StopTask()
+	defer models.StopTask()
 	models.InitSenderWorker()
 	go models.ConsumeMail()
 	go models.ConsumeWechat()
 	go models.ConsumeWechatRobot()
-	beego.Run()
+
+	// 直接使用 Gin 框架
+	r := routers.RouterInitGin()
+	httpport := InitConfig("httpport")
+	if httpport == "" {
+		httpport = "8085"
+	}
+	utils.Log.Info("Starting Gin server on port:", httpport)
+	r.Run(":" + httpport)
+	return nil
+}
+
+// initLoggerSafe 安全地初始化日志（不依赖配置文件）
+func initLoggerSafe() error {
+	// 尝试加载配置文件
+	cfg, err := ini.Load("./conf/app.conf")
+	if err != nil {
+		// 配置文件不存在，使用标准输出（便于查看启动信息）
+		utils.Log = logrus.New()
+		utils.Log.SetOutput(os.Stdout)
+		utils.Log.SetLevel(logrus.InfoLevel)
+		utils.Log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "2006-01-02 15:04:05",
+		})
+		return nil
+	}
+
+	// 配置文件存在，使用配置的日志设置
+	logPath := cfg.Section("").Key("log_path").String()
+	if logPath == "" {
+		logPath = "./logs"
+	}
+	level, _ := cfg.Section("").Key("log_level").Int()
+	if level == 0 {
+		level = 1
+	}
+	maxday, _ := cfg.Section("").Key("maxdays").Int()
+	if maxday == 0 {
+		maxday = 7
+	}
+	maxlines, _ := cfg.Section("").Key("maxlines").Int()
+	if maxlines == 0 {
+		maxlines = 10000
+	}
+	maxsize, _ := cfg.Section("").Key("maxsize").Int()
+	if maxsize == 0 {
+		maxsize = 100
+	}
+	daily, _ := cfg.Section("").Key("daily").Bool()
+
+	err = utils.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
+	if err != nil {
+		// 如果日志初始化失败，使用标准输出
+		utils.Log = logrus.New()
+		utils.Log.SetOutput(os.Stdout)
+		utils.Log.SetLevel(logrus.InfoLevel)
+		utils.Log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "2006-01-02 15:04:05",
+		})
+		return nil
+	}
 	return nil
 }
 
@@ -94,7 +212,7 @@ func restoreAssets() error {
 		if !ex && err == nil {
 			// 解压目录到当前目录
 			if err := packfile.RestoreAssets("./", file); err != nil {
-				logs.Error(err)
+				utils.Log.Error(err)
 				break
 			}
 		}
@@ -154,59 +272,48 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	}
 	resp, err := dClient.Get(addURL)
 	if err != nil {
-		logs.Error("Zabbix Web get request failed:", err)
-		os.Exit(1)
+		utils.Log.Error("Zabbix Web get request failed:", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusPreconditionFailed {
-		logs.Error("Zabbix Web is incorrectly!")
-		os.Exit(1)
+		utils.Log.Error("Zabbix Web is incorrectly!")
+		return "", errors.New("Zabbix Web is incorrectly")
 	}
 	// api定义
-	API = zabbix.NewAPI(address + "/api_jsonrpc.php")
+	webAPI = zabbix.NewAPI(address + "/api_jsonrpc.php")
 	if token != "" {
-		API.SetAuth(token)
+		webAPI.SetAuth(token)
 	} else {
-		_, err := API.Login(user, pass)
+		_, err := webAPI.Login(user, pass)
 		if err != nil {
-			logs.Error("connect Zabbix API failed", err)
-			os.Exit(1)
+			utils.Log.Error("connect Zabbix API failed", err)
+			return "", err
 		}
 	}
 	//zabbix api data get test
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	type params map[string]interface{}
-	_, err = API.CallWithError("host.get", params{
+	_, err = webAPI.CallWithError("host.get", params{
 		"output":  OutputPar,
 		"hostids": "10084",
 	})
 	if err != nil {
-		logs.Error("connect Zabbix API failed", err)
-		os.Exit(1)
+		utils.Log.Error("connect Zabbix API failed", err)
+		return "", err
 	}
 	//version get
-	version, err := API.Version()
+	version, err := webAPI.Version()
 	if err != nil {
-		logs.Error("connect Zabbix API failed", err)
-		os.Exit(1)
+		utils.Log.Error("connect Zabbix API failed", err)
+		return "", err
 	}
 	return version, nil
 }
 
-// CheckConfExist config
+// CheckConfExist config (已废弃，改为在 runWeb 中检查安装状态)
 func CheckConfExist() {
-	_, err := os.Stat("./conf/app.conf")
-	if err != nil {
-		logs.Error(err)
-		logs.Error("Please run 'zbxtable init' to create app.conf")
-		os.Exit(1)
-	}
-	Cfg, err = ini.Load("./conf/app.conf")
-	if err != nil {
-		logs.Error(err)
-		logs.Error("Please run 'zbxtable init' to create app.conf")
-		os.Exit(1)
-	}
+	// 此函数已废弃，保留以兼容旧代码
 }
 
 // init config files
@@ -253,38 +360,20 @@ func InitConfig(v string) string {
 	}
 
 	// 回退到 app.conf
-	p, err := Cfg.Section("").GetKey(v)
+	if webCfg == nil {
+		return ""
+	}
+	p, err := webCfg.Section("").GetKey(v)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ""
 	}
 	return p.String()
 }
+
+// InitLogger 初始化日志（已废弃，改为使用 initLoggerSafe）
 func InitLogger() (err error) {
-	BConfig, err := config.NewConfig("ini", "conf/app.conf")
-	if err != nil {
-		return errors.New("config init error:" + err.Error())
-	}
-	logConf := make(map[string]interface{})
-	logConf["filename"] = BConfig.String("log_path")
-	level, _ := BConfig.Int("log_level")
-	maxday, _ := BConfig.Int("maxdays")
-	maxlines, _ := BConfig.Int("maxlines")
-	maxsize, _ := BConfig.Int("maxsize")
-	daily, _ := BConfig.Bool("daily")
-	logConf["level"] = level
-	logConf["maxlines"] = maxlines
-	logConf["maxsize"] = maxsize
-	logConf["maxday"] = maxday
-	logConf["daily"] = daily
-	logConf["perm"] = "0755"
-	confStr, err := json.Marshal(logConf)
-	if err != nil {
-		return errors.New("marshal failed,err:" + err.Error())
-	}
-	logs.SetLogger(logs.AdapterFile, string(confStr))
-	logs.SetLogFuncCall(true)
-	return
+	return initLoggerSafe()
 }
 
 //

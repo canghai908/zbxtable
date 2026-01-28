@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -75,8 +74,7 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 	} else {
 		top_n = p
 	}
-	var ctx = context.Background()
-	ret, err := RDB.ZRevRangeWithScores(ctx, MetType1+"_"+MetType2, 0, top_n).Result()
+	ret, err := CacheZRevRangeWithScores(MetType1+"_"+MetType2, 0, top_n)
 	if err != nil {
 		return []TopList{}, err
 
@@ -136,11 +134,10 @@ func GetOverviewData() (OverviewList, error) {
 	//var one OverviewList
 	//var datalist []OverviewList
 	listmap := make(map[string][]Hosts)
-	var ctx = context.Background()
 	for _, v := range list {
 		var ArrayOne []Hosts
-		p, err := RDB.Get(ctx, v+"_OVERVIEW").Result()
-		if err != nil {
+		p, err := CacheGet(v + "_OVERVIEW")
+		if err != nil || p == "" {
 			logs.Error(err)
 			continue
 		}
@@ -159,9 +156,8 @@ func GetOverviewData() (OverviewList, error) {
 	return newList, nil
 }
 func GetEgressData() (EgressList, error) {
-	var ctx = context.Background()
-	p, err := RDB.Get(ctx, "Egress").Result()
-	if err != nil {
+	p, err := CacheGet("Egress")
+	if err != nil || p == "" {
 		logs.Error(err)
 		return EgressList{}, err
 	}
@@ -175,9 +171,8 @@ func GetEgressData() (EgressList, error) {
 }
 
 func GetZbxSession() (string, error) {
-	var ctx = context.Background()
-	p, err := RDB.Get(ctx, "zbx_session").Result()
-	if err != nil {
+	p, err := CacheGet("zbx_session")
+	if err != nil || p == "" {
 		logs.Error(err)
 		return "", err
 	}

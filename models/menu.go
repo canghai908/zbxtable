@@ -1,23 +1,25 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
+	"errors"
+	"zbxtable/utils"
+
+	"gorm.io/gorm"
 )
 
 type Menu struct {
-	Id          int    `orm:"column(id);auto"`
-	ParentId    int    `orm:"column(parent_id);default(0)"`
-	Name        string `orm:"column(name);size(50)"`
-	Path        string `orm:"column(path);size(100)"`
-	Router      string `orm:"column(router);size(100)"`
-	Icon        string `orm:"column(icon);size(50)"`
-	Role        string `orm:"column(role);size(50)"`
-	Permission  string `orm:"column(permission);size(100)"`
-	Invisible   bool   `orm:"column(in_visible);default(false)"`
-	IsAvailable bool   `orm:"column(is_available);default(false)"`
-	Highlight   string `orm:"column(highlight);size(100)"`
-	CacheAble   bool   `orm:"column(cacheAble);default(false)"`
+	Id          int    `gorm:"column:id;primaryKey;autoIncrement"`
+	ParentId    int    `gorm:"column:parent_id;default:0"`
+	Name        string `gorm:"column:name;size:50"`
+	Path        string `gorm:"column:path;size:100"`
+	Router      string `gorm:"column:router;size:100"`
+	Icon        string `gorm:"column:icon;size:50"`
+	Role        string `gorm:"column:role;size:50"`
+	Permission  string `gorm:"column:permission;size:100"`
+	Invisible   bool   `gorm:"column:in_visible;default:false"`
+	IsAvailable bool   `gorm:"column:is_available;default:false"`
+	Highlight   string `gorm:"column:highlight;size:100"`
+	CacheAble   bool   `gorm:"column:cacheAble;default:false"`
 }
 
 func (t *Menu) TableName() string {
@@ -74,6 +76,8 @@ func getMenuDefinitions() []Menu {
 		//系统管理 (ParentId: 8 对应"系统管理")
 		{ParentId: 8, Name: "用户管理", Path: "users", Router: "systemUsers", Icon: "meh", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbixConfig", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "租户配置", Path: "tenant", Router: "zabbixTenant", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "指标映射", Path: "init", Router: "sysInit", Icon: "interaction", Role: "admin,user"},
 		{ParentId: 8, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "api", Role: "admin,user"},
 		{ParentId: 8, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "api", Role: "admin"},
@@ -83,25 +87,25 @@ func getMenuDefinitions() []Menu {
 
 // InitMenuData 菜单初始化
 func InitMenuData() {
-	o := orm.NewOrm()
-	count, err := o.QueryTable(Menu{}).Count()
+	var count int64
+	err := DB.Model(&Menu{}).Count(&count).Error
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
+		return
 	}
 	if count > 0 {
 		return
 	}
 	menus := getMenuDefinitions()
-	_, err = o.InsertMulti(len(menus), menus)
+	err = DB.Create(&menus).Error
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 	}
 }
 
 // CheckAndAddMenus 检查并添加缺失的菜单项（用于版本升级）
 // 检查 getMenuDefinitions 中定义的所有菜单是否在数据库中存在，如果不存在则添加
 func CheckAndAddMenus() {
-	o := orm.NewOrm()
 	menuDefs := getMenuDefinitions()
 
 	// 建立一级菜单名称到数据库ID的映射
@@ -112,20 +116,23 @@ func CheckAndAddMenus() {
 		if menuDef.ParentId == 0 {
 			// 检查一级菜单是否存在
 			var existingMenu Menu
-			err := o.QueryTable(Menu{}).Filter("name", menuDef.Name).Filter("parent_id", 0).One(&existingMenu)
-			if err != nil {
+			err := DB.Where("name = ? AND parent_id = ?", menuDef.Name, 0).First(&existingMenu).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// 一级菜单不存在，添加它
 				menuToInsert := menuDef
-				id, err := o.Insert(&menuToInsert)
+				err = DB.Create(&menuToInsert).Error
 				if err != nil {
-					logs.Error("添加一级菜单失败:", menuDef.Name, err)
+					utils.Log.Error("添加一级菜单失败:", menuDef.Name, err)
 					continue
 				}
-				parentMenuMap[idx+1] = int(id) // 索引从1开始，对应ParentId
-				logs.Info("成功添加一级菜单:", menuDef.Name)
+				parentMenuMap[idx+1] = menuToInsert.Id // 索引从1开始，对应ParentId
+				utils.Log.Info("成功添加一级菜单:", menuDef.Name)
+			} else if err != nil {
+				utils.Log.Error("查询一级菜单失败:", menuDef.Name, err)
+				continue
 			} else {
 				parentMenuMap[idx+1] = existingMenu.Id
-				logs.Debug("一级菜单已存在:", menuDef.Name)
+				utils.Log.Debug("一级菜单已存在:", menuDef.Name)
 			}
 		}
 	}
@@ -136,30 +143,33 @@ func CheckAndAddMenus() {
 			// 获取父菜单的实际ID
 			parentId, exists := parentMenuMap[menuDef.ParentId]
 			if !exists {
-				logs.Warning("找不到父菜单，跳过菜单:", menuDef.Name, "ParentId:", menuDef.ParentId)
+				utils.Log.Warning("找不到父菜单，跳过菜单:", menuDef.Name, "ParentId:", menuDef.ParentId)
 				continue
 			}
 
 			// 检查菜单是否存在
 			var existingMenu Menu
-			err := o.QueryTable(Menu{}).Filter("name", menuDef.Name).Filter("parent_id", parentId).One(&existingMenu)
-			if err != nil {
+			err := DB.Where("name = ? AND parent_id = ?", menuDef.Name, parentId).First(&existingMenu).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// 菜单不存在，添加它
 				menuToInsert := menuDef
 				menuToInsert.ParentId = parentId // 使用数据库中的实际父菜单ID
-				_, err = o.Insert(&menuToInsert)
+				err = DB.Create(&menuToInsert).Error
 				if err != nil {
-					logs.Error("添加菜单失败:", menuDef.Name, err)
+					utils.Log.Error("添加菜单失败:", menuDef.Name, err)
 					continue
 				}
-				logs.Info("成功添加菜单:", menuDef.Name)
+				utils.Log.Info("成功添加菜单:", menuDef.Name)
+			} else if err != nil {
+				utils.Log.Error("查询菜单失败:", menuDef.Name, err)
+				continue
 			} else {
-				logs.Debug("菜单已存在:", menuDef.Name)
+				utils.Log.Debug("菜单已存在:", menuDef.Name)
 			}
 		}
 	}
 
-	logs.Info("菜单检查完成")
+	utils.Log.Info("菜单检查完成")
 }
 
 type MenuItem struct {
@@ -190,9 +200,9 @@ func GetRouter(username string) ([]RouterRes, error) {
 	if err != nil {
 		return []RouterRes{}, err
 	}
-	o := orm.NewOrm()
 	var menus []Menu
-	_, err = o.QueryTable(Menu{}).Filter("is_available", "0").Filter("role__in", m.Role, "admin,user").OrderBy("parent_id", "id").All(&menus)
+	// GORM 查询：is_available = false (0) 且 role 包含 m.Role 或 "admin,user"
+	err = DB.Where("is_available = ? AND (role LIKE ? OR role LIKE ?)", false, "%"+m.Role+"%", "%admin,user%").Order("parent_id, id").Find(&menus).Error
 	if err != nil {
 		return []RouterRes{}, err
 	}

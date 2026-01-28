@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strconv"
 	"zbxtable/utils"
-
-	"github.com/astaxie/beego/orm"
 )
 
 const (
@@ -15,74 +13,78 @@ const (
 
 // AddRule one
 func AddRule(m *Rule) (id int64, err error) {
-	o := orm.NewOrm()
 	m.Sweek = utils.VAarToStr(m.Sweek)
 	m.TenantID = utils.VAarToStr(m.TenantID)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
 		return 0, err
 	}
-	return id, nil
+	return int64(m.ID), nil
 }
 
 // GetRuleByID one
 func GetRuleByID(id int) (v *Rule, err error) {
-	o := orm.NewOrm()
-	v = &Rule{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Rule{}
+	err = DB.Where("id = ?", id).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, userlist []Rule, err error) {
-	o := orm.NewOrm()
 	var rules []Rule
-	var CountRules []Rule
-	al := new(Rule)
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	//count alarms
-	cond := orm.NewCondition()
+	if limits == 0 {
+		limits = 10
+	}
+	if pages == 0 {
+		pages = 1
+	}
+
+	query := DB.Model(&Rule{})
+
 	if name != "" {
-		cond = cond.And("name__icontains", name)
+		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
 	if tenant_id != "" {
-		cond = cond.And("tenant_id", tenant_id)
+		query = query.Where("tenant_id = ?", tenant_id)
 	}
 	if m_type == "" {
-		cond = cond.And("m_type", "1").Or("m_type", "2")
+		query = query.Where("m_type IN ?", []string{"1", "2"})
 	} else {
-		cond = cond.And("m_type", m_type)
+		query = query.Where("m_type = ?", m_type)
 	}
 	if status != "" {
-		cond = cond.And("status", status)
+		query = query.Where("status = ?", status)
 	}
-	_, err = o.QueryTable(al).SetCond(cond).
-		All(&CountRules)
+
+	// 获取总数
+	err = query.Count(&cnt).Error
 	if err != nil {
 		return 0, []Rule{}, err
 	}
-	_, err = o.QueryTable(al).
-		Limit(limits, (pages-1)*limits).SetCond(cond).
-		All(&rules, "id", "name", "conditions", "tenant_id", "note",
-			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created")
+
+	// 获取分页数据
+	offset := (pages - 1) * limits
+	err = query.Select("id", "name", "conditions", "tenant_id", "note",
+		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+		Limit(limits).Offset(offset).Find(&rules).Error
 	if err != nil {
 		return 0, []Rule{}, err
 	}
-	cnt = int64(len(CountRules))
 	return cnt, rules, nil
 }
 
 // UpdateRuleStatus rule
 func UpdateRuleStatus(m *Rule, tuser string) error {
-	o := orm.NewOrm()
 	//role检查
-	p := Manager{Username: tuser}
-	err := o.Read(&p, "username")
+	var p Manager
+	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
 	}
@@ -91,13 +93,7 @@ func UpdateRuleStatus(m *Rule, tuser string) error {
 		return errors.New("no permission")
 	}
 	//update
-	v := Rule{ID: m.ID}
-	err = o.Read(&v)
-	if err != nil {
-		return err
-	}
-	v.Status = m.Status
-	_, err = o.Update(m, "Status")
+	err = DB.Model(&Rule{}).Where("id = ?", m.ID).Update("status", m.Status).Error
 	if err != nil {
 		return err
 	}
@@ -106,10 +102,9 @@ func UpdateRuleStatus(m *Rule, tuser string) error {
 
 // UpdateRule rule
 func UpdateRule(m *Rule, tuser string) error {
-	o := orm.NewOrm()
 	//role检查
-	p := Manager{Username: tuser}
-	err := o.Read(&p, "username")
+	var p Manager
+	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
 	}
@@ -117,20 +112,37 @@ func UpdateRule(m *Rule, tuser string) error {
 	if p.Role != "admin" {
 		return errors.New("no permission")
 	}
-	//update
-	v := Rule{ID: m.ID}
-	err = o.Read(&v)
-	if err != nil {
-		return err
-	}
 	//vue array to str
 	m.TenantID = utils.VAarToStr(m.TenantID)
 	m.Sweek = utils.VAarToStr(m.Sweek)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
-	_, err = o.Update(m, "name", "tenant_id", "conditions", "s_week", "m_type",
-		"s_time", "e_time", "channel", "user_ids", "group_ids", "note", "status")
+	//判断是不是修改默认规则，如果是修改默认规则，则默认规则类型不变,表达式，条件配置
+	var mType, mConditions, mTenantID string
+	if m.MType == "2" {
+		mType = "2"
+		mConditions = ""
+		mTenantID = "*"
+	} else {
+		mType = m.MType
+		mConditions = m.Conditions
+		mTenantID = m.TenantID
+	}
+	err = DB.Model(&Rule{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+		"name":       m.Name,
+		"tenant_id":  mTenantID,
+		"conditions": mConditions,
+		"s_week":     m.Sweek,
+		"m_type":     mType,
+		"s_time":     m.Stime,
+		"e_time":     m.Etime,
+		"channel":    m.Channel,
+		"user_ids":   m.UserIds,
+		"group_ids":  m.GroupIds,
+		"note":       m.Note,
+		"status":     m.Status,
+	}).Error
 	if err != nil {
 		return err
 	}
@@ -139,10 +151,9 @@ func UpdateRule(m *Rule, tuser string) error {
 
 // DeleteRule status
 func DeleteRule(id int, tuser string) (err error) {
-	o := orm.NewOrm()
 	//role检查
-	p := Manager{Username: tuser}
-	err = o.Read(&p, "username")
+	var p Manager
+	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
 	}
@@ -150,15 +161,14 @@ func DeleteRule(id int, tuser string) (err error) {
 	if p.Role != "admin" {
 		return errors.New("no permission")
 	}
-	v := Rule{ID: id}
-
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
+	var v Rule
+	err = DB.Where("id = ?", id).First(&v).Error
+	if err == nil {
 		//default 规则不能删除
 		if v.MType == "2" {
 			return errors.New("默认规则不能删除")
 		}
-		_, err = o.Delete(&Rule{ID: id})
+		err = DB.Delete(&Rule{}, id).Error
 		if err != nil {
 			return err
 		}

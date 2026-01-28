@@ -2,7 +2,6 @@ package models
 
 import (
 	"compress/gzip"
-	"context"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -100,13 +99,12 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	//把cookies设置到缓存中
 	cookies := JAR.Cookies(u) // 从 CookieJar 中获取指定 URL 的 Cookies
 	for _, cookie := range cookies {
-		var ctx = context.Background()
 		value, err := url.QueryUnescape(cookie.Value)
 		if err != nil {
 			logs.Error("解码失败:", err)
 			return
 		}
-		err = RDB.Set(ctx, "zbx_session", value, 0).Err()
+		err = CacheSet("zbx_session", value, 0)
 		if err != nil {
 			logs.Error(err)
 			return

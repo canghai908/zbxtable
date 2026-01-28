@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -194,9 +193,8 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 
 // get net host by name
 func GetNetHostByName(name string) ([]Hosts, error) {
-	var ctx = context.Background()
-	val, err := RDB.Get(ctx, "HW_NET_OVERVIEW").Result()
-	if err != nil {
+	val, err := CacheGet("HW_NET_OVERVIEW")
+	if err != nil || val == "" {
 		return []Hosts{}, nil
 	}
 	var list []Hosts

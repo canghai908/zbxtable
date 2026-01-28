@@ -5,21 +5,21 @@ import (
 )
 
 type Rule struct {
-	ID         int       `orm:"column(id);auto" json:"id"`
-	Name       string    `orm:"column(name);size(200);null" json:"name"`
-	TenantID   string    `orm:"column(tenant_id);size(100);null" json:"tenant_id"`
-	Conditions string    `orm:"column(conditions);type(text);null" json:"conditions"`
-	Sweek      string    `orm:"column(s_week);size(200);null" json:"s_week"`
-	Stime      string    `orm:"column(s_time);size(200);null" json:"s_time"`
-	Etime      string    `orm:"column(e_time);size(200);null" json:"e_time"`
-	Channel    string    `orm:"column(channel);size(200);null" json:"channel"`
-	UserIds    string    `orm:"column(user_ids);size(200);null" json:"user_ids"`
-	GroupIds   string    `orm:"column(group_ids);size(200);null" json:"group_ids"`
-	Note       string    `orm:"column(note);size(200);null" json:"note"`
-	MType      string    `orm:"column(m_type);size(200);null" json:"m_type"` // 1告警分发 2.默认规则 3.屏蔽规则  4
-	Status     string    `orm:"column(status);size(40);null" json:"status"`
-	Created    time.Time `orm:"column(created);type(datetime);null;auto_now_add;"  json:"created"`
-	Updated    time.Time `orm:"column(updated);type(datetime);null;auto_now"  json:"updated"`
+	ID         int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name       string    `gorm:"column:name;size:200" json:"name"`
+	TenantID   string    `gorm:"column:tenant_id;size:100" json:"tenant_id"`
+	Conditions string    `gorm:"column:conditions;type:text" json:"conditions"`
+	Sweek      string    `gorm:"column:s_week;size:200" json:"s_week"`
+	Stime      string    `gorm:"column:s_time;size:200" json:"s_time"`
+	Etime      string    `gorm:"column:e_time;size:200" json:"e_time"`
+	Channel    string    `gorm:"column:channel;size:200" json:"channel"` //mail 邮件,wechat 企业微信， wechat_robot 企业微信机器人
+	UserIds    string    `gorm:"column:user_ids;size:200" json:"user_ids"`
+	GroupIds   string    `gorm:"column:group_ids;size:200" json:"group_ids"`
+	Note       string    `gorm:"column:note;size:200" json:"note"`
+	MType      string    `gorm:"column:m_type;size:200" json:"m_type"` // 1告警分发 2.默认规则 3.屏蔽规则
+	Status     string    `gorm:"column:status;size:40" json:"status"`
+	Created    time.Time `gorm:"column:created;autoCreateTime" json:"created"`
+	Updated    time.Time `gorm:"column:updated;autoUpdateTime" json:"updated"`
 }
 type Conditions struct {
 	RType  string `orm:"column(r_type);size(200);null" json:"r_type"`
@@ -35,7 +35,7 @@ type RuleResp struct {
 	} `json:"data"`
 }
 
-//TableName alarm
+// TableName alarm
 func (t *Rule) TableName() string {
 	return TableName("rule")
 }

@@ -5,30 +5,23 @@ import (
 	"strings"
 	"sync"
 	"zbxtable/utils"
-
-	"github.com/astaxie/beego/logs"
-	"github.com/astaxie/beego/orm"
 )
 
 // last inserted Id on success.
 func AddTopoData(m *TopologyData) (id int64, err error) {
-	o := orm.NewOrm()
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
 		return 0, err
 	}
-	return id, err
+	return int64(m.ID), err
 }
 
 // GetAllTopology t
 func GetAllTopoData() (cnt int64, topodata []TopologyData, err error) {
-	o := orm.NewOrm()
 	var topologys []TopologyData
-	al := new(TopologyData)
-	//count topology
-	_, err = o.QueryTable(al).OrderBy("-created_at").All(&topologys)
+	err = DB.Order("created_at DESC").Find(&topologys).Error
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return 0, []TopologyData{}, err
 	}
 	cnt = int64(len(topologys))
@@ -37,7 +30,7 @@ func GetAllTopoData() (cnt int64, topodata []TopologyData, err error) {
 func GetTriggerValueByTriggerID(TriggerID string) (value string, err error) {
 	tri, err := GetTriggerValue(TriggerID)
 	if err != nil || len(tri) == 0 {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return "2", err
 	}
 	return tri[0].Value, nil
@@ -46,7 +39,7 @@ func GetTriggerValueByTriggerID(TriggerID string) (value string, err error) {
 func GetFlowByFlowID(FLowID string) (flow string, err error) {
 	p, err := GetItemByID(FLowID)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return "", err
 	}
 	if len(p) == 0 {
@@ -76,11 +69,11 @@ func GetHostInfoByID(hostid string, wg *sync.WaitGroup, info chan string) {
 	defer wg.Done()
 	p, err := GetHostInfoTopology(hostid)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 	}
 	StrP, err := json.Marshal(&p)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 	}
 	info <- string(StrP)
 	return

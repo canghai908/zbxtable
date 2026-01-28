@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 	"zbxtable/utils"
-
-	"github.com/astaxie/beego/orm"
 )
 
 // Auth struct
@@ -74,20 +72,20 @@ type Token struct {
 
 // Manager struct
 type Manager struct {
-	ID        int       `orm:"column(id);auto" json:"id"`
-	Username  string    `orm:"column(username);size(255)" json:"username"`
-	Password  string    `orm:"column(password);size(255)" json:"password,omitempty"`
-	Avatar    string    `orm:"column(avatar);size(255)" json:"avatar"`
-	Status    int64     `orm:"column(status)" json:"status"`
-	Role      string    `orm:"column(role);size(255)" json:"role"`
-	Operation string    `orm:"column(operation);size(255)" json:"operation"`
-	Email         string    `orm:"column(email);size(255)" json:"email"`
-	Wechat        string    `orm:"column(wechat);size(255)" json:"wechat"`
-	WechatRobotKey string    `orm:"column(wechat_robot_key);size(255)" json:"wechat_robot_key"`
-	Phone         string    `orm:"column(phone);size(255)" json:"phone"`
-	DingTalk      string    `orm:"column(ding_talk);size(255)" json:"ding_talk"`
-	Created       time.Time `orm:"column(created);type(datetime);auto_now_add" json:"created"`
-	Updated       time.Time `orm:"column(updated);type(datetime);auto_now" json:"updated_at"`
+	ID             int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Username       string    `gorm:"column:username;size:255;uniqueIndex" json:"username"`
+	Password       string    `gorm:"column:password;size:255" json:"password,omitempty"`
+	Avatar         string    `gorm:"column:avatar;size:255" json:"avatar"`
+	Status         int64     `gorm:"column:status" json:"status"`
+	Role           string    `gorm:"column:role;size:255" json:"role"`
+	Operation      string    `gorm:"column:operation;size:255" json:"operation"`
+	Email          string    `gorm:"column:email;size:255" json:"email"`
+	Wechat         string    `gorm:"column:wechat;size:255" json:"wechat"`
+	WechatRobotKey string    `gorm:"column:wechat_robot_key;size:255" json:"wechat_robot_key"`
+	Phone          string    `gorm:"column:phone;size:255" json:"phone"`
+	DingTalk       string    `gorm:"column:ding_talk;size:255" json:"ding_talk"`
+	Created        time.Time `gorm:"column:created;autoCreateTime" json:"created"`
+	Updated        time.Time `gorm:"column:updated;autoUpdateTime" json:"updated_at"`
 }
 
 // TableName string
@@ -98,64 +96,60 @@ func (t *Manager) TableName() string {
 // AddManager insert a new Manager into database and returns
 // last inserted Id on success.
 func AddUser(m *Manager) (id int64, err error) {
-	o := orm.NewOrm()
-	//用户是否已存在
-	p := Manager{Username: m.Username}
-	err = o.Read(&p, "username")
-	if err == nil {
+	// 检查用户是否已存在
+	var existing Manager
+	result := DB.Where("username = ?", m.Username).First(&existing)
+	if result.Error == nil {
 		return 0, errors.New("用户已存在")
 	}
-	//插入
-	_, err = o.Insert(m)
-	if err != nil {
-		return 0, err
+	// 插入
+	result = DB.Create(m)
+	if result.Error != nil {
+		return 0, result.Error
 	}
-	return
+	return int64(m.ID), nil
 }
 
 // UpdateUser 更新用户信息
 func UpdateUser(m *Manager, tuser string) error {
-	o := orm.NewOrm()
 	//role检查
-	p := Manager{Username: tuser}
-	err := o.Read(&p, "username")
+	var p Manager
+	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
 	}
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-	//
-	v := Manager{ID: m.ID}
-	err = o.Read(&v)
-	if err != nil {
-		return err
-	}
-
+	
 	//密码不为空更新密码
 	if m.Password != "" {
-		v.Password = m.Password
-		v.Role = m.Role
-		v.Email = m.Email
-		v.Phone = m.Phone
-		v.Wechat = m.Wechat
-		v.WechatRobotKey = m.WechatRobotKey
-		v.DingTalk = m.DingTalk
-		v.Status = m.Status
-		_, err = o.Update(m, "Password", "Role", "Email", "Wechat", "WechatRobotKey", "Phone", "DingTalk")
+		updates := map[string]interface{}{
+			"password":         m.Password,
+			"role":             m.Role,
+			"email":            m.Email,
+			"phone":            m.Phone,
+			"wechat":           m.Wechat,
+			"wechat_robot_key": m.WechatRobotKey,
+			"ding_talk":        m.DingTalk,
+			"status":           m.Status,
+		}
+		err = DB.Model(&Manager{}).Where("id = ?", m.ID).Updates(updates).Error
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 	//更新其他字段
-	v.Role = m.Role
-	v.Email = m.Email
-	v.Phone = m.Phone
-	v.Wechat = m.Wechat
-	v.WechatRobotKey = m.WechatRobotKey
-	v.DingTalk = m.DingTalk
-	_, err = o.Update(m, "Role", "Email", "Wechat", "WechatRobotKey", "Phone", "DingTalk")
+	updates := map[string]interface{}{
+		"role":             m.Role,
+		"email":            m.Email,
+		"phone":            m.Phone,
+		"wechat":           m.Wechat,
+		"wechat_robot_key": m.WechatRobotKey,
+		"ding_talk":        m.DingTalk,
+	}
+	err = DB.Model(&Manager{}).Where("id = ?", m.ID).Updates(updates).Error
 	if err != nil {
 		return err
 	}
@@ -164,10 +158,9 @@ func UpdateUser(m *Manager, tuser string) error {
 
 // udpate user
 func UpdateUserStatus(m *Manager, tuser string) error {
-	o := orm.NewOrm()
 	//user
-	v := Manager{ID: m.ID}
-	err := o.Read(&v)
+	var v Manager
+	err := DB.First(&v, m.ID).Error
 	if err != nil {
 		return err
 	}
@@ -179,8 +172,7 @@ func UpdateUserStatus(m *Manager, tuser string) error {
 	if v.Username == tuser {
 		return errors.New("cannot disable self")
 	}
-	v.Status = m.Status
-	_, err = o.Update(m, "Status")
+	err = DB.Model(&Manager{}).Where("id = ?", m.ID).Update("status", m.Status).Error
 	if err != nil {
 		return err
 	}
@@ -190,67 +182,75 @@ func UpdateUserStatus(m *Manager, tuser string) error {
 // GetAllAlarm retrieves all Alarm matches certain condition. Returns empty list if
 // no records exist
 func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist []Manager, err error) {
-	o := orm.NewOrm()
 	var users []Manager
-	var CountUsers []Manager
-	al := new(Manager)
+	var countUsers []Manager
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	//count alarms
-	cond := orm.NewCondition()
-	if username != "" {
-		cond = cond.And("username__icontains", username)
-	}
-	if status != "" {
-		cond = cond.And("status", status)
-	}
-	//管理员角色
-	p := Manager{Username: tuser}
-	err = o.Read(&p, "username")
+	
+	// 构建查询
+	query := DB.Model(&Manager{})
+	
+	// 管理员角色检查
+	var p Manager
+	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return 0, []Manager{}, err
 	}
 	if p.Role != "admin" {
-		cond = cond.And("username", tuser)
+		query = query.Where("username = ?", tuser)
 	}
-	_, err = o.QueryTable(al).SetCond(cond).
-		All(&CountUsers)
-	_, err = o.QueryTable(al).
-		Limit(limits, (pages-1)*limits).SetCond(cond).
-		All(&users, "id", "username", "role", "avatar", "email", "ding_talk",
-			"phone", "created", "status", "wechat", "wechat_robot_key")
+	
+	// 条件过滤
+	if username != "" {
+		query = query.Where("username LIKE ?", "%"+username+"%")
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	
+	// 计数
+	err = query.Find(&countUsers).Error
 	if err != nil {
 		return 0, []Manager{}, err
 	}
-	cnt = int64(len(CountUsers))
+	cnt = int64(len(countUsers))
+	
+	// 分页查询
+	offset := (pages - 1) * limits
+	err = query.Select("id", "username", "role", "avatar", "email", "ding_talk",
+		"phone", "created", "status", "wechat", "wechat_robot_key").
+		Limit(limits).Offset(offset).Find(&users).Error
+	if err != nil {
+		return 0, []Manager{}, err
+	}
+	
 	return cnt, users, nil
 }
 
 // GetManagerByID retrieves Manager by Id. Returns error if
 // Id doesn't exist
 func GetManagerByID(id int) (v *Manager, err error) {
-	o := orm.NewOrm()
-	v = &Manager{ID: id}
-	if err = o.Read(v); err == nil {
-		return v, nil
+	v = &Manager{}
+	err = DB.First(v, id).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // GetManagerByName retrieves User by Username. Returns error if
 // Id doesn't exist
 func GetManagerByName(username string) (v *Manager, err error) {
-	o := orm.NewOrm()
-	v = &Manager{Username: username}
-	if err = o.Read(v, "Username"); err == nil {
-		return v, nil
+	v = &Manager{}
+	err = DB.Where("username = ?", username).First(v).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return v, nil
 }
 
 // Chanagepwd func
 func Chanagepwd(old, new string) (err error) {
-	o := orm.NewOrm()
 	v, err := GetManagerByName("admin")
 	if err != nil {
 		return err
@@ -258,8 +258,7 @@ func Chanagepwd(old, new string) (err error) {
 	if v.Username != "admin" || v.Password != utils.Md5([]byte(old)) {
 		return errors.New("账号或密码错误")
 	}
-	v.Password = utils.Md5([]byte(new))
-	_, err = o.Update(v)
+	err = DB.Model(&Manager{}).Where("id = ?", v.ID).Update("password", utils.Md5([]byte(new))).Error
 	if err != nil {
 		return errors.New("更新密码出错")
 	}
@@ -267,10 +266,9 @@ func Chanagepwd(old, new string) (err error) {
 }
 
 func DeleteUser(id int, tuser string) (err error) {
-	o := orm.NewOrm()
 	//role检查
-	p := Manager{Username: tuser}
-	err = o.Read(&p, "username")
+	var p Manager
+	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
 	}
@@ -278,17 +276,18 @@ func DeleteUser(id int, tuser string) (err error) {
 	if p.Role != "admin" {
 		return errors.New("no permission")
 	}
-	v := Manager{ID: id}
 	//admin not delete
 	if id == 1 {
 		return errors.New("admin user cannot delete ")
 	}
 	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
+	var v Manager
+	err = DB.First(&v, id).Error
+	if err == nil {
 		if v.Username == tuser {
 			return errors.New("cannot delete myself")
 		}
-		_, err = o.Delete(&Manager{ID: id})
+		err = DB.Delete(&Manager{}, id).Error
 		if err != nil {
 			return err
 		}

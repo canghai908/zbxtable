@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"github.com/astaxie/beego/logs"
 	"strings"
 	"time"
@@ -265,9 +264,8 @@ func GetValueMapByID(id, value string) (newvalue string, err error) {
 	if id == "" {
 		return "", err
 	}
-	var ctx = context.Background()
-	newvalue, err = RDB.Get(ctx, "ValueMap_"+id+"_"+value).Result()
-	if err != nil {
+	newvalue, err = CacheGet("ValueMap_" + id + "_" + value)
+	if err != nil || newvalue == "" {
 		rep, err := API.Call("valuemap.get", Params{
 			"output":         "extend",
 			"selectMappings": "extend",
@@ -288,14 +286,15 @@ func GetValueMapByID(id, value string) (newvalue string, err error) {
 
 		}
 		for _, v := range hb[0].Mappings {
-			err = RDB.Set(ctx, "ValueMap_"+id+"_"+v.Value, v.Newvalue, -1*time.Second).Err()
+			// 使用1小时过期时间
+			err = CacheSet("ValueMap_"+id+"_"+v.Value, v.Newvalue, 1*time.Hour)
 			if err != nil {
 				logs.Error(err)
 				continue
 			}
 		}
-		newvalue, err = RDB.Get(ctx, "ValueMap_"+id+"_"+value).Result()
-		if err != nil {
+		newvalue, err = CacheGet("ValueMap_" + id + "_" + value)
+		if err != nil || newvalue == "" {
 			return "", err
 		}
 		return newvalue, nil

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/astaxie/beego/orm"
 	"time"
 )
 
@@ -22,17 +21,17 @@ type EventLogRes struct {
 }
 
 type EventLog struct {
-	ID            int       `orm:"column(id);auto" json:"id"`
-	AlarmID       int64     `orm:"column(alarm_id);size(100);null" json:"alarm_id"`
-	EventID       int64     `orm:"column(event_id);size(100);null" json:"eventid"`
-	Rule          string    `orm:"column(rule);size(100);null" json:"rule"`
-	Channel       string    `orm:"column(channel);size(100);null" json:"channel"`
-	User          string    `orm:"column(user);size(100);null" json:"user"`
-	Account       string    `orm:"column(account);size(100);null" json:"account"`
-	NotifyTime    time.Time `orm:"column(notify_time);type(datetime);null" json:"notify_time"`
-	NotifyContent string    `orm:"column(notify_content);type(text);null" json:"notify_content"`
-	NotifyError   string    `orm:"column(notify_error);type(text);null" json:"notify_error"`
-	Status        string    `orm:"column(status);size(10);null" json:"status"`
+	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	AlarmID       int64     `gorm:"column:alarm_id" json:"alarm_id"`
+	EventID       int64     `gorm:"column:event_id" json:"eventid"`
+	Rule          string    `gorm:"column:rule;size:100" json:"rule"`
+	Channel       string    `gorm:"column:channel;size:100" json:"channel"`
+	User          string    `gorm:"column:user;size:100" json:"user"`
+	Account       string    `gorm:"column:account;size:100" json:"account"`
+	NotifyTime    time.Time `gorm:"column:notify_time;type:datetime" json:"notify_time"`
+	NotifyContent string    `gorm:"column:notify_content;type:text" json:"notify_content"`
+	NotifyError   string    `gorm:"column:notify_error;type:text" json:"notify_error"`
+	Status        string    `gorm:"column:status;size:10" json:"status"`
 }
 
 //TableName alarm
@@ -60,53 +59,48 @@ type EventTpl struct {
 }
 
 type Event struct {
-	ID            int       `orm:"column(id);auto" json:"id"`
-	TenantID      string    `orm:"column(tenant_id);size(255)" json:"tenant_id"`
-	HostID        string    `orm:"column(host_id);size(255)" json:"host_id"`
-	Hostname      string    `orm:"column(hostname);size(255)" json:"hostname"`
-	Host          string    `orm:"column(host);size(200)" json:"host"`
-	HostsIP       string    `orm:"column(host_ip);size(200)" json:"host_ip"`
-	TriggerID     int64     `orm:"column(trigger_id);size(200)" json:"trigger_id"`
-	ItemID        int64     `orm:"column(item_id);size(200)" json:"item_id"`
-	ItemName      string    `orm:"column(item_name);size(3000)" json:"item_name"`
-	ItemValue     string    `orm:"column(item_value);size(3000)" json:"item_value"`
-	Hgroup        string    `orm:"column(hgroup);size(200)" json:"hgroup"`
-	OccurTime     time.Time `orm:"column(occur_time);type(datetime)" json:"occur_time"`
-	Level         string    `orm:"column(level);size(200)" json:"level"`
-	Message       string    `orm:"column(message);size(3000)" json:"message"`
-	Hkey          string    `orm:"column(hkey);size(3000)" json:"hkey"`
-	Detail        string    `orm:"column(detail);size(3000)" json:"detail"`
-	Status        string    `orm:"column(status);size(200)" json:"status"`
-	EventID       int64     `orm:"column(event_id);size(200)" json:"eventid"`
-	EventDuration string    `orm:"column(event_duration);size(50)" json:"event_duration"`
-	Rule          string    `orm:"column(rule);size(200)" json:"rule"`
-	RuleType      string    `orm:"column(rule_type);size(10)" json:"rule_type"`
-	Channel       string    `orm:"column(channel);size(255)" json:"channel"`
-	ToUsers       string    `orm:"column(to_users);size(255)" json:"to_users"`
-	UserIds       string    `orm:"column(user_ids);size(255)" json:"user_ids"`
-	GroupIds      string    `orm:"column(group_ids);size(255)" json:"group_ids"`
+	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	TenantID      string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
+	HostID        string    `gorm:"column:host_id;size:255" json:"host_id"`
+	Hostname      string    `gorm:"column:hostname;size:255" json:"hostname"`
+	Host          string    `gorm:"column:host;size:200" json:"host"`
+	HostsIP       string    `gorm:"column:host_ip;size:200" json:"host_ip"`
+	TriggerID     int64     `gorm:"column:trigger_id" json:"trigger_id"`
+	ItemID        int64     `gorm:"column:item_id" json:"item_id"`
+	ItemName      string    `gorm:"column:item_name;size:3000" json:"item_name"`
+	ItemValue     string    `gorm:"column:item_value;size:3000" json:"item_value"`
+	Hgroup        string    `gorm:"column:hgroup;size:200" json:"hgroup"`
+	OccurTime     time.Time `gorm:"column:occur_time;type:datetime" json:"occur_time"`
+	Level         string    `gorm:"column:level;size:200" json:"level"`
+	Message       string    `gorm:"column:message;size:3000" json:"message"`
+	Hkey          string    `gorm:"column:hkey;size:3000" json:"hkey"`
+	Detail        string    `gorm:"column:detail;size:3000" json:"detail"`
+	Status        string    `gorm:"column:status;size:200" json:"status"`
+	EventID       int64     `gorm:"column:event_id" json:"eventid"`
+	EventDuration string    `gorm:"column:event_duration;size:50" json:"event_duration"`
+	Rule          string    `gorm:"column:rule;size:200" json:"rule"`
+	RuleType      string    `gorm:"column:rule_type;size:10" json:"rule_type"`
+	Channel       string    `gorm:"column:channel;size:255" json:"channel"`
+	ToUsers       string    `gorm:"column:to_users;size:255" json:"to_users"`
+	UserIds       string    `gorm:"column:user_ids;size:255" json:"user_ids"`
+	GroupIds      string    `gorm:"column:group_ids;size:255" json:"group_ids"`
 }
 
 // AddAlarm insert a new Alarm into database and returns
 // last inserted Id on success.
 func AddEventLog(m *EventLog) (id int64, err error) {
-	o := orm.NewOrm()
-	id, err = o.Insert(m)
+	err = DB.Create(m).Error
 	if err != nil {
 		return 0, err
 	}
-	return id, nil
+	return int64(m.ID), nil
 }
 
 // GetAlarmByID retrieves Alarm by Id. Returns error if
 // Id doesn't exist
 func GetEventLogByAlarmID(id int) (v []EventLog, err error) {
-	o := orm.NewOrm()
-	var eventLog EventLog
 	var thisEvents []EventLog
-	_, err = o.QueryTable(eventLog).Filter("alarm_id", id).
-		//OrderBy("-occurtime").
-		All(&thisEvents)
+	err = DB.Where("alarm_id = ?", id).Find(&thisEvents).Error
 	if err != nil {
 		return []EventLog{}, err
 	}
