@@ -107,7 +107,7 @@ func InitRouter() *gin.Engine {
 		api := v1.Group("")
 		api.Use(middleware.JWTAuthMiddleware())
 		{
-			// Zabbix 实例管理（多 Zabbix）
+			// 租户绑定（tenant -> zabbix_instance + token）
 			zabbixGroup := api.Group("/zabbix")
 			{
 				zabbixGroup.GET("/instances", handler.ListZabbixInstancesGin)
@@ -125,6 +125,16 @@ func InitRouter() *gin.Engine {
 				zabbixGroup.GET("/tenants", handler.ListZabbixTenantBindingsGin)
 				zabbixGroup.POST("/tenants", handler.UpsertZabbixTenantBindingGin)
 				zabbixGroup.DELETE("/tenants/:id", handler.DeleteZabbixTenantBindingGin)
+
+				// MS-Agent 安装相关
+				zabbixGroup.POST("/tenants/:id/install-msagent", handler.InstallMSAgentGin)
+				zabbixGroup.GET("/tenants/:id/msagent-script", handler.GenerateMSAgentInstallScriptGin)
+				zabbixGroup.DELETE("/tenants/:id/uninstall-msagent", handler.UninstallMSAgentGin)
+
+				// Webhook 安装相关
+				zabbixGroup.POST("/tenants/:id/install-webhook", handler.InstallWebhookGin)
+				zabbixGroup.GET("/tenants/:id/webhook-info", handler.GetWebhookInfoGin)
+				zabbixGroup.DELETE("/tenants/:id/uninstall-webhook", handler.UninstallWebhookGin)
 			}
 
 			// 首页/仪表板

@@ -1,7 +1,7 @@
 ﻿package models
 
 import (
-	"github.com/astaxie/beego/logs"
+	"fmt"
 	"strings"
 	"zbxtable/pkg/utils"
 )
@@ -9,43 +9,46 @@ import (
 func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error) {
 	//replace " \
 	p0 := strings.Replace(string(message), `\`, `\\`, -1)
+	//替换"
 	p1 := strings.Replace(p0, `"`, `\"`, -1)
 	p2 := strings.ReplaceAll(p1, `¦`, `"`)
 	var mes EventTpl
+	fmt.Println(p2)
 	err := json.Unmarshal([]byte(p2), &mes)
 	if err != nil {
-		logs.Error(err)
+		fmt.Println("CCCC")
+		utils.Log.Error(err)
 		return 0, err
 	}
 	occurTime, err := utils.ParTime(mes.EventTime)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return 0, err
 	}
 	var meal = Alarm{
 		ZabbixInstanceID: zabbixInstanceID,
-		TenantID:      tenantid,
-		HostID:        mes.HostsID,
-		Hostname:      mes.Hostname,
-		Host:          mes.HostHost,
-		HostsIP:       mes.HostsIP,
-		TriggerID:     mes.TriggerID,
-		ItemID:        mes.ItemID,
-		ItemName:      mes.ItemName,
-		ItemValue:     mes.ItemValue,
-		Hgroup:        mes.HostGroup,
-		OccurTime:     occurTime,
-		Level:         mes.Severity,
-		Message:       mes.TriggerName,
-		Hkey:          mes.TriggerKey,
-		Detail:        mes.ItemName + ":" + mes.ItemValue,
-		Status:        mes.TriggerValue,
-		EventID:       mes.EventID,
-		EventDuration: mes.EventDuration,
+		TenantID:         tenantid,
+		HostID:           mes.HostsID,
+		Hostname:         mes.Hostname,
+		Host:             mes.HostHost,
+		HostsIP:          mes.HostsIP,
+		TriggerID:        mes.TriggerID,
+		ItemID:           mes.ItemID,
+		ItemName:         mes.ItemName,
+		ItemValue:        mes.ItemValue,
+		Hgroup:           mes.HostGroup,
+		OccurTime:        occurTime,
+		Level:            mes.Severity,
+		Message:          mes.TriggerName,
+		Hkey:             mes.TriggerKey,
+		Detail:           mes.ItemName + ":" + mes.ItemValue,
+		Status:           mes.TriggerValue,
+		EventID:          mes.EventID,
+		EventDuration:    mes.EventDuration,
 	}
 	id, err := AddAlarm(&meal)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return 0, err
 	}
 	//alert gen

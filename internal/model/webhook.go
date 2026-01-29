@@ -1,0 +1,377 @@
+package models
+
+import (
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"zbxtable/pkg/utils"
+
+	zabbix "github.com/canghai908/zabbix-go"
+	"github.com/google/uuid"
+)
+
+// InstallWebhookToZabbix 在 Zabbix 中安装 Webhook 配置
+func InstallWebhookToZabbix(instanceID int, tenantID string, zbxtableURL string) error {
+	// 获取 Zabbix 实例信息
+	instance, err := GetZabbixInstanceByID(int64(instanceID))
+	if err != nil {
+		return fmt.Errorf("获取 Zabbix 实例失败: %w", err)
+	}
+
+	// 初始化 Zabbix API
+	api := zabbix.NewAPI(instance.WebURL + "/api_jsonrpc.php")
+	if instance.Token != "" {
+		api.Auth = instance.Token
+	} else {
+		_, err := api.Login(instance.User, instance.Pass)
+		if err != nil {
+			return fmt.Errorf("登录 Zabbix 失败: %w", err)
+		}
+	}
+
+	// 检查 Zabbix 版本
+	version, err := api.Version()
+	if err != nil {
+		return fmt.Errorf("获取 Zabbix 版本失败: %w", err)
+	}
+
+	verArr := strings.Split(version, ".")
+	zbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
+	zbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
+
+	// Webhook 需要 Zabbix 4.4+
+	if zbxMasterVer < 4 {
+		return fmt.Errorf("Webhook 需要 Zabbix 4.4 或更高版本，当前版本: %s", version)
+	}
+
+	// 常量定义
+	const (
+		WebhookName   = "ZbxTable Webhook"
+		WebhookAction = "ZbxTable Webhook Action"
+	)
+
+	// 生成新的 Token
+	token := strings.ReplaceAll(uuid.New().String(), "-", "")
+	utils.Log.Info("生成 Webhook Token:", token)
+
+	// 构建 Webhook URL - 从数据库配置读取
+	configuredURL := GetConfigValueByKey("webhook_url", "")
+	if configuredURL != "" {
+		zbxtableURL = configuredURL
+		utils.Log.Info("使用配置的 Webhook URL:", zbxtableURL)
+	}
+	webhookURL := fmt.Sprintf("%s/v1/receive", strings.TrimRight(zbxtableURL, "/"))
+	utils.Log.Info("Webhook URL:", webhookURL)
+
+	// Webhook 脚本 - 使用 Parameters 传递配置，消息体使用 {ALERT.MESSAGE}
+	webhookScript := `try {
+    var params = JSON.parse(value);
+    var req = new HttpRequest();
+    req.addHeader('Content-Type: application/json');
+    req.addHeader('ZBX-TenantID: ' + params.tenant_id);
+    req.addHeader('Token: ' + params.token);
+    
+    // 直接使用 {ALERT.MESSAGE} 作为消息体
+    var response = req.post(params.webhook_url, params.message);
+    
+    if (req.getStatus() !== 200) {
+        throw 'Response code: ' + req.getStatus();
+    }
+    
+    return 'OK';
+} catch (error) {
+    Zabbix.log(4, 'ZbxTable webhook error: ' + error);
+    throw error;
+}`
+
+	// 准备 Media Type 参数
+	mediaParams := make(map[string]interface{})
+	mediaParams["name"] = WebhookName
+	mediaParams["type"] = "4" // Webhook type
+	mediaParams["status"] = "0"
+	mediaParams["script"] = webhookScript
+
+	// Webhook 参数 - 只保留 webhook_url、tenant_id、token 和 message
+	parameters := []map[string]interface{}{
+		{"name": "webhook_url", "value": webhookURL},
+		{"name": "tenant_id", "value": tenantID},
+		{"name": "token", "value": token},
+		{"name": "message", "value": "{ALERT.MESSAGE}"},
+	}
+	mediaParams["parameters"] = parameters
+
+	// 1. 创建或更新 Webhook Media Type
+	utils.Log.Info("检查 Webhook Media Type...")
+
+	// 先查询是否已存在
+	getParams := map[string]interface{}{
+		"output": "extend",
+		"filter": map[string]string{
+			"name": WebhookName,
+		},
+	}
+
+	existingMedia, err := api.CallWithError("mediatype.get", getParams)
+	var mediaid string
+
+	if err == nil && existingMedia.Result != nil {
+		resultArray, ok := existingMedia.Result.([]interface{})
+		if ok && len(resultArray) > 0 {
+			// Media Type 已存在，更新它
+			existingMediaMap := resultArray[0].(map[string]interface{})
+			mediaid = existingMediaMap["mediatypeid"].(string)
+			utils.Log.Info("Webhook Media Type 已存在, ID:", mediaid, "，正在更新...")
+
+			mediaParams["mediatypeid"] = mediaid
+			_, err = api.CallWithError("mediatype.update", mediaParams)
+			if err != nil {
+				return fmt.Errorf("更新 Webhook Media Type 失败: %w", err)
+			}
+			utils.Log.Info("Webhook Media Type 更新成功")
+		} else {
+			// 不存在，创建新的
+			utils.Log.Info("创建 Webhook Media Type...")
+			ma, err := api.CallWithError("mediatype.create", mediaParams)
+			if err != nil {
+				return fmt.Errorf("创建 Webhook Media Type 失败: %w", err)
+			}
+			result := ma.Result.(map[string]interface{})
+			mediatypeids := result["mediatypeids"].([]interface{})
+			mediaid = mediatypeids[0].(string)
+			utils.Log.Info("Webhook Media Type 创建成功, ID:", mediaid)
+		}
+	} else {
+		// 查询失败，尝试创建
+		utils.Log.Info("创建 Webhook Media Type...")
+		ma, err := api.CallWithError("mediatype.create", mediaParams)
+		if err != nil {
+			return fmt.Errorf("创建 Webhook Media Type 失败: %w", err)
+		}
+		result := ma.Result.(map[string]interface{})
+		mediatypeids := result["mediatypeids"].([]interface{})
+		mediaid = mediatypeids[0].(string)
+		utils.Log.Info("Webhook Media Type 创建成功, ID:", mediaid)
+	}
+
+	// 2. 创建用户组（参考 ms-agent）
+	utils.Log.Info("创建 Webhook 用户组...")
+	const WebhookGroup = "ZbxTable Webhook Group"
+	const WebhookUser = "zbxtable-webhook"
+
+	groupParams := make(map[string]interface{})
+	groupParams["name"] = WebhookGroup
+	group, err := api.CallWithError("usergroup.create", groupParams)
+	if err != nil {
+		return fmt.Errorf("创建用户组失败: %w", err)
+	}
+
+	resgroup := group.Result.(map[string]interface{})
+	usrgrpids := resgroup["usrgrpids"].([]interface{})
+	groupid := usrgrpids[0].(string)
+	utils.Log.Info("用户组创建成功, ID:", groupid)
+
+	// 3. 创建用户（参考 ms-agent）
+	utils.Log.Info("创建 Webhook 用户...")
+	userpara := make(map[string]interface{})
+	usrgrps := make(map[string]string)
+	usermepara := make(map[string]string)
+	usrgrps["usrgrpid"] = groupid
+	a := make(map[int]interface{})
+	a[0] = usrgrps
+	usermepara["mediatypeid"] = mediaid
+	usermepara["sendto"] = "webhook"
+	usermepara["active"] = "0"
+	usermepara["severity"] = "63"
+	usermepara["period"] = "1-7,00:00-24:00"
+	b := make(map[int]interface{})
+	b[0] = usermepara
+
+	// 检查 Zabbix 版本
+	//5.4版本，以后user 增加roleid，之前为type表示 有user参数有区别
+	isNewVersion := zbxMasterVer >= 6 || (zbxMasterVer == 5 && zbxMiddleVer == 4)
+
+	if isNewVersion {
+		userpara["username"] = WebhookUser
+	} else {
+		userpara["alias"] = WebhookUser
+		userpara["name"] = WebhookUser
+	}
+
+	// 生成强密码
+	tPassword := GetStrongPasswordString(10)
+	userpara["passwd"] = tPassword
+
+	if isNewVersion {
+		userpara["roleid"] = "3"
+	} else {
+		userpara["type"] = "3"
+	}
+
+	userpara["usrgrps"] = a
+	if isNewVersion {
+		userpara["medias"] = b
+	} else {
+		userpara["user_medias"] = b
+	}
+
+	user, err := api.CallWithError("user.create", userpara)
+	if err != nil {
+		return fmt.Errorf("创建用户失败: %w", err)
+	}
+
+	resuser := user.Result.(map[string]interface{})
+	userids := resuser["userids"].([]interface{})
+	userid := userids[0].(string)
+	utils.Log.Infof("用户创建成功, 用户名: %s, 密码: %s, ID: %s", WebhookUser, tPassword, userid)
+
+	// 4. 创建 Action
+	utils.Log.Info("创建 Webhook Action...")
+	actpara := make(map[string]interface{})
+	actpara["name"] = WebhookAction
+	actpara["eventsource"] = "0"
+	actpara["status"] = "0"
+	actpara["esc_period"] = "60"
+
+	// 生成故障消息模板（参考 ms-agent 格式）
+	problemMessage := `{
+    ¦host_id¦: ¦{HOST.ID}¦,
+    ¦host_host¦: ¦{HOST.HOST}¦,
+    ¦hostname¦: ¦{HOST.NAME}¦,
+    ¦host_ip¦: ¦{HOST.IP}¦,
+    ¦host_group¦: ¦{TRIGGER.HOSTGROUP.NAME}¦,
+    ¦event_time¦: ¦{EVENT.DATE} {EVENT.TIME}¦,
+    ¦severity¦: ¦{TRIGGER.NSEVERITY}¦,
+    ¦trigger_id¦: ¦{TRIGGER.ID}¦,
+    ¦trigger_name¦: ¦{TRIGGER.NAME}¦,
+    ¦trigger_key¦: ¦{TRIGGER.KEY}¦,
+    ¦trigger_value¦: ¦{TRIGGER.VALUE}¦,
+    ¦item_id¦: ¦{ITEM.ID}¦,
+    ¦item_name¦: ¦{ITEM.NAME}¦,
+    ¦item_value¦: ¦{ITEM.VALUE}¦,
+    ¦event_id¦: ¦{EVENT.ID}¦,
+    ¦event_duration¦: ¦{EVENT.DURATION}¦
+}`
+
+	// 生成恢复消息模板（参考 ms-agent 格式）
+	recoveryMessage := `{
+    ¦host_id¦: ¦{HOST.ID}¦,
+    ¦host_host¦: ¦{HOST.HOST}¦,
+    ¦hostname¦: ¦{HOST.NAME}¦,
+    ¦host_ip¦: ¦{HOST.IP}¦,
+    ¦host_group¦: ¦{TRIGGER.HOSTGROUP.NAME}¦,
+    ¦event_time¦: ¦{EVENT.RECOVERY.DATE} {EVENT.RECOVERY.TIME}¦,
+    ¦severity¦: ¦{TRIGGER.NSEVERITY}¦,
+    ¦trigger_id¦: ¦{TRIGGER.ID}¦,
+    ¦trigger_name¦: ¦{TRIGGER.NAME}¦,
+    ¦trigger_key¦: ¦{TRIGGER.KEY}¦,
+    ¦trigger_value¦: ¦{TRIGGER.VALUE}¦,
+    ¦item_id¦: ¦{ITEM.ID}¦,
+    ¦item_name¦: ¦{ITEM.NAME}¦,
+    ¦item_value¦: ¦{ITEM.VALUE}¦,
+    ¦event_id¦: ¦{EVENT.ID}¦,
+    ¦event_duration¦: ¦{EVENT.DURATION}¦
+}`
+
+	// 旧版本需要设置默认消息
+	if !isNewVersion {
+		actpara["def_shortdata"] = "{TRIGGER.STATUS}"
+		actpara["def_longdata"] = problemMessage
+		actpara["r_shortdata"] = "{TRIGGER.STATUS}"
+		actpara["r_longdata"] = recoveryMessage
+		actpara["recovery_msg"] = "1"
+	}
+
+	// operations (告警操作) - 发送给创建的用户
+	operpara := make(map[string]interface{})
+	operpara["operationtype"] = "0"
+
+	use := make(map[string]string)
+	use["userid"] = userid
+	v := make(map[int]interface{})
+	v[0] = use
+
+	opm := make(map[string]string)
+	opm["default_msg"] = "0"
+	opm["subject"] = "Alert"
+	opm["message"] = problemMessage
+	opm["mediatypeid"] = mediaid
+
+	operpara["opmessage_usr"] = v
+	operpara["opmessage"] = opm
+
+	// recovery_operations (恢复操作) - 发送给创建的用户
+	recovpara := make(map[string]interface{})
+	recovpara["operationtype"] = "0"
+
+	use2 := make(map[string]string)
+	use2["userid"] = userid
+	v2 := make(map[int]interface{})
+	v2[0] = use2
+
+	opm1 := make(map[string]string)
+	opm1["default_msg"] = "0"
+	opm1["subject"] = "Resolved"
+	opm1["message"] = recoveryMessage
+	opm1["mediatypeid"] = mediaid
+
+	recovpara["opmessage_usr"] = v2
+	recovpara["opmessage"] = opm1
+
+	reinter := make(map[int]interface{})
+	reinter[0] = operpara
+	actpara["operations"] = reinter
+
+	reinter1 := make(map[int]interface{})
+	reinter1[0] = recovpara
+	actpara["recovery_operations"] = reinter1
+
+	_, err = api.CallWithError("action.create", actpara)
+	if err != nil {
+		return fmt.Errorf("创建 Webhook Action 失败: %w", err)
+	}
+	utils.Log.Info("Webhook Action 创建成功")
+
+	// 更新租户绑定信息
+	binding, err := GetZabbixTenantBindingByTenant(tenantID)
+	if err != nil {
+		return fmt.Errorf("获取租户绑定失败: %w", err)
+	}
+
+	binding.Token = token
+	binding.NotifyMethod = "webhook"
+	binding.WebhookInstalled = true
+	binding.WebhookURL = webhookURL
+	err = UpsertZabbixTenantBinding(binding)
+	if err != nil {
+		return fmt.Errorf("更新租户绑定失败: %w", err)
+	}
+
+	utils.Log.Info("Webhook 配置安装完成！")
+	return nil
+}
+
+// GetWebhookInfo 获取 Webhook 配置信息
+func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, error) {
+	binding, err := GetZabbixTenantBindingByTenant(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("获取租户绑定失败: %w", err)
+	}
+
+	if !binding.WebhookInstalled {
+		return nil, errors.New("Webhook 未安装")
+	}
+
+	webhookURL := fmt.Sprintf("%s/v1/receive", strings.TrimRight(zbxtableURL, "/"))
+
+	info := map[string]string{
+		"webhook_url":  webhookURL,
+		"tenant_id":    tenantID,
+		"token":        binding.Token,
+		"method":       "POST",
+		"content_type": "application/json",
+		"headers":      fmt.Sprintf("ZBX-TenantID: %s\nToken: %s", tenantID, binding.Token),
+	}
+
+	return info, nil
+}

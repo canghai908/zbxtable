@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/utils"
 )
 
 //GetApplicationByHostid st
@@ -16,14 +16,14 @@ func GetApplicationByHostid(hostid string) ([]Application, int64, error) {
 	//log.Println(rep.Result)
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Application{}, 0, err
 	}
 
 	var hb []Application
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Application{}, 0, err
 	}
 	return hb, int64(len(hb)), err

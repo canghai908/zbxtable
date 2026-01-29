@@ -257,6 +257,7 @@ func DatabaseInit() {
 		{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
 		{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},
 		{Name: "主机分类同步", Key: "sync_inventory", Value: "1", Comment: "主机分类同步计划任务是否启用：1 启用,0 不启用"},
+		{Name: "Webhook回调地址", Key: "webhook_url", Value: "", Comment: "webhook通知地址"},
 		// 邮件配置
 		{Name: "邮件发件人", Key: "email_from", Value: "", Comment: "告警邮件发件人邮箱地址"},
 		{Name: "邮件昵称", Key: "email_nickname", Value: "ZbxTable", Comment: "告警邮件显示的发件人昵称"},
@@ -390,7 +391,7 @@ func IsPasswordConfigured() bool {
 			return true
 		}
 	}
-	
+
 	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例
 	var anyInstance ZabbixInstance
 	err = DB.Where("enabled = ?", true).First(&anyInstance).Error
@@ -400,7 +401,7 @@ func IsPasswordConfigured() bool {
 			return true
 		}
 	}
-	
+
 	// 3. 回退到配置文件检查（兼容旧版本）
 	pass := GetConfKey("zabbix_pass")
 	token := GetConfKey("zabbix_token")

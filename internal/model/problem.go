@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/utils"
 )
 
 //ProblemsRes rest
@@ -32,18 +32,18 @@ func GetProblems() ([]Problems, int64, error) {
 		"sortfield": par,
 		"sortorder": "DESC"})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Problems{}, 0, err
 	}
 	hba, err := json.Marshal(problems.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Problems{}, 0, err
 	}
 	var hb []Problems
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Problems{}, 0, err
 	}
 	return hb, int64(len(hb)), err

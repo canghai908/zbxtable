@@ -1,11 +1,12 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
-	"zbxtable/internal/model"
+	models "zbxtable/internal/model"
 	"zbxtable/pkg/utils"
 
 	jwtbeego "github.com/canghai908/jwt-beego"
@@ -185,6 +186,7 @@ func ReceiveGin(c *gin.Context) {
 
 	tenantid := c.GetHeader("ZBX-TenantID")
 	token := c.GetHeader("Token")
+	fmt.Println(c.Request.Header)
 	// 多租户 token 校验：优先使用租户绑定表；未配置绑定时回退到全局 token（兼容旧逻辑）
 	zabbixInstanceID := 0
 	if binding, err := models.GetZabbixTenantBindingByTenant(tenantid); err == nil && binding != nil {
@@ -216,6 +218,7 @@ func ReceiveGin(c *gin.Context) {
 		c.JSON(http.StatusOK, res)
 		return
 	}
+	fmt.Println(string(body))
 
 	id, err := models.MsAdd(tenantid, zabbixInstanceID, body)
 	if err != nil {

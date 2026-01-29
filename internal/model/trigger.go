@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/utils"
 	"strconv"
 )
 
@@ -20,18 +20,18 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		"only_true":       true,
 		"monitored":       true})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	var hb []LastTriggers
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []EndTrigger{}, 0, err
 	}
 	var bs EndTrigger
@@ -61,18 +61,18 @@ func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
 		"monitored":         true,
 		"expandDescription": true})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, 0, err
 	}
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, 0, err
 	}
 	var hb []TriggerListStr
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, 0, err
 	}
 	return hb, int64(len(hb)), nil
@@ -90,7 +90,7 @@ func GetTriggerHostCount(hostid string) (int64, error) {
 		"countOutput": true,
 		"monitored":   true})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return 0, err
 	}
 	CountTrigger := triggers.Result.(string)
@@ -107,18 +107,18 @@ func GetTriggerValue(triggerid string) ([]TriggerListStr, error) {
 	triggers, err := API.CallWithError("trigger.get", Params{"output": OutputPar,
 		"triggerids": triggerid})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, err
 	}
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, err
 	}
 	var hb []TriggerListStr
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []TriggerListStr{}, err
 	}
 	return hb, nil

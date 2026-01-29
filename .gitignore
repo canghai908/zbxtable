@@ -21,7 +21,7 @@ logs
 packfile/staticFile.go
 /web/
 /download/
-config/
+config/app.conf
 /zbxtable.exe
 tmp/build-errors.log
 tmp/main.exe

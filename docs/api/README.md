@@ -16,7 +16,7 @@ ZbxTable 提供 RESTful API，支持通过 HTTP 请求访问系统功能。
 所有 API 请求需要在 Header 中携带 Token：
 
 ```http
-Authorization: Bearer your_token_here
+Tokenyour_token_here
 ```
 
 获取 Token：

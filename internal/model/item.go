@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/utils"
 	"strings"
 	"time"
 )
@@ -14,19 +14,19 @@ func GetItemByKey(hostid, key string) (item []Item, err error) {
 		"sortfield": "name", "limit": "1", "hostids": hostid, "search": par})
 
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 	var hb []Item
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 	return hb, err
@@ -38,12 +38,12 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	rep, err := API.Call("item.get", Params{"output": output, "sortfield": "name",
 		"hostids": hostid})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 
@@ -51,7 +51,7 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 	//	log.Println(string(hba))
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -106,18 +106,18 @@ func GetAllTrafficItemByHostID(hostid string) (item []interface{}, count int64, 
 		"hostids": hostid,
 	})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	var hb []Item
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	for _, v := range hb {
@@ -182,18 +182,18 @@ func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count in
 		"hostids": hostid,
 	})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	var hb []Item
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return ItemList, 0, err
 	}
 	for _, v := range hb {
@@ -213,12 +213,12 @@ func GetFlowItemByHostID(hostid string) (item []Item, count int64, err error) {
 		"hostids": hostid,
 	})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 
@@ -226,7 +226,7 @@ func GetFlowItemByHostID(hostid string) (item []Item, count int64, err error) {
 	//	log.Println(string(hba))
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -241,19 +241,19 @@ func GetItemByID(itemid string) (item []Item, err error) {
 	rep, err := API.Call("item.get", Params{"output": output, "sortfield": "name",
 		"itemids": itemid})
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []Item{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []Item{}, err
 	}
 
 	var hb []Item
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Debug(err)
+		utils.Log.Debug(err)
 		return []Item{}, err
 	}
 	return hb, err
@@ -271,25 +271,25 @@ func GetValueMapByID(id, value string) (newvalue string, err error) {
 			"selectMappings": "extend",
 			"valuemapids":    id})
 		if err != nil {
-			logs.Debug(err)
+			utils.Log.Debug(err)
 			return "", err
 		}
 		hba, err := json.Marshal(rep.Result)
 		if err != nil {
-			logs.Debug(err)
+			utils.Log.Debug(err)
 			return "", err
 		}
 		var hb []ValueMap
 		err = json.Unmarshal(hba, &hb)
 		if err != nil {
-			logs.Debug(err)
+			utils.Log.Debug(err)
 
 		}
 		for _, v := range hb[0].Mappings {
 			// 使用1小时过期时间
 			err = CacheSet("ValueMap_"+id+"_"+v.Value, v.Newvalue, 1*time.Hour)
 			if err != nil {
-				logs.Error(err)
+				utils.Log.Error(err)
 				continue
 			}
 		}
@@ -312,19 +312,19 @@ func GetItemByIDS(itemids []string) (item []Item, err error) {
 	rep, err := API.Call("item.get", Params{"output": output, "sortfield": "name",
 		"itemids": itemids})
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 
 	var hb []Item
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		utils.Log.Error(err)
 		return []Item{}, err
 	}
 	return hb, err
