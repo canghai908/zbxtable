@@ -55,7 +55,7 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 
 	query := DB.Model(&Alarm{}).Where("occurtime >= ? AND occurtime <= ?", begin, end)
 	// 默认按“当前激活的 Zabbix”过滤（避免多 Zabbix 场景下混淆）
-	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
 		query = query.Where("zabbix_instance_id = ?", inst.ID)
 	}
 
@@ -99,7 +99,7 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	var results []TenantResult
 	query := DB.Model(&Alarm{})
 	// 仅返回当前激活 Zabbix 下的租户列表
-	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
 		query = query.Where("zabbix_instance_id = ?", inst.ID)
 	}
 	err = query.Select("DISTINCT tenant_id").Find(&results).Error
@@ -171,7 +171,7 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 		Where("(status = ? OR status = ?)", "故障", "1")
 
 	// 默认按“当前激活的 Zabbix”过滤
-	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
 		query = query.Where("zabbix_instance_id = ?", inst.ID)
 	}
 
@@ -199,7 +199,7 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
 		Where("(status = ? OR status = ?)", "故障", "1")
 
-	if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ID != 0 {
+	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
 		hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ID)
 	}
 

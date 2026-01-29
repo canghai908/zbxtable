@@ -76,8 +76,7 @@ func getMenuDefinitions() []Menu {
 		//系统管理 (ParentId: 8 对应"系统管理")
 		{ParentId: 8, Name: "用户管理", Path: "users", Router: "systemUsers", Icon: "meh", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbixConfig", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 8, Name: "租户配置", Path: "tenant", Router: "zabbixTenant", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbix", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "指标映射", Path: "init", Router: "sysInit", Icon: "interaction", Role: "admin,user"},
 		{ParentId: 8, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "api", Role: "admin,user"},
 		{ParentId: 8, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "api", Role: "admin"},

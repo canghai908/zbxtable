@@ -176,19 +176,19 @@ echo "查看日志: tail -f /var/log/ms-agent/ms-agent.log"
 }
 
 // InstallMSAgentToZabbix 在 Zabbix 中安装 MS-Agent 配置
-func InstallMSAgentToZabbix(instanceID int, tenantID string) error {
-	// 获取 Zabbix 实例信息
-	instance, err := GetZabbixInstanceByID(int64(instanceID))
+func InstallMSAgentToZabbix(tenantID string) error {
+	// 获取租户信息
+	tenant, err := GetZabbixTenantByTenantID(tenantID)
 	if err != nil {
-		return fmt.Errorf("获取 Zabbix 实例失败: %w", err)
+		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
 	// 初始化 Zabbix API
-	api := zabbix.NewAPI(instance.WebURL + "/api_jsonrpc.php")
-	if instance.Token != "" {
-		api.Auth = instance.Token
+	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
+	if tenant.ZabbixToken != "" {
+		api.Auth = tenant.ZabbixToken
 	} else {
-		_, err := api.Login(instance.User, instance.Pass)
+		_, err := api.Login(tenant.User, tenant.Pass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -413,17 +413,16 @@ func InstallMSAgentToZabbix(instanceID int, tenantID string) error {
 	token := strings.ReplaceAll(uuid.New().String(), "-", "")
 	utils.Log.Info("生成 MS-Agent Token:", token)
 
-	// 更新租户绑定信息
-	binding, err := GetZabbixTenantBindingByTenant(tenantID)
+	// 更新租户信息
+	tenant.Token = token
+	tenant.MSAgentInstalled = true
+	
+	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
+		"token":              token,
+		"ms_agent_installed": true,
+	}).Error
 	if err != nil {
-		return fmt.Errorf("获取租户绑定失败: %w", err)
-	}
-
-	binding.Token = token
-	binding.MSAgentInstalled = true
-	err = UpsertZabbixTenantBinding(binding)
-	if err != nil {
-		return fmt.Errorf("更新租户绑定失败: %w", err)
+		return fmt.Errorf("更新租户信息失败: %w", err)
 	}
 
 	utils.Log.Info("MS-Agent 配置安装完成！")

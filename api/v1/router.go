@@ -107,24 +107,20 @@ func InitRouter() *gin.Engine {
 		api := v1.Group("")
 		api.Use(middleware.JWTAuthMiddleware())
 		{
-			// 租户绑定（tenant -> zabbix_instance + token）
+			// Zabbix 租户管理（合并后的统一接口）
 			zabbixGroup := api.Group("/zabbix")
 			{
-				zabbixGroup.GET("/instances", handler.ListZabbixInstancesGin)
-				zabbixGroup.GET("/instances/:id", handler.GetZabbixInstanceGin)
-				zabbixGroup.POST("/instances", handler.CreateZabbixInstanceGin)
-				zabbixGroup.POST("/instances/test", handler.TestZabbixInstanceConfigGin)
-				zabbixGroup.POST("/instances/:id/test", handler.TestZabbixInstanceGin)
-				zabbixGroup.PUT("/instances/:id", handler.UpdateZabbixInstanceGin)
-				zabbixGroup.DELETE("/instances/:id", handler.DeleteZabbixInstanceGin)
-				zabbixGroup.PUT("/instances/:id/enabled", handler.EnableZabbixInstanceGin)
-				zabbixGroup.PUT("/instances/:id/activate", handler.ActivateZabbixInstanceGin)
-				zabbixGroup.GET("/active", handler.GetActiveZabbixInstanceGin)
-
-				// 租户绑定（tenant -> zabbix_instance + token）
-				zabbixGroup.GET("/tenants", handler.ListZabbixTenantBindingsGin)
-				zabbixGroup.POST("/tenants", handler.UpsertZabbixTenantBindingGin)
-				zabbixGroup.DELETE("/tenants/:id", handler.DeleteZabbixTenantBindingGin)
+				// 租户管理
+				zabbixGroup.GET("/tenants", handler.ListZabbixTenantsGin)
+				zabbixGroup.GET("/tenants/:id", handler.GetZabbixTenantGin)
+				zabbixGroup.POST("/tenants", handler.CreateZabbixTenantGin)
+				zabbixGroup.POST("/tenants/test", handler.TestZabbixTenantConfigGin)
+				zabbixGroup.POST("/tenants/:id/test", handler.TestZabbixTenantGin)
+				zabbixGroup.PUT("/tenants/:id", handler.UpdateZabbixTenantGin)
+				zabbixGroup.DELETE("/tenants/:id", handler.DeleteZabbixTenantGin)
+				zabbixGroup.PUT("/tenants/:id/enabled", handler.EnableZabbixTenantGin)
+				zabbixGroup.PUT("/tenants/:id/activate", handler.ActivateZabbixTenantGin)
+				zabbixGroup.GET("/active", handler.GetActiveZabbixTenantGin)
 
 				// MS-Agent 安装相关
 				zabbixGroup.POST("/tenants/:id/install-msagent", handler.InstallMSAgentGin)

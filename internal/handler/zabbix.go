@@ -1,339 +1,439 @@
 package handler
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
-	"strings"
-	"zbxtable/internal/model"
+	models "zbxtable/internal/model"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 )
 
-type createZabbixInstanceReq struct {
-	Name   string `json:"name" binding:"required"`
-	WebURL string `json:"web_url" binding:"required"`
-	User   string `json:"user"`
-	Pass   string `json:"pass"`
-	Token  string `json:"token"`
+// ZabbixTenantSafeResponse 安全的租户响应结构，隐藏敏感信息
+type ZabbixTenantSafeResponse struct {
+	ID               int    `json:"id"`
+	TenantID         string `json:"tenant_id"`
+	Name             string `json:"name"`
+	WebURL           string `json:"web_url"`
+	User             string `json:"user"`
+	Enabled          bool   `json:"enabled"`
+	IsActive         bool   `json:"is_active"`
+	Version          string `json:"version"`
+	LastTestOk       bool   `json:"last_test_ok"`
+	LastTestMessage  string `json:"last_test_message"`
+	NotifyMethod     string `json:"notify_method"`
+	MSAgentInstalled bool   `json:"ms_agent_installed"`
+	MSAgentVersion   string `json:"ms_agent_version"`
+	WebhookInstalled bool   `json:"webhook_installed"`
+	WebhookURL       string `json:"webhook_url"`
+	// 不包含 Pass, ZabbixToken, Token 字段
 }
 
-type testZabbixReq struct {
-	WebURL string `json:"web_url" binding:"required"`
-	User   string `json:"user"`
-	Pass   string `json:"pass"`
-	Token  string `json:"token"`
-}
-
-type enableZabbixReq struct {
-	Enabled bool `json:"enabled"`
-}
-
-type updateZabbixInstanceReq struct {
-	Name    string `json:"name" binding:"required"`
-	WebURL  string `json:"web_url" binding:"required"`
-	User    string `json:"user"`
-	Pass    string `json:"pass"`
-	Token   string `json:"token"`
-	Enabled bool   `json:"enabled"`
-}
-
-// toSafeResponse 将 ZabbixInstance 转换为安全的响应结构
-func toSafeResponse(inst *models.ZabbixInstance) ZabbixInstanceSafeResponse {
-	if inst == nil {
-		return ZabbixInstanceSafeResponse{}
+// toTenantSafeResponse 将租户转换为安全响应
+func toTenantSafeResponse(tenant *models.ZabbixTenant) ZabbixTenantSafeResponse {
+	if tenant == nil {
+		return ZabbixTenantSafeResponse{}
 	}
-	var lastTestAt *string
-	if inst.LastTestAt != nil {
-		timeStr := inst.LastTestAt.Format("2006-01-02 15:04:05")
-		lastTestAt = &timeStr
-	}
-	return ZabbixInstanceSafeResponse{
-		ID:              inst.ID,
-		Name:            inst.Name,
-		WebURL:          inst.WebURL,
-		Enabled:         inst.Enabled,
-		User:            inst.User,
-		IsActive:        inst.IsActive,
-		Version:         inst.Version,
-		LastTestOk:      inst.LastTestOk,
-		LastTestMessage: inst.LastTestMessage,
-		LastTestAt:      lastTestAt,
-		CreatedAt:       inst.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:       inst.UpdatedAt.Format("2006-01-02 15:04:05"),
+	return ZabbixTenantSafeResponse{
+		ID:               tenant.ID,
+		TenantID:         tenant.TenantID,
+		Name:             tenant.Name,
+		WebURL:           tenant.WebURL,
+		User:             tenant.User,
+		Enabled:          tenant.Enabled,
+		IsActive:         tenant.IsActive,
+		Version:          tenant.Version,
+		LastTestOk:       tenant.LastTestOk,
+		LastTestMessage:  tenant.LastTestMessage,
+		NotifyMethod:     tenant.NotifyMethod,
+		MSAgentInstalled: tenant.MSAgentInstalled,
+		MSAgentVersion:   tenant.MSAgentVersion,
+		WebhookInstalled: tenant.WebhookInstalled,
+		WebhookURL:       tenant.WebhookURL,
 	}
 }
 
-// ZabbixInstanceSafeResponse 安全的响应结构，隐藏敏感信息
-type ZabbixInstanceSafeResponse struct {
-	ID              int64   `json:"id"`
-	Name            string  `json:"name"`
-	WebURL          string  `json:"web_url"`
-	Enabled         bool    `json:"enabled"`
-	User            string  `json:"user"`
-	IsActive        bool    `json:"is_active"`
-	Version         string  `json:"version"`
-	LastTestOk      bool    `json:"last_test_ok"`
-	LastTestMessage string  `json:"last_test_message"`
-	LastTestAt      *string `json:"last_test_at"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
-	// 不包含 User, Pass, Token 等敏感字段
-}
-
-// ListZabbixInstancesGin GET /v1/zabbix/instances
-func ListZabbixInstancesGin(c *gin.Context) {
-	list, err := models.ListZabbixInstances()
+// ListZabbixTenantsGin 列出所有租户
+func ListZabbixTenantsGin(c *gin.Context) {
+	list, err := models.ListZabbixTenants()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
 
-	// 转换为安全的响应结构，隐藏敏感信息
-	safeList := make([]ZabbixInstanceSafeResponse, 0, len(list))
-	for _, inst := range list {
-		var lastTestAt *string
-		if inst.LastTestAt != nil {
-			timeStr := inst.LastTestAt.Format("2006-01-02 15:04:05")
-			lastTestAt = &timeStr
-		}
-		safeList = append(safeList, ZabbixInstanceSafeResponse{
-			ID:              inst.ID,
-			Name:            inst.Name,
-			WebURL:          inst.WebURL,
-			User:            inst.User,
-			Enabled:         inst.Enabled,
-			IsActive:        inst.IsActive,
-			Version:         inst.Version,
-			LastTestOk:      inst.LastTestOk,
-			LastTestMessage: inst.LastTestMessage,
-			LastTestAt:      lastTestAt,
-			CreatedAt:       inst.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:       inst.UpdatedAt.Format("2006-01-02 15:04:05"),
-		})
+	// 转换为安全的响应结构
+	safeList := make([]ZabbixTenantSafeResponse, 0, len(list))
+	for _, tenant := range list {
+		safeList = append(safeList, toTenantSafeResponse(&tenant))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": safeList})
 }
 
-// TestZabbixInstanceConfigGin POST /v1/zabbix/instances/test
-// 用于“新增页面先测试再创建”
-func TestZabbixInstanceConfigGin(c *gin.Context) {
-	var req testZabbixReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: " + err.Error(), "data": gin.H{"success": false}})
-		return
-	}
-	ver, err := models.TestZabbixInstanceConfig(req.WebURL, req.User, req.Pass, req.Token)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "连接失败: " + err.Error(), "data": gin.H{"success": false}})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "连接成功", "data": gin.H{"success": true, "version": ver}})
-}
-
-// TestZabbixInstanceGin POST /v1/zabbix/instances/:id/test
-// 测试已保存的实例，并更新版本/状态
-func TestZabbixInstanceGin(c *gin.Context) {
+// GetZabbixTenantGin 获取单个租户
+func GetZabbixTenantGin(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	tenant, err := models.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id", "data": gin.H{"success": false}})
-		return
-	}
-	inst, ver, err := models.TestAndUpdateZabbixInstance(id)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "连接失败: " + err.Error(), "data": gin.H{"success": false}})
-		return
-	}
-
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "连接成功", "data": gin.H{"success": true, "version": ver, "instance": safeInst}})
-}
-
-// CreateZabbixInstanceGin POST /v1/zabbix/instances
-func CreateZabbixInstanceGin(c *gin.Context) {
-	var req createZabbixInstanceReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: " + err.Error()})
-		return
-	}
-
-	// 强制：新增前必须测试通过（后端再测一遍，避免绕过前端）
-	ver, testErr := models.TestZabbixInstanceConfig(req.WebURL, req.User, req.Pass, req.Token)
-	if testErr != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "连接失败: " + testErr.Error(), "data": gin.H{"success": false}})
-		return
-	}
-
-	inst := &models.ZabbixInstance{
-		Name:            strings.TrimSpace(req.Name),
-		WebURL:          strings.TrimSpace(req.WebURL),
-		User:            req.User,
-		Pass:            req.Pass,
-		Token:           req.Token,
-		Enabled:         true,
-		Version:         ver,
-		LastTestOk:      true,
-		LastTestMessage: "连接成功",
-	}
-	if err := models.CreateZabbixInstance(inst); err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
 
-	// 创建成功后：若当前没有 active，则自动设为当前并预热（开始获取数据的基础：初始化 API + 版本）
-	active, _ := models.GetActiveZabbixInstance()
-	if active == nil {
-		_, _ = models.ActivateZabbixInstance(inst.ID)
-	} else if active.IsActive {
-		// 不抢占当前，但也预热自身的版本/状态（异步不阻断）
-		go func(id int64) {
-			_, _, _ = models.TestAndUpdateZabbixInstance(id)
-		}(inst.ID)
-	}
-
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "创建成功", "data": safeInst})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
 }
 
-// ActivateZabbixInstanceGin PUT /v1/zabbix/instances/:id/activate
-func ActivateZabbixInstanceGin(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+// CreateZabbixTenantGin 创建租户
+func CreateZabbixTenantGin(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id"})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	inst, err := models.ActivateZabbixInstance(id)
+
+	m := &models.ZabbixTenant{
+		TenantID:     gjson.Get(string(body), "tenant_id").String(),
+		Name:         gjson.Get(string(body), "name").String(),
+		WebURL:       gjson.Get(string(body), "web_url").String(),
+		User:         gjson.Get(string(body), "user").String(),
+		Pass:         gjson.Get(string(body), "pass").String(),
+		ZabbixToken:  gjson.Get(string(body), "zabbix_token").String(),
+		Enabled:      gjson.Get(string(body), "enabled").Bool(),
+		NotifyMethod: gjson.Get(string(body), "notify_method").String(),
+	}
+
+	// 默认通知方式
+	if m.NotifyMethod == "" {
+		m.NotifyMethod = "webhook"
+	}
+
+	if err := models.CreateZabbixTenant(m); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok"})
+}
+
+// TestZabbixTenantConfigGin 测试配置（创建前）
+func TestZabbixTenantConfigGin(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		return
+	}
+
+	webURL := gjson.Get(string(body), "web_url").String()
+	user := gjson.Get(string(body), "user").String()
+	pass := gjson.Get(string(body), "pass").String()
+	zabbixToken := gjson.Get(string(body), "zabbix_token").String()
+
+	ver, err := models.TestZabbixTenantConfig(webURL, user, pass, zabbixToken)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已切换当前 Zabbix", "data": safeInst})
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "连接成功", "data": gin.H{"version": ver}})
 }
 
-// EnableZabbixInstanceGin PUT /v1/zabbix/instances/:id/enabled
-func EnableZabbixInstanceGin(c *gin.Context) {
+// TestZabbixTenantGin 测试租户连接
+func TestZabbixTenantGin(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id"})
-		return
-	}
-	var req enableZabbixReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: " + err.Error()})
-		return
-	}
-	inst, err := models.SetZabbixInstanceEnabled(id, req.Enabled)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	tenant, ver, err := models.TestAndUpdateZabbixTenant(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": safeInst})
-}
 
-// UpdateZabbixInstanceGin PUT /v1/zabbix/instances/:id
-func UpdateZabbixInstanceGin(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id"})
-		return
-	}
-	var req updateZabbixInstanceReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: " + err.Error()})
-		return
-	}
-	inst, err := models.UpdateZabbixInstance(id, &models.ZabbixInstance{
-		Name:    strings.TrimSpace(req.Name),
-		WebURL:  strings.TrimSpace(req.WebURL),
-		User:    req.User,
-		Pass:    req.Pass,
-		Token:   req.Token,
-		Enabled: req.Enabled,
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "连接成功",
+		"data": gin.H{
+			"version":           ver,
+			"last_test_ok":      tenant.LastTestOk,
+			"last_test_message": tenant.LastTestMessage,
+		},
 	})
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
-		return
-	}
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "更新成功", "data": safeInst})
 }
 
-// DeleteZabbixInstanceGin DELETE /v1/zabbix/instances/:id
-func DeleteZabbixInstanceGin(c *gin.Context) {
+// UpdateZabbixTenantGin 更新租户
+func UpdateZabbixTenantGin(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id"})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	if err := models.DeleteZabbixInstance(id); err != nil {
+
+	patch := &models.ZabbixTenant{
+		TenantID:     gjson.Get(string(body), "tenant_id").String(),
+		Name:         gjson.Get(string(body), "name").String(),
+		WebURL:       gjson.Get(string(body), "web_url").String(),
+		User:         gjson.Get(string(body), "user").String(),
+		Pass:         gjson.Get(string(body), "pass").String(),
+		ZabbixToken:  gjson.Get(string(body), "zabbix_token").String(),
+		Enabled:      gjson.Get(string(body), "enabled").Bool(),
+		NotifyMethod: gjson.Get(string(body), "notify_method").String(),
+	}
+
+	tenant, err := models.UpdateZabbixTenant(id, patch)
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "删除成功"})
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
 }
 
-// GetActiveZabbixInstanceGin GET /v1/zabbix/active
-func GetActiveZabbixInstanceGin(c *gin.Context) {
-	inst, err := models.GetActiveZabbixInstance()
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
-		return
-	}
-	// 转换为安全响应
-	safeInst := toSafeResponse(inst)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": safeInst})
-}
-
-// GetZabbixInstanceGin GET /v1/zabbix/instances/:id
-// 获取单个实例详情（包含敏感信息，用于编辑）
-func GetZabbixInstanceGin(c *gin.Context) {
+// DeleteZabbixTenantGin 删除租户
+func DeleteZabbixTenantGin(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "参数错误: id"})
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	if err := models.DeleteZabbixTenant(id); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
-	inst, err := models.GetZabbixInstanceByID(id)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok"})
+}
+
+// EnableZabbixTenantGin 启用/禁用租户
+func EnableZabbixTenantGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		return
+	}
+
+	enabled := gjson.Get(string(body), "enabled").Bool()
+
+	tenant, err := models.SetZabbixTenantEnabled(id, enabled)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
-	// 返回完整信息（包含敏感字段），用于编辑
-	var lastTestAt *string
-	if inst.LastTestAt != nil {
-		timeStr := inst.LastTestAt.Format("2006-01-02 15:04:05")
-		lastTestAt = &timeStr
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+}
+
+// ActivateZabbixTenantGin 设置为当前激活的租户
+func ActivateZabbixTenantGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	tenant, err := models.ActivateZabbixTenant(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+}
+
+// GetActiveZabbixTenantGin 获取当前激活的租户
+func GetActiveZabbixTenantGin(c *gin.Context) {
+	tenant, err := models.GetActiveZabbixTenant()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		return
+	}
+
+	if tenant == nil {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+}
+
+// InstallMSAgentGin 在 Zabbix 中安装 MS-Agent 配置
+func InstallMSAgentGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 获取租户信息
+	tenant, err := models.GetZabbixTenantByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		return
+	}
+
+	// 在 Zabbix 中安装 MS-Agent 配置
+	if err := models.InstallMSAgentToZabbix(tenant.TenantID); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("安装失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "MS-Agent 配置安装成功"})
+}
+
+// InstallWebhookGin 在 Zabbix 中安装 Webhook 配置
+func InstallWebhookGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 获取租户信息
+	tenant, err := models.GetZabbixTenantByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		return
+	}
+
+	// 获取 ZbxTable 服务地址
+	zbxtableURL := models.GetConfigValueByKey("webhook_url", "")
+	if zbxtableURL == "" {
+		zbxtableURL = os.Getenv("ZBXTABLE_URL")
+	}
+	if zbxtableURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		zbxtableURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+
+	// 在 Zabbix 中安装 Webhook 配置
+	if err := models.InstallWebhookToZabbix(tenant.TenantID, zbxtableURL); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("安装失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "Webhook 配置安装成功"})
+}
+
+// GenerateMSAgentInstallScriptGin 生成 MS-Agent 安装脚本
+func GenerateMSAgentInstallScriptGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 获取租户信息
+	tenant, err := models.GetZabbixTenantByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		return
+	}
+
+	// 检查是否已安装
+	if !tenant.MSAgentInstalled {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请先在 Zabbix 中安装 MS-Agent 配置"})
+		return
+	}
+
+	// 获取 ZbxTable 服务地址
+	zbxtableURL := models.GetConfigValueByKey("webhook_url", "")
+	if zbxtableURL == "" {
+		zbxtableURL = os.Getenv("ZBXTABLE_URL")
+	}
+	if zbxtableURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		zbxtableURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+
+	// 生成安装脚本
+	config := &models.MSAgentConfig{
+		ZbxTableURL: zbxtableURL,
+		TenantID:    tenant.TenantID,
+		Token:       tenant.Token,
+	}
+
+	script, err := models.GenerateMSAgentInstallScript(config)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("生成脚本失败: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "ok",
-		"data": gin.H{
-			"id":                inst.ID,
-			"name":              inst.Name,
-			"web_url":           inst.WebURL,
-			"user":              inst.User,
-			"pass":              inst.Pass,
-			"token":             inst.Token,
-			"enabled":           inst.Enabled,
-			"is_active":         inst.IsActive,
-			"version":           inst.Version,
-			"last_test_ok":      inst.LastTestOk,
-			"last_test_message": inst.LastTestMessage,
-			"last_test_at":      lastTestAt,
-			"created_at":        inst.CreatedAt.Format("2006-01-02 15:04:05"),
-			"updated_at":        inst.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
+		"data":    script,
 	})
+}
+
+// GetWebhookInfoGin 获取 Webhook 配置信息
+func GetWebhookInfoGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 获取租户信息
+	tenant, err := models.GetZabbixTenantByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		return
+	}
+
+	// 检查是否已安装
+	if !tenant.WebhookInstalled {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请先在 Zabbix 中安装 Webhook 配置"})
+		return
+	}
+
+	// 获取 ZbxTable 服务地址
+	zbxtableURL := models.GetConfigValueByKey("webhook_url", "")
+	if zbxtableURL == "" {
+		zbxtableURL = os.Getenv("ZBXTABLE_URL")
+	}
+	if zbxtableURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		zbxtableURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+
+	// 获取 Webhook 信息
+	info, err := models.GetWebhookInfo(tenant.TenantID, zbxtableURL)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("获取信息失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "ok",
+		"data":    info,
+	})
+}
+
+// UninstallMSAgentGin 卸载 MS-Agent 配置
+func UninstallMSAgentGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 从 Zabbix 中卸载 MS-Agent 配置
+	if err := models.UninstallMSAgentFromZabbixTenant(id); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("卸载失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "MS-Agent 配置卸载成功"})
+}
+
+// UninstallWebhookGin 卸载 Webhook 配置
+func UninstallWebhookGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// 从 Zabbix 中卸载 Webhook 配置
+	if err := models.UninstallWebhookFromZabbixTenant(id); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("卸载失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "Webhook 配置卸载成功"})
 }

@@ -383,7 +383,7 @@ func GetConfKey(v string) string {
 // 如果数据库中没有，则回退到配置文件检查
 func IsPasswordConfigured() bool {
 	// 1. 优先检查数据库中是否有激活的 Zabbix 实例
-	var activeInstance ZabbixInstance
+	var activeInstance ZabbixTenant
 	err := DB.Where("is_active = ?", true).First(&activeInstance).Error
 	if err == nil {
 		// 找到激活的实例，检查是否配置了密码或 token
@@ -393,7 +393,7 @@ func IsPasswordConfigured() bool {
 	}
 
 	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例
-	var anyInstance ZabbixInstance
+	var anyInstance ZabbixTenant
 	err = DB.Where("enabled = ?", true).First(&anyInstance).Error
 	if err == nil {
 		// 找到可用的实例，检查是否配置了密码或 token

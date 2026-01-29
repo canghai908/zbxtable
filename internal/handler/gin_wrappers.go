@@ -189,10 +189,13 @@ func ReceiveGin(c *gin.Context) {
 	fmt.Println(c.Request.Header)
 	// 多租户 token 校验：优先使用租户绑定表；未配置绑定时回退到全局 token（兼容旧逻辑）
 	zabbixInstanceID := 0
-	if binding, err := models.GetZabbixTenantBindingByTenant(tenantid); err == nil && binding != nil {
+	fmt.Println(tenantid)
+	if binding, err := models.GetZabbixTenantByTenantID(tenantid); err == nil && binding != nil {
+		fmt.Println("aaaa")
 		if !binding.Enabled {
 			res.ID = 0
 			res.Msg = "Tenant Disabled!"
+			utils.Log.Error("Tenant Disabled!")
 			c.JSON(http.StatusOK, res)
 			return
 		}
@@ -202,11 +205,12 @@ func ReceiveGin(c *gin.Context) {
 			c.JSON(http.StatusOK, res)
 			return
 		}
-		zabbixInstanceID = binding.ZabbixInstanceID
+		zabbixInstanceID = binding.ID
 	} else {
 		if token != models.GetConfKey("token") {
 			res.ID = 0
 			res.Msg = "Token Error!"
+			utils.Log.Error("Token Error!")
 			c.JSON(http.StatusOK, res)
 			return
 		}
@@ -215,6 +219,7 @@ func ReceiveGin(c *gin.Context) {
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()
+		utils.Log.Error(err.Error())
 		c.JSON(http.StatusOK, res)
 		return
 	}

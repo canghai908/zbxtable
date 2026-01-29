@@ -12,19 +12,19 @@ import (
 )
 
 // InstallWebhookToZabbix 在 Zabbix 中安装 Webhook 配置
-func InstallWebhookToZabbix(instanceID int, tenantID string, zbxtableURL string) error {
-	// 获取 Zabbix 实例信息
-	instance, err := GetZabbixInstanceByID(int64(instanceID))
+func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
+	// 获取租户信息
+	tenant, err := GetZabbixTenantByTenantID(tenantID)
 	if err != nil {
-		return fmt.Errorf("获取 Zabbix 实例失败: %w", err)
+		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
 	// 初始化 Zabbix API
-	api := zabbix.NewAPI(instance.WebURL + "/api_jsonrpc.php")
-	if instance.Token != "" {
-		api.Auth = instance.Token
+	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
+	if tenant.ZabbixToken != "" {
+		api.Auth = tenant.ZabbixToken
 	} else {
-		_, err := api.Login(instance.User, instance.Pass)
+		_, err := api.Login(tenant.User, tenant.Pass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -332,19 +332,20 @@ func InstallWebhookToZabbix(instanceID int, tenantID string, zbxtableURL string)
 	}
 	utils.Log.Info("Webhook Action 创建成功")
 
-	// 更新租户绑定信息
-	binding, err := GetZabbixTenantBindingByTenant(tenantID)
-	if err != nil {
-		return fmt.Errorf("获取租户绑定失败: %w", err)
-	}
+	// 更新租户信息
+	tenant.Token = token
+	tenant.NotifyMethod = "webhook"
+	tenant.WebhookInstalled = true
+	tenant.WebhookURL = webhookURL
 
-	binding.Token = token
-	binding.NotifyMethod = "webhook"
-	binding.WebhookInstalled = true
-	binding.WebhookURL = webhookURL
-	err = UpsertZabbixTenantBinding(binding)
+	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
+		"token":             token,
+		"notify_method":     "webhook",
+		"webhook_installed": true,
+		"webhook_url":       webhookURL,
+	}).Error
 	if err != nil {
-		return fmt.Errorf("更新租户绑定失败: %w", err)
+		return fmt.Errorf("更新租户信息失败: %w", err)
 	}
 
 	utils.Log.Info("Webhook 配置安装完成！")
@@ -353,12 +354,12 @@ func InstallWebhookToZabbix(instanceID int, tenantID string, zbxtableURL string)
 
 // GetWebhookInfo 获取 Webhook 配置信息
 func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, error) {
-	binding, err := GetZabbixTenantBindingByTenant(tenantID)
+	tenant, err := GetZabbixTenantByTenantID(tenantID)
 	if err != nil {
-		return nil, fmt.Errorf("获取租户绑定失败: %w", err)
+		return nil, fmt.Errorf("获取租户失败: %w", err)
 	}
 
-	if !binding.WebhookInstalled {
+	if !tenant.WebhookInstalled {
 		return nil, errors.New("Webhook 未安装")
 	}
 
@@ -367,10 +368,10 @@ func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, err
 	info := map[string]string{
 		"webhook_url":  webhookURL,
 		"tenant_id":    tenantID,
-		"token":        binding.Token,
+		"token":        tenant.Token,
 		"method":       "POST",
 		"content_type": "application/json",
-		"headers":      fmt.Sprintf("ZBX-TenantID: %s\nToken: %s", tenantID, binding.Token),
+		"headers":      fmt.Sprintf("ZBX-TenantID: %s\nToken: %s", tenantID, tenant.Token),
 	}
 
 	return info, nil
