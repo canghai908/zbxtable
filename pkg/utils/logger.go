@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -14,6 +16,12 @@ var (
 )
 
 // InitLogger 初始化日志系统
+// logPath: 日志文件路径，如果为空则默认为 ./log/yyyy-MM-dd.log
+// logLevel: 日志级别 (0-6)
+// maxDays: 日志保留天数
+// maxLines: 最大行数（暂未使用）
+// maxSize: 单个日志文件最大大小（MB），0表示不限制
+// daily: 是否按天分割日志文件
 func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, daily bool) error {
 	Log = logrus.New()
 
@@ -29,7 +37,7 @@ func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, da
 	case 0:
 		level = logrus.PanicLevel
 	case 1:
-		level = logrus.InfoLevel // 修改：level 1 应该是 InfoLevel，而不是 FatalLevel
+		level = logrus.InfoLevel
 	case 2:
 		level = logrus.ErrorLevel
 	case 3:
@@ -43,35 +51,34 @@ func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, da
 	}
 	Log.SetLevel(level)
 
-	// 如果配置了日志文件路径，则输出到文件
-	if logPath != "" {
-		// 确保日志目录存在
-		logDir := filepath.Dir(logPath)
-		if err := os.MkdirAll(logDir, 0755); err != nil {
-			return err
-		}
-
-		// 配置日志轮转
-		writer := &lumberjack.Logger{
-			Filename:   logPath,
-			MaxSize:    maxSize,    // MB
-			MaxBackups: maxDays,    // 保留天数
-			MaxAge:     maxDays,    // 保留天数
-			Compress:   true,       // 压缩旧日志
-			LocalTime:  true,
-		}
-
-		// 如果启用按天分割，需要自定义文件名
-		if daily {
-			// 这里简化处理，实际可以按日期动态生成文件名
-			// lumberjack 本身不支持按天分割，但可以通过 MaxAge 和 MaxBackups 实现类似效果
-		}
-
-		Log.SetOutput(writer)
-	} else {
-		// 默认输出到标准输出
-		Log.SetOutput(os.Stdout)
+	// 如果未配置日志路径，使用默认路径：./log/yyyy-MM-dd.log
+	if logPath == "" {
+		logPath = filepath.Join(".", "log", fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
 	}
+
+	// 如果启用按天分割，修改日志文件名为日期格式
+	if daily {
+		logDir := filepath.Dir(logPath)
+		logPath = filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
+	}
+
+	// 确保日志目录存在
+	logDir := filepath.Dir(logPath)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return err
+	}
+
+	// 配置日志轮转
+	writer := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    maxSize, // MB，0表示不限制
+		MaxBackups: maxDays, // 保留的旧日志文件数量
+		MaxAge:     maxDays, // 保留天数
+		Compress:   true,    // 压缩旧日志
+		LocalTime:  true,    // 使用本地时间
+	}
+
+	Log.SetOutput(writer)
 
 	return nil
 }

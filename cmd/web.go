@@ -12,10 +12,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"zbxtable/packfile"
-	"zbxtable/api/v1"
+	v1 "zbxtable/api/v1"
+	"zbxtable/pkg/templates"
 	"zbxtable/pkg/utils"
-	
+
 	model "zbxtable/internal/model"
 
 	zabbix "github.com/canghai908/zabbix-go"
@@ -98,8 +98,11 @@ func runWeb(*cli.Context) error {
 		}
 	}
 
-	// 释放静态资源目录
-	restoreAssets()
+	// 释放模板文件到 ./template 目录
+	if err := templates.RestoreTemplates(); err != nil {
+		utils.Log.Error("Failed to restore template files:", err)
+		// 不退出程序，继续运行
+	}
 
 	// 检查安装状态
 	installed := checkInstallStatus()
@@ -127,8 +130,7 @@ func runWeb(*cli.Context) error {
 		InitConfig("zabbix_token"),
 		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
 		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"),
-		InitConfig("redis_host"), InitConfig("redis_port"),
-		InitConfig("redis_pass"), InitConfig("redis_db"))
+	)
 
 	model.InitTask()
 	defer model.StopTask()
@@ -153,21 +155,26 @@ func initLoggerSafe() error {
 	// 尝试加载配置文件
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
-		// 配置文件不存在，使用标准输出（便于查看启动信息）
-		utils.Log = logrus.New()
-		utils.Log.SetOutput(os.Stdout)
-		utils.Log.SetLevel(logrus.InfoLevel)
-		utils.Log.SetFormatter(&logrus.TextFormatter{
-			FullTimestamp:   true,
-			TimestampFormat: "2006-01-02 15:04:05",
-		})
+		// 配置文件不存在，使用默认日志配置：./log/yyyy-MM-dd.log
+		err = utils.InitLogger("", 1, 7, 10000, 100, true)
+		if err != nil {
+			// 如果日志初始化失败，使用标准输出
+			utils.Log = logrus.New()
+			utils.Log.SetOutput(os.Stdout)
+			utils.Log.SetLevel(logrus.InfoLevel)
+			utils.Log.SetFormatter(&logrus.TextFormatter{
+				FullTimestamp:   true,
+				TimestampFormat: "2006-01-02 15:04:05",
+			})
+		}
 		return nil
 	}
 
 	// 配置文件存在，使用配置的日志设置
 	logPath := cfg.Section("").Key("log_path").String()
 	if logPath == "" {
-		logPath = "./logs"
+		// 如果配置文件中未指定日志路径，使用默认路径：./log/yyyy-MM-dd.log
+		logPath = ""
 	}
 	level, _ := cfg.Section("").Key("log_level").Int()
 	if level == 0 {
@@ -186,6 +193,9 @@ func initLoggerSafe() error {
 		maxsize = 100
 	}
 	daily, _ := cfg.Section("").Key("daily").Bool()
+	if !daily {
+		daily = true // 默认启用按天分割
+	}
 
 	err = utils.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
 	if err != nil {
@@ -198,25 +208,6 @@ func initLoggerSafe() error {
 			TimestampFormat: "2006-01-02 15:04:05",
 		})
 		return nil
-	}
-	return nil
-}
-
-// checkWeb 是否需要释放web资源目录
-func restoreAssets() error {
-	//判断静态资源目录是否存在，不存在则释放
-	files := []string{"web", "template", "config"} // 设置需要释放的目录
-	for _, file := range files {
-		// 判断目录是否存在
-		ex, err := utils.PathExists("./" + file)
-		//目录不存在释放静态资源
-		if !ex && err == nil {
-			// 解压目录到当前目录
-			if err := packfile.RestoreAssets("./", file); err != nil {
-				utils.Log.Error(err)
-				break
-			}
-		}
 	}
 	return nil
 }
@@ -376,5 +367,3 @@ func InitConfig(v string) string {
 func InitLogger() (err error) {
 	return initLoggerSafe()
 }
-
-//

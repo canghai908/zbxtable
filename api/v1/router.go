@@ -1,7 +1,10 @@
 package v1
 
 import (
+	"io/fs"
+	"net/http"
 	"strings"
+	"zbxtable/api/v1/web"
 	"zbxtable/internal/handler"
 	"zbxtable/internal/middleware"
 
@@ -29,8 +32,51 @@ func InitRouter() *gin.Engine {
 	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
-	// 静态文件
+	// 下载文件目录（使用文件系统）
 	r.Static("/download", "./download")
+
+	// 获取嵌入的前端文件系统
+	distFS := web.GetDistFSRoot()
+	subFS, err := fs.Sub(distFS, "web")
+	if err != nil {
+		panic("Failed to get embedded frontend filesystem: " + err.Error())
+	}
+
+	// 创建 static 和 css 子文件系统
+	staticFS, err := fs.Sub(subFS, "static")
+	if err != nil {
+		panic("Failed to get static filesystem: " + err.Error())
+	}
+
+	cssFS, err := fs.Sub(subFS, "css")
+	if err != nil {
+		panic("Failed to get css filesystem: " + err.Error())
+	}
+
+	// 前端静态文件服务（使用 go:embed，不需要安装检查）
+	// 注意：这些路由必须在安装检查中间件之前注册
+	r.StaticFS("/static", http.FS(staticFS))
+	r.StaticFS("/css", http.FS(cssFS))
+
+	// favicon.ico
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		data, err := fs.ReadFile(subFS, "favicon.ico")
+		if err != nil {
+			c.Status(404)
+			return
+		}
+		c.Data(200, "image/x-icon", data)
+	})
+
+	// 根路径返回 index.html
+	r.GET("/", func(c *gin.Context) {
+		data, err := fs.ReadFile(subFS, "index.html")
+		if err != nil {
+			c.String(500, "Failed to load frontend: %v", err)
+			return
+		}
+		c.Data(200, "text/html; charset=utf-8", data)
+	})
 
 	// WebSocket（必须在 NoRoute 之前）
 	r.GET("/ws/:id", handler.WebSocketHandlerGin)
@@ -40,34 +86,16 @@ func InitRouter() *gin.Engine {
 	{
 		installGroup.GET("/status", handler.GetInstallStatus)
 		installGroup.POST("/check-db", handler.CheckDatabase)
-		installGroup.POST("/check-redis", handler.CheckRedis)
+		//installGroup.POST("/check-redis", handler.CheckRedis)
 		installGroup.POST("/install", handler.DoInstall)
 	}
 
-	// 前端静态文件（SPA 应用）
-	// 注意：在生产环境中，前端文件应该已经打包到 web 目录
-	r.StaticFile("/", "./web/index.html")
-	r.Static("/static", "./web/static")
-	r.Static("/assets", "./web/assets")
-
-	// SPA 路由支持：所有非 API 路由都返回 index.html（最后注册，作为兜底）
-	r.NoRoute(func(c *gin.Context) {
-		// 如果是 API 请求，返回 404
-		if strings.HasPrefix(c.Request.URL.Path, "/v1") ||
-			strings.HasPrefix(c.Request.URL.Path, "/install") ||
-			strings.HasPrefix(c.Request.URL.Path, "/ws") {
-			c.JSON(404, gin.H{"code": 404, "message": "Not Found"})
-			return
-		}
-		// 否则返回前端页面（SPA 路由）
-		c.File("./web/index.html")
-	})
-
-	// 安装状态检查中间件（除了安装路由）
-	r.Use(middleware.CheckInstallStatusMiddleware())
+	// 安装状态检查中间件（只应用于业务 API，不影响静态文件和安装路由）
+	apiGroup := r.Group("")
+	apiGroup.Use(middleware.CheckInstallStatusMiddleware())
 
 	// API v1
-	v1 := r.Group("/v1")
+	v1 := apiGroup.Group("/v1")
 	{
 		// 认证相关（无需 token）
 		v1.POST("/login", handler.LoginGin)
@@ -310,6 +338,30 @@ func InitRouter() *gin.Engine {
 			}
 		}
 	}
+
+	// SPA 路由支持：所有非 API 路由都返回 index.html（最后注册，作为兜底）
+	// 这个必须在最后注册，用于处理前端路由
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// 如果是 API 请求，返回 404
+		if strings.HasPrefix(path, "/v1") ||
+			strings.HasPrefix(path, "/install") ||
+			strings.HasPrefix(path, "/ws") ||
+			strings.HasPrefix(path, "/download") {
+			c.JSON(404, gin.H{"code": 404, "message": "Not Found"})
+			return
+		}
+
+		// 对于根路径和其他前端路由，返回 index.html
+		data, err := fs.ReadFile(subFS, "index.html")
+		if err != nil {
+			// 添加详细的错误信息
+			c.String(500, "Failed to load frontend: %v", err)
+			return
+		}
+		c.Data(200, "text/html; charset=utf-8", data)
+	})
 
 	return r
 }

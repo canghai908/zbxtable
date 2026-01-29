@@ -113,7 +113,12 @@ func checkDatabaseConnection(dbdriver, dbhost, dbuser, dbpass, dbname, dbport st
 			dbPath = "./data/zbxtable.db"
 		}
 		// 确保目录存在
-		if err := os.MkdirAll("./data", 0755); err != nil {
+		dir := "./data"
+		if strings.Contains(dbPath, "/") || strings.Contains(dbPath, "\\") {
+			// 如果路径包含目录，提取目录部分
+			dir = dbPath[:strings.LastIndexAny(dbPath, "/\\")]
+		}
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
 		}
 		// SQLite 不需要连接测试，文件会在首次使用时创建
@@ -129,7 +134,7 @@ func writeConfigFile(zabbix_web, zabbix_user, zabbix_pass,
 	httpport, runmode, timeout, token string) error {
 	cfg := ini.Empty()
 	// zbxtable info
-	cfg.Section("").Key("appname").Comment = "zbxtable"
+	//cfg.Section("").Key("appname").Comment = "zbxtable"
 	// migrate httpport
 	if httpport == "" {
 		cfg.Section("").NewKey("httpport", "8085")
@@ -173,7 +178,7 @@ func writeConfigFile(zabbix_web, zabbix_user, zabbix_pass,
 	cfg.Section("").NewKey("dbport", dbport)
 	// zabbix info（安装阶段不再写入，用户可在系统设置里管理多个 Zabbix）
 	// check
-	confpath := "./conf"
+	confpath := "./config"
 	_, err := os.Stat(confpath)
 	if err != nil {
 		err := os.MkdirAll(confpath, 0755)
@@ -223,11 +228,10 @@ func GetInstallStatus(c *gin.Context) {
 	}
 
 	dbtype := cfg.Section("").Key("dbtype").String()
-	dbhost := cfg.Section("").Key("dbhost").String()
 	dbname := cfg.Section("").Key("dbname").String()
 
-	// sqlite 不需要 dbhost
-	if dbtype == "" || dbname == "" || (dbtype != "sqlite" && dbhost == "") {
+	// 检查数据库类型和数据库名
+	if dbtype == "" || dbname == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    200,
 			"message": "ok",
@@ -236,6 +240,21 @@ func GetInstallStatus(c *gin.Context) {
 			},
 		})
 		return
+	}
+
+	// 对于非 SQLite 数据库，还需要检查 dbhost
+	if dbtype != "sqlite" {
+		dbhost := cfg.Section("").Key("dbhost").String()
+		if dbhost == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": "ok",
+				"data": gin.H{
+					"installed": false,
+				},
+			})
+			return
+		}
 	}
 
 	// 尝试连接数据库，检查表是否存在
@@ -349,73 +368,9 @@ func CheckZabbixAPI(c *gin.Context) {
 	})
 }
 
-// CheckRedisRequest Redis 检查请求
-type CheckRedisRequest struct {
-	RedisHost string `json:"redis_host" binding:"required"`
-	RedisPort string `json:"redis_port" binding:"required"`
-	RedisPass string `json:"redis_pass"`
-	RedisDB   string `json:"redis_db"`
-}
-
-// InstallRedisRequest 安装时的 Redis 请求（可选）
-type InstallRedisRequest struct {
-	RedisHost string `json:"redis_host"`
-	RedisPort string `json:"redis_port"`
-	RedisPass string `json:"redis_pass"`
-	RedisDB   string `json:"redis_db"`
-}
-
-// CheckRedis 检查 Redis 连接
-func CheckRedis(c *gin.Context) {
-	var req CheckRedisRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 设置默认值
-	if req.RedisPort == "" {
-		req.RedisPort = "6379"
-	}
-	if req.RedisDB == "" {
-		req.RedisDB = "0"
-	}
-
-	err := checkRedisConnection(req.RedisHost, req.RedisPort, req.RedisPass, req.RedisDB)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "Redis 连接失败: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "Redis 连接成功",
-		"data": gin.H{
-			"success": true,
-		},
-	})
-}
-
-// checkRedisConnection 检查 Redis 连接（已废弃，现在使用go-cache，不再需要Redis）
-func checkRedisConnection(redisHost, redisPort, redisPass, redisDB string) error {
-	// 使用go-cache后不再需要Redis连接，直接返回成功
-	// 保留此函数以保持API兼容性
-	return nil
-}
-
 // InstallRequest 安装请求
 type InstallRequest struct {
 	CheckDatabaseRequest
-	InstallRedisRequest
 	HTTPPort string `json:"httpport"`
 	RunMode  string `json:"runmode"`
 	Timeout  string `json:"timeout"`
@@ -433,6 +388,20 @@ func DoInstall(c *gin.Context) {
 			},
 		})
 		return
+	}
+
+	// 对于非 SQLite 数据库，验证必需字段
+	if req.DBType != "sqlite" {
+		if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    400,
+				"message": "参数错误: " + req.DBType + " 数据库需要 dbhost, dbuser, dbpass, dbport",
+				"data": gin.H{
+					"success": false,
+				},
+			})
+			return
+		}
 	}
 
 	// 检查是否已安装
@@ -485,15 +454,20 @@ func DoInstall(c *gin.Context) {
 		req.Timeout = "12"
 	}
 
-	// 设置 Redis 默认值（在写入配置文件之前）
-	if req.RedisHost == "" {
-		req.RedisHost = "localhost"
-	}
-	if req.RedisPort == "" {
-		req.RedisPort = "6379"
-	}
-	if req.RedisDB == "" {
-		req.RedisDB = "0"
+	// 对于 SQLite，设置默认值
+	if req.DBType == "sqlite" {
+		if req.DBHost == "" {
+			req.DBHost = "localhost"
+		}
+		if req.DBPort == "" {
+			req.DBPort = "0"
+		}
+		if req.DBUser == "" {
+			req.DBUser = ""
+		}
+		if req.DBPass == "" {
+			req.DBPass = ""
+		}
 	}
 
 	// 写入配置文件
@@ -513,22 +487,10 @@ func DoInstall(c *gin.Context) {
 		return
 	}
 
-	// 再次验证 Redis 连接（如果提供了配置）
-	// 注意：Redis 连接失败不应该阻止安装，只记录警告
-	if req.RedisHost != "" && req.RedisPort != "" {
-		err = checkRedisConnection(req.RedisHost, req.RedisPort, req.RedisPass, req.RedisDB)
-		if err != nil {
-			// Redis 连接失败只记录日志，不阻止安装
-			// 用户可以在安装后配置 Redis
-		}
-	}
-
 	// 初始化数据库
 	models.ModelsInit(
 		"", "", "", "",
-		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort,
-		req.RedisHost, req.RedisPort, req.RedisPass, req.RedisDB,
-	)
+		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,

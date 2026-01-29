@@ -58,8 +58,7 @@ func GetAssetsHost() string {
 
 // ModelsInit  p
 func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
-	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
-	redis_host, redis_port, redis_pass, redis_db string) {
+	dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
 
 	//GetAssetsHost
 	GetAssetsHost()
@@ -379,9 +378,31 @@ func GetConfKey(v string) string {
 }
 
 // IsPasswordConfigured 检查是否配置了密码（用于图形查看）
-// 如果密码不为空，返回 true；密码为空，返回 false
+// 优先检查数据库中是否有激活的 Zabbix 实例配置
+// 如果数据库中没有，则回退到配置文件检查
 func IsPasswordConfigured() bool {
+	// 1. 优先检查数据库中是否有激活的 Zabbix 实例
+	var activeInstance ZabbixInstance
+	err := DB.Where("is_active = ?", true).First(&activeInstance).Error
+	if err == nil {
+		// 找到激活的实例，检查是否配置了密码或 token
+		if activeInstance.Token != "" || activeInstance.Pass != "" {
+			return true
+		}
+	}
+	
+	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例
+	var anyInstance ZabbixInstance
+	err = DB.Where("enabled = ?", true).First(&anyInstance).Error
+	if err == nil {
+		// 找到可用的实例，检查是否配置了密码或 token
+		if anyInstance.Token != "" || anyInstance.Pass != "" {
+			return true
+		}
+	}
+	
+	// 3. 回退到配置文件检查（兼容旧版本）
 	pass := GetConfKey("zabbix_pass")
-	// 如果密码不为空，则已配置密码
-	return pass != ""
+	token := GetConfKey("zabbix_token")
+	return pass != "" || token != ""
 }

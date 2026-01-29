@@ -1,4 +1,3 @@
-//go:generate go-bindata -o=packfile/staticFile.go -pkg=packfile ./web/... ./template/... ./config/...
 package main
 
 import (

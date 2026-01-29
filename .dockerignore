@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# 构建产物
+zbxtable
+zbxtable.exe
+*.exe
+tmp/
+download/
+log/
+logs/
+
+# 测试文件
+*_test.go
+tests/
+
+# 文档
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 依赖
+vendor/
+
+# 临时文件
+*.tmp
+*.log
+lastupdate.tmp
+
+# 备份
+*_backup_*/
+
+# Node modules (前端会单独处理)
+node_modules/
+
+# 其他
+.DS_Store
+Thumbs.db
+

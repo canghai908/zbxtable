@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: zbxtable-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: zbxtable
+      MYSQL_USER: zbxtable
+      MYSQL_PASSWORD: zbxtablepwd123
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deployments/docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - zbxtable-network
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+
+  # ZbxTable 应用
+  zbxtable:
+    build:
+      context: ../
+      dockerfile: zbxtable/Dockerfile
+    container_name: zbxtable-app
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config/app.conf:/app/config/app.conf
+      - ./log:/app/log
+      - ./download:/app/download
+      - ./template:/app/template
+    ports:
+      - "8085:8085"
+    networks:
+      - zbxtable-network
+    depends_on:
+      - mysql
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8085/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  zbxtable-network:
+    driver: bridge
+

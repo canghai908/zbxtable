@@ -100,10 +100,10 @@ func CheckInstallStatusMiddleware() gin.HandlerFunc {
 		}
 
 		dbtype := cfg.Section("").Key("dbtype").String()
-		dbhost := cfg.Section("").Key("dbhost").String()
 		dbname := cfg.Section("").Key("dbname").String()
 
-		if dbtype == "" || dbhost == "" || dbname == "" {
+		// 检查数据库类型和数据库名
+		if dbtype == "" || dbname == "" {
 			if c.Request.Header.Get("Accept") != "" && strings.Contains(c.Request.Header.Get("Accept"), "application/json") {
 				c.JSON(http.StatusOK, gin.H{
 					"code":     500,
@@ -115,6 +115,24 @@ func CheckInstallStatusMiddleware() gin.HandlerFunc {
 			}
 			c.Abort()
 			return
+		}
+
+		// 对于非 SQLite 数据库，需要检查 dbhost
+		if dbtype != "sqlite" {
+			dbhost := cfg.Section("").Key("dbhost").String()
+			if dbhost == "" {
+				if c.Request.Header.Get("Accept") != "" && strings.Contains(c.Request.Header.Get("Accept"), "application/json") {
+					c.JSON(http.StatusOK, gin.H{
+						"code":     500,
+						"message":  "系统未安装，请先完成安装",
+						"redirect": "/install",
+					})
+				} else {
+					c.Redirect(http.StatusFound, "/install")
+				}
+				c.Abort()
+				return
+			}
 		}
 
 		// 已安装，继续
