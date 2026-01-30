@@ -30,8 +30,8 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 
 	// 初始化 Zabbix API
 	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
-	if tenant.ZabbixToken != "" {
-		api.Auth = tenant.ZabbixToken
+	if tenant.Token != "" {
+		api.Auth = tenant.Token
 	} else {
 		_, err := api.Login(tenant.User, tenant.Pass)
 		if err != nil {
@@ -54,9 +54,9 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 		return fmt.Errorf("webhook 需要 Zabbix 4.4 或更高版本，当前版本: %s", version)
 	}
 
-	// 生成新的 Token
-	token := strings.ReplaceAll(uuid.New().String(), "-", "")
-	logger.Log.Info("生成 Webhook Token:", token)
+	// 生成新的 WebhookToken
+	webhookToken := strings.ReplaceAll(uuid.New().String(), "-", "")
+	logger.Log.Info("生成 Webhook WebhookToken:", webhookToken)
 
 	// 构建 Webhook URL - 从数据库配置读取
 	configuredURL := GetConfigValueByKey("webhook_url", "")
@@ -73,7 +73,7 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
     req.addHeader('ZBX-TenantID: ' + params.tenant_id);
-    req.addHeader('Token: ' + params.token);
+    req.addHeader('WebhookToken: ' + params.webhook_token);
     
     // 直接使用 {ALERT.MESSAGE} 作为消息体
     var response = req.post(params.webhook_url, params.message);
@@ -95,11 +95,11 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 	mediaParams["status"] = "0"
 	mediaParams["script"] = webhookScript
 
-	// Webhook 参数 - 只保留 webhook_url、tenant_id、token 和 message
+	// Webhook 参数 - 只保留 webhook_url、tenant_id、webhook_token 和 message
 	parameters := []map[string]interface{}{
 		{"name": "webhook_url", "value": webhookURL},
 		{"name": "tenant_id", "value": tenantID},
-		{"name": "token", "value": token},
+		{"name": "webhook_token", "value": webhookToken},
 		{"name": "message", "value": "{ALERT.MESSAGE}"},
 	}
 	mediaParams["parameters"] = parameters
@@ -334,13 +334,13 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 	logger.Log.Info("Webhook Action 创建成功")
 
 	// 更新租户信息
-	tenant.Token = token
+	tenant.WebhookToken = webhookToken
 	tenant.NotifyMethod = "webhook"
 	tenant.WebhookInstalled = true
 	tenant.WebhookURL = webhookURL
 
 	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
-		"token":             token,
+		"webhook_token":     webhookToken,
 		"notify_method":     "webhook",
 		"webhook_installed": true,
 		"webhook_url":       webhookURL,
@@ -367,12 +367,12 @@ func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, err
 	webhookURL := fmt.Sprintf("%s/v1/receive", strings.TrimRight(zbxtableURL, "/"))
 
 	info := map[string]string{
-		"webhook_url":  webhookURL,
-		"tenant_id":    tenantID,
-		"token":        tenant.Token,
-		"method":       "POST",
-		"content_type": "application/json",
-		"headers":      fmt.Sprintf("ZBX-TenantID: %s\nToken: %s", tenantID, tenant.Token),
+		"webhook_url":   webhookURL,
+		"tenant_id":     tenantID,
+		"webhook_token": tenant.WebhookToken,
+		"method":        "POST",
+		"content_type":  "application/json",
+		"headers":       fmt.Sprintf("ZBX-TenantID: %s\nWebhookToken: %s", tenantID, tenant.WebhookToken),
 	}
 
 	return info, nil

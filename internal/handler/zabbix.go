@@ -29,7 +29,7 @@ type ZabbixTenantSafeResponse struct {
 	MSAgentVersion   string `json:"ms_agent_version"`
 	WebhookInstalled bool   `json:"webhook_installed"`
 	WebhookURL       string `json:"webhook_url"`
-	// 不包含 Pass, ZabbixToken, Token 字段
+	// 不包含 Pass, Token, WebhookToken 字段
 }
 
 // toTenantSafeResponse 将租户转换为安全响应
@@ -101,7 +101,7 @@ func CreateZabbixTenantGin(c *gin.Context) {
 		WebURL:       gjson.Get(string(body), "web_url").String(),
 		User:         gjson.Get(string(body), "user").String(),
 		Pass:         gjson.Get(string(body), "pass").String(),
-		ZabbixToken:  gjson.Get(string(body), "zabbix_token").String(),
+		Token:        gjson.Get(string(body), "token").String(),
 		Enabled:      gjson.Get(string(body), "enabled").Bool(),
 		NotifyMethod: gjson.Get(string(body), "notify_method").String(),
 	}
@@ -139,9 +139,9 @@ func TestZabbixTenantConfigGin(c *gin.Context) {
 	webURL := gjson.Get(string(body), "web_url").String()
 	user := gjson.Get(string(body), "user").String()
 	pass := gjson.Get(string(body), "pass").String()
-	zabbixToken := gjson.Get(string(body), "zabbix_token").String()
+	token := gjson.Get(string(body), "token").String()
 
-	ver, err := model.TestZabbixTenantConfig(webURL, user, pass, zabbixToken)
+	ver, err := model.TestZabbixTenantConfig(webURL, user, pass, token)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
@@ -189,7 +189,7 @@ func UpdateZabbixTenantGin(c *gin.Context) {
 		WebURL:       gjson.Get(string(body), "web_url").String(),
 		User:         gjson.Get(string(body), "user").String(),
 		Pass:         gjson.Get(string(body), "pass").String(),
-		ZabbixToken:  gjson.Get(string(body), "zabbix_token").String(),
+		Token:        gjson.Get(string(body), "token").String(),
 		Enabled:      gjson.Get(string(body), "enabled").Bool(),
 		NotifyMethod: gjson.Get(string(body), "notify_method").String(),
 	}
@@ -361,9 +361,9 @@ func GenerateMSAgentInstallScriptGin(c *gin.Context) {
 
 	// 生成安装脚本
 	config := &model.MSAgentConfig{
-		ZbxTableURL: zbxtableURL,
-		TenantID:    tenant.TenantID,
-		Token:       tenant.Token,
+		ZbxTableURL:  zbxtableURL,
+		TenantID:     tenant.TenantID,
+		WebhookToken: tenant.WebhookToken,
 	}
 
 	script, err := model.GenerateMSAgentInstallScript(config)

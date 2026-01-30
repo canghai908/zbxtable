@@ -327,10 +327,10 @@ func CheckDatabase(c *gin.Context) {
 
 // CheckZabbixRequest Zabbix 检查请求（安装不再强制，仅用于后续系统设置里测试连接）
 type CheckZabbixRequest struct {
-	ZabbixWeb   string `json:"zabbix_web" binding:"required"`
-	ZabbixUser  string `json:"zabbix_user"`
-	ZabbixPass  string `json:"zabbix_pass"`
-	ZabbixToken string `json:"zabbix_token"`
+	ZabbixWeb  string `json:"zabbix_web" binding:"required"`
+	ZabbixUser string `json:"zabbix_user"`
+	ZabbixPass string `json:"zabbix_pass"`
+	Token      string `json:"token"`
 }
 
 // CheckZabbixAPI 检查 Zabbix API 连接
@@ -344,7 +344,7 @@ func CheckZabbixAPI(c *gin.Context) {
 		return
 	}
 
-	version, err := checkZabbixAPISafe(req.ZabbixWeb, req.ZabbixUser, req.ZabbixPass, req.ZabbixToken)
+	version, err := checkZabbixAPISafe(req.ZabbixWeb, req.ZabbixUser, req.ZabbixPass, req.Token)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    500,

@@ -15,7 +15,7 @@ import (
 )
 
 // TestZabbixTenantConfig 测试 Zabbix 配置能否连通
-func TestZabbixTenantConfig(webURL, user, pass, zabbixToken string) (string, error) {
+func TestZabbixTenantConfig(webURL, user, pass, token string) (string, error) {
 	web := strings.TrimRight(strings.TrimSpace(webURL), "/")
 	if web == "" {
 		return "", errors.New("web_url is empty")
@@ -36,11 +36,11 @@ func TestZabbixTenantConfig(webURL, user, pass, zabbixToken string) (string, err
 	}
 
 	api := zabbix.NewAPI(apiURL)
-	if strings.TrimSpace(zabbixToken) != "" {
-		api.SetAuth(strings.TrimSpace(zabbixToken))
+	if strings.TrimSpace(token) != "" {
+		api.SetAuth(strings.TrimSpace(token))
 	} else {
 		if strings.TrimSpace(user) == "" || strings.TrimSpace(pass) == "" {
-			return "", errors.New("请输入 zabbix_token，或提供 user/pass")
+			return "", errors.New("请输入 token，或提供 user/pass")
 		}
 		if _, err := api.Login(strings.TrimSpace(user), strings.TrimSpace(pass)); err != nil {
 			return "", err
@@ -119,7 +119,7 @@ func UpdateZabbixTenant(id int64, patch *ZabbixTenant) (*ZabbixTenant, error) {
 	}
 	if strings.TrimSpace(patch.User) != strings.TrimSpace(tenant.User) ||
 		strings.TrimSpace(patch.Pass) != strings.TrimSpace(tenant.Pass) ||
-		strings.TrimSpace(patch.ZabbixToken) != strings.TrimSpace(tenant.ZabbixToken) {
+		strings.TrimSpace(patch.Token) != strings.TrimSpace(tenant.Token) {
 		changedConn = true
 	}
 
@@ -135,7 +135,7 @@ func UpdateZabbixTenant(id int64, patch *ZabbixTenant) (*ZabbixTenant, error) {
 	}
 	updates["user"] = patch.User
 	updates["pass"] = patch.Pass
-	updates["zabbix_token"] = patch.ZabbixToken
+	updates["token"] = patch.Token
 	updates["enabled"] = patch.Enabled
 	updates["notify_method"] = patch.NotifyMethod
 	updates["updated_at"] = time.Now()
@@ -197,7 +197,7 @@ func TestAndUpdateZabbixTenant(id int64) (*ZabbixTenant, string, error) {
 		return nil, "", err
 	}
 	now := time.Now()
-	ver, err := TestZabbixTenantConfig(tenant.WebURL, tenant.User, tenant.Pass, tenant.ZabbixToken)
+	ver, err := TestZabbixTenantConfig(tenant.WebURL, tenant.User, tenant.Pass, tenant.Token)
 	if err != nil {
 		_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(map[string]interface{}{
 			"last_test_ok":      false,
@@ -277,8 +277,8 @@ func ApplyActiveZabbixTenant(tenant *ZabbixTenant) error {
 	}
 	apiURL := web + "/api_jsonrpc.php"
 	api := zabbix.NewAPI(apiURL)
-	if strings.TrimSpace(tenant.ZabbixToken) != "" {
-		api.SetAuth(strings.TrimSpace(tenant.ZabbixToken))
+	if strings.TrimSpace(tenant.Token) != "" {
+		api.SetAuth(strings.TrimSpace(tenant.Token))
 	} else if strings.TrimSpace(tenant.User) != "" || strings.TrimSpace(tenant.Pass) != "" {
 		_, err := api.Login(strings.TrimSpace(tenant.User), strings.TrimSpace(tenant.Pass))
 		if err != nil {

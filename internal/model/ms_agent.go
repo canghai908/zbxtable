@@ -25,13 +25,9 @@ const (
 
 // MSAgentConfig MS-Agent 配置信息
 type MSAgentConfig struct {
-	ZbxTableURL  string `json:"zbxtable_url"`   // ZbxTable 服务地址
-	TenantID     string `json:"tenant_id"`      // 租户 ID
-	Token        string `json:"token"`          // 认证 Token
-	ZabbixWebURL string `json:"zabbix_web_url"` // Zabbix Web 地址
-	ZabbixUser   string `json:"zabbix_user"`    // Zabbix 用户名
-	ZabbixPass   string `json:"zabbix_pass"`    // Zabbix 密码
-	ZabbixToken  string `json:"zabbix_token"`   // Zabbix API Token
+	ZbxTableURL  string `json:"zbxtable_url"`  // ZbxTable 服务地址
+	TenantID     string `json:"tenant_id"`     // 租户 ID
+	WebhookToken string `json:"webhook_token"` // Webhook 认证 Token
 }
 
 // MSAgentInstallScript MS-Agent 安装脚本
@@ -134,14 +130,14 @@ zbxtable_url: %s
 tenant_id: %s
 
 # Authentication Token
-token: %s
+webhook_token: %s
 
 # Log Level (debug, info, warn, error)
 log_level: info
 
 # Log File Path
 log_path: /var/log/ms-agent/ms-agent.log
-`, config.ZbxTableURL, config.TenantID, config.Token)
+`, config.ZbxTableURL, config.TenantID, config.WebhookToken)
 
 	// 生成 curl 下载和安装命令
 	curlCommand := `curl -fsSL https://raw.githubusercontent.com/canghai908/ms-agent/main/install.sh | bash`
@@ -194,8 +190,8 @@ func InstallMSAgentToZabbix(tenantID string) error {
 
 	// 初始化 Zabbix API
 	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
-	if tenant.ZabbixToken != "" {
-		api.Auth = tenant.ZabbixToken
+	if tenant.Token != "" {
+		api.Auth = tenant.Token
 	} else {
 		_, err := api.Login(tenant.User, tenant.Pass)
 		if err != nil {
@@ -410,15 +406,15 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	logger.Log.Info("Action 创建成功")
 
 	// 生成新的 Token
-	token := strings.ReplaceAll(uuid.New().String(), "-", "")
-	logger.Log.Info("生成 MS-Agent Token:", token)
+	webhookToken := strings.ReplaceAll(uuid.New().String(), "-", "")
+	logger.Log.Info("生成 MS-Agent WebhookToken:", webhookToken)
 
 	// 更新租户信息
-	tenant.Token = token
+	tenant.WebhookToken = webhookToken
 	tenant.MSAgentInstalled = true
 
 	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
-		"token":              token,
+		"webhook_token":      webhookToken,
 		"ms_agent_installed": true,
 	}).Error
 	if err != nil {
