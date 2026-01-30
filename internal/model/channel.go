@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
 	"github.com/Knetic/govaluate"
@@ -75,7 +76,7 @@ func GenAlert(alarm *Alarm) bool {
 		ala := Alarm{ID: alarm.ID, NotifyStatus: strconv.Itoa(NotifyDefault)}
 		_, err := UpdateAlarmStatus(&ala)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return false
 		}
 		//select default rule
@@ -90,7 +91,7 @@ func GenAlert(alarm *Alarm) bool {
 			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 			Find(&rules).Error
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return false
 		}
 
@@ -104,14 +105,14 @@ func GenAlert(alarm *Alarm) bool {
 				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 				Find(&rules).Error
 			if err != nil {
-				utils.Log.Error(err)
+				logger.Log.Error(err)
 				return false
 			}
 		}
 
 		//default rule disable
 		if len(rules) == 0 {
-			utils.Log.Errorf("default rule is null for tenant: %s", alarm.TenantID)
+			logger.Log.Errorf("default rule is null for tenant: %s", alarm.TenantID)
 			return false
 		}
 		//event
@@ -208,14 +209,14 @@ func sendEvent(event *Event) {
 			alarm = Alarm{ID: event.ID, NotifyStatus: strconv.Itoa(NotifyMuted)}
 			_, err := UpdateAlarmStatus(&alarm)
 			if err != nil {
-				utils.Log.Error(err)
+				logger.Log.Error(err)
 			}
 			continue
 		}
 		//GetEventUser
 		toUsers, err := GetEventUser(event.GroupIds, event.UserIds)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return
 		}
 		if len(toUsers) == 0 {
@@ -226,7 +227,7 @@ func sendEvent(event *Event) {
 		p, _ := json.Marshal(event)
 		err = CacheLPush(v, p)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return
 		}
 		//update alarm status
@@ -239,7 +240,7 @@ func sendEvent(event *Event) {
 		alarm = Alarm{ID: event.ID, NotifyStatus: notifyStatus}
 		_, err = UpdateAlarmStatus(&alarm)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return
 		}
 	}
@@ -330,13 +331,13 @@ func MeetEventConditions(event *Event, rule *Rule) bool {
 		expression, err := govaluate.NewEvaluableExpression("'" + val + "'" + v.RFunc + "'" + v.Rvalue + "'")
 		if err != nil {
 			//return true and event not send！！
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		result, err := expression.Evaluate(nil)
 		if err != nil {
 			//return true and event not send！！
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		if result.(bool) {
@@ -398,13 +399,13 @@ func MeetConditions(alarm *Alarm, rule *Rule) bool {
 		expression, err := govaluate.NewEvaluableExpression("'" + val + "'" + v.RFunc + "'" + v.Rvalue + "'")
 		if err != nil {
 			//return true and event not send！！
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		result, err := expression.Evaluate(nil)
 		if err != nil {
 			//return true and event not send！！
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		if result.(bool) {

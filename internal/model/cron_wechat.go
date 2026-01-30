@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	template2 "zbxtable/pkg/utils"
-
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
 	"github.com/xen0n/go-workwx"
@@ -41,7 +40,7 @@ func SendWechat(event *Event) {
 		Select("id", "username", "email", "wechat", "phone", "ding_talk").
 		Find(&plist).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
 	var tplname string
 	if event.Status == "0" {
@@ -49,17 +48,17 @@ func SendWechat(event *Event) {
 	} else {
 		tplname = "./template/wechat_problem.tpl"
 	}
-	event.Level = template2.AlertSeverityTo(event.Level)
-	event.Status = template2.AlertType(event.Status)
+	event.Level = utils.AlertSeverityTo(event.Level)
+	event.Status = utils.AlertType(event.Status)
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, event)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	for _, v := range plist {
@@ -90,7 +89,7 @@ func SendWechatAlert(user Manager, event *Event, content string) error {
 	//add event log
 	_, err = AddEventLog(&elog)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
 	//update alalrm status
 	return nil
@@ -110,7 +109,7 @@ func PopAllWechat() []*Event {
 		var mail Event
 		err = json.Unmarshal([]byte(reply), &mail)
 		if err != nil {
-			utils.Log.Error(err, reply)
+			logger.Log.Error(err, reply)
 			continue
 		}
 		ret = append(ret, &mail)

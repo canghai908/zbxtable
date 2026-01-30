@@ -1,10 +1,10 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
 	"sort"
 	"strconv"
 	"time"
+	"zbxtable/pkg/logger"
 )
 
 // GetHistoryByItemID
@@ -72,14 +72,14 @@ func GetHistoryByItemIDNew(item Item, time_from, time_till int64) ([]History, er
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []History{}, err
 	}
 
 	var hb []History
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []History{}, err
 	}
 	return hb, err
@@ -97,13 +97,13 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []History{}, err
 	}
 	var hb []History
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []History{}, err
 	}
 	return hb, err
@@ -153,13 +153,13 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return TrafficData{}, err
 	}
 	var hb []History
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return TrafficData{}, err
 	}
 	var date []string

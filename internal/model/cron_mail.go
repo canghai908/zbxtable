@@ -9,8 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	template2 "zbxtable/pkg/utils"
-
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
 	"github.com/jordan-wright/email"
@@ -44,10 +43,10 @@ func SendMail(mail *Event) {
 		Select("id", "username", "email", "wechat", "phone", "ding_talk").
 		Find(&plist).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
-	mail.Level = template2.AlertSeverityTo(mail.Level)
-	mail.Status = template2.AlertType(mail.Status)
+	mail.Level = utils.AlertSeverityTo(mail.Level)
+	mail.Status = utils.AlertType(mail.Status)
 	for _, v := range plist {
 		SendEmailAlert(mail, v)
 	}
@@ -58,7 +57,7 @@ func PopAllMail() []*Event {
 	for {
 		reply, err := CacheRPop("mail")
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			break
 		}
 		if reply == "" || reply == "nil" {
@@ -68,7 +67,7 @@ func PopAllMail() []*Event {
 		var mail Event
 		err = json.Unmarshal([]byte(reply), &mail)
 		if err != nil {
-			utils.Log.Error(err, reply)
+			logger.Log.Error(err, reply)
 			continue
 		}
 		ret = append(ret, &mail)
@@ -87,13 +86,13 @@ func SendEmailAlert(event *Event, user Manager) error {
 	}
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, event) //将str的值合成到tmpl模版的{{.}}中，并将合成得到的文本输入到os.Stdout,返回hello, world
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
@@ -142,7 +141,7 @@ func SendEmailAlert(event *Event, user Manager) error {
 	//add event log
 	_, err = AddEventLog(&elog)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
 	return nil
 }

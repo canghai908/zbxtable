@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"zbxtable/internal/model"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,7 +45,7 @@ func GetImage(c *gin.Context) {
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -59,7 +59,7 @@ func GetImage(c *gin.Context) {
 	urlPath := URL.String()
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -70,7 +70,7 @@ func GetImage(c *gin.Context) {
 	reqest1.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response1, err := client1.Do(reqest1)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -85,7 +85,7 @@ func GetImage(c *gin.Context) {
 		}
 		data, err := io.ReadAll(reader)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

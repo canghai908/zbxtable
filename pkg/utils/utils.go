@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"crypto/md5"
 	"fmt"
-	"github.com/astaxie/beego/logs"
-	"github.com/shopspring/decimal"
-	"golang.org/x/crypto/bcrypt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
+
+	"github.com/shopspring/decimal"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TimeFormat a
@@ -261,7 +262,7 @@ func FormatSpeed(traf string) (size string) {
 func InterfaceTrafficeStrTofloat64(val string) (value float64) {
 	t, err := strconv.ParseFloat(val, 64)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return 0
 	}
 	return t
@@ -270,7 +271,7 @@ func InterfaceTrafficeStrTofloat64(val string) (value float64) {
 func InterfaceStrToInt64(val string) (value int64) {
 	t, err := strconv.ParseInt(val, 10, 64)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return 0
 	}
 	return t

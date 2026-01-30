@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 // item link to inventory
@@ -163,7 +163,7 @@ func HostTypeSet(s *System, groupId []string) error {
 		"inventory_mode": 1,
 		"inventory":      InventoryPara})
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	//其他指标绑定
@@ -184,7 +184,7 @@ func HostTypeSet(s *System, groupId []string) error {
 			continue
 		}
 		if err := ItemToInventory(item.ID, item.Link); err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 	}

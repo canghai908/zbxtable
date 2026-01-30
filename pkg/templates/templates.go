@@ -4,7 +4,7 @@ import (
 	"embed"
 	"os"
 	"path/filepath"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 //go:embed all:files
@@ -21,7 +21,7 @@ func RestoreTemplates() error {
 		if err := os.MkdirAll(targetDir, 0755); err != nil {
 			return err
 		}
-		utils.Log.Info("Created template directory:", targetDir)
+		logger.Log.Info("Created template directory:", targetDir)
 	}
 
 	// 读取嵌入的文件列表
@@ -43,27 +43,27 @@ func RestoreTemplates() error {
 		// 检查文件是否已存在
 		if _, err := os.Stat(targetPath); err == nil {
 			// 文件已存在，跳过
-			utils.Log.Infof("Template file already exists, skipping: %s", targetPath)
+			logger.Log.Infof("Template file already exists, skipping: %s", targetPath)
 			continue
 		}
 
 		// 读取嵌入的文件内容
 		content, err := templatesFS.ReadFile(sourcePath)
 		if err != nil {
-			utils.Log.Errorf("Failed to read embedded template %s: %v", fileName, err)
+			logger.Log.Errorf("Failed to read embedded template %s: %v", fileName, err)
 			continue
 		}
 
 		// 写入到目标文件
 		if err := os.WriteFile(targetPath, content, 0644); err != nil {
-			utils.Log.Errorf("Failed to write template file %s: %v", targetPath, err)
+			logger.Log.Errorf("Failed to write template file %s: %v", targetPath, err)
 			continue
 		}
 
-		utils.Log.Infof("Restored template file: %s", targetPath)
+		logger.Log.Infof("Restored template file: %s", targetPath)
 	}
 
-	utils.Log.Info("Template files restored successfully")
+	logger.Log.Info("Template files restored successfully")
 	return nil
 }
 

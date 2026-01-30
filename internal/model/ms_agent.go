@@ -8,10 +8,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/google/uuid"
+)
+
+// 常量定义
+const (
+	MSName   = "ms-agent"
+	MSUser   = "ms-agent"
+	MSGroup  = "MS-Agent"
+	MSMedia  = "MS-Agent"
+	MSAction = "MS-Agent"
 )
 
 // MSAgentConfig MS-Agent 配置信息
@@ -205,15 +214,6 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	zbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
 	isNewVersion := zbxMasterVer >= 7 || (zbxMasterVer == 6 && zbxMiddleVer >= 4) || (zbxMasterVer == 5 && zbxMiddleVer >= 4)
 
-	// 常量定义
-	const (
-		MSName   = "ms-agent"
-		MSUser   = "ms-agent"
-		MSGroup  = "MS-Agent Group"
-		MSMedia  = "MS-Agent Media"
-		MSAction = "MS-Agent Action"
-	)
-
 	// 准备 Media Type 参数
 	mediaParams := make(map[string]interface{})
 	mediaParams["description"] = MSMedia
@@ -235,7 +235,7 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	mediaParams["exec_path"] = MSName
 
 	// 1. 创建或更新 Media Type
-	utils.Log.Info("检查 Media Type...")
+	logger.Log.Info("检查 Media Type...")
 
 	// 先查询是否已存在
 	getMediaParams := map[string]interface{}{
@@ -254,17 +254,17 @@ func InstallMSAgentToZabbix(tenantID string) error {
 			// Media Type 已存在，更新它
 			existingMediaMap := resultArray[0].(map[string]interface{})
 			mediaid = existingMediaMap["mediatypeid"].(string)
-			utils.Log.Info("Media Type 已存在, ID:", mediaid, "，正在更新...")
+			logger.Log.Info("Media Type 已存在, ID:", mediaid, "，正在更新...")
 
 			mediaParams["mediatypeid"] = mediaid
 			_, err = api.CallWithError("mediatype.update", mediaParams)
 			if err != nil {
 				return fmt.Errorf("更新 Media Type 失败: %w", err)
 			}
-			utils.Log.Info("Media Type 更新成功")
+			logger.Log.Info("Media Type 更新成功")
 		} else {
 			// 不存在，创建新的
-			utils.Log.Info("创建 Media Type...")
+			logger.Log.Info("创建 Media Type...")
 			ma, err := api.CallWithError("mediatype.create", mediaParams)
 			if err != nil {
 				return fmt.Errorf("创建 Media Type 失败: %w", err)
@@ -272,11 +272,11 @@ func InstallMSAgentToZabbix(tenantID string) error {
 			result := ma.Result.(map[string]interface{})
 			mediatypeids := result["mediatypeids"].([]interface{})
 			mediaid = mediatypeids[0].(string)
-			utils.Log.Info("Media Type 创建成功, ID:", mediaid)
+			logger.Log.Info("Media Type 创建成功, ID:", mediaid)
 		}
 	} else {
 		// 查询失败，尝试创建
-		utils.Log.Info("创建 Media Type...")
+		logger.Log.Info("创建 Media Type...")
 		ma, err := api.CallWithError("mediatype.create", mediaParams)
 		if err != nil {
 			return fmt.Errorf("创建 Media Type 失败: %w", err)
@@ -284,11 +284,11 @@ func InstallMSAgentToZabbix(tenantID string) error {
 		result := ma.Result.(map[string]interface{})
 		mediatypeids := result["mediatypeids"].([]interface{})
 		mediaid = mediatypeids[0].(string)
-		utils.Log.Info("Media Type 创建成功, ID:", mediaid)
+		logger.Log.Info("Media Type 创建成功, ID:", mediaid)
 	}
 
 	// 2. 创建用户组
-	utils.Log.Info("创建用户组...")
+	logger.Log.Info("创建用户组...")
 	groupParams := make(map[string]interface{})
 	groupParams["name"] = MSGroup
 	group, err := api.CallWithError("usergroup.create", groupParams)
@@ -299,10 +299,10 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	resgroup := group.Result.(map[string]interface{})
 	usrgrpids := resgroup["usrgrpids"].([]interface{})
 	groupid := usrgrpids[0].(string)
-	utils.Log.Info("用户组创建成功, ID:", groupid)
+	logger.Log.Info("用户组创建成功, ID:", groupid)
 
 	// 3. 创建用户
-	utils.Log.Info("创建用户...")
+	logger.Log.Info("创建用户...")
 	userpara := make(map[string]interface{})
 	usrgrps := make(map[string]string)
 	usermepara := make(map[string]string)
@@ -348,10 +348,10 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	resuser := user.Result.(map[string]interface{})
 	userids := resuser["userids"].([]interface{})
 	userid := userids[0].(string)
-	utils.Log.Infof("用户创建成功, 用户名: %s, 密码: %s, ID: %s", MSUser, tPassword, userid)
+	logger.Log.Infof("用户创建成功, 用户名: %s, 密码: %s, ID: %s", MSUser, tPassword, userid)
 
 	// 4. 创建 Action
-	utils.Log.Info("创建 Action...")
+	logger.Log.Info("创建 Action...")
 	actpara := make(map[string]interface{})
 	actpara["name"] = MSAction
 	actpara["eventsource"] = "0"
@@ -407,16 +407,16 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	if err != nil {
 		return fmt.Errorf("创建 Action 失败: %w", err)
 	}
-	utils.Log.Info("Action 创建成功")
+	logger.Log.Info("Action 创建成功")
 
 	// 生成新的 Token
 	token := strings.ReplaceAll(uuid.New().String(), "-", "")
-	utils.Log.Info("生成 MS-Agent Token:", token)
+	logger.Log.Info("生成 MS-Agent Token:", token)
 
 	// 更新租户信息
 	tenant.Token = token
 	tenant.MSAgentInstalled = true
-	
+
 	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
 		"token":              token,
 		"ms_agent_installed": true,
@@ -425,6 +425,6 @@ func InstallMSAgentToZabbix(tenantID string) error {
 		return fmt.Errorf("更新租户信息失败: %w", err)
 	}
 
-	utils.Log.Info("MS-Agent 配置安装完成！")
+	logger.Log.Info("MS-Agent 配置安装完成！")
 	return nil
 }

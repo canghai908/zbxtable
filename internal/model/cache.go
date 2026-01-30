@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 var (
@@ -35,7 +35,7 @@ type SortedSet struct {
 func InitCache() {
 	// 默认过期时间5分钟，清理间隔10分钟
 	Cache = cache.New(5*time.Minute, 10*time.Minute)
-	utils.Log.Info("Cache initialized (using go-cache)")
+	logger.Log.Info("Cache initialized (using go-cache)")
 }
 
 // ========== 键值存储操作（兼容Redis接口）==========
@@ -92,7 +92,7 @@ func CacheLPush(key string, value []byte) error {
 		case queue.items <- value:
 			return nil
 		default:
-			utils.Log.Warningf("Queue %s is full, dropping message", key)
+			logger.Log.Warningf("Queue %s is full, dropping message", key)
 			return nil // 不返回错误，只是丢弃消息
 		}
 	}

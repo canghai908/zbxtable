@@ -1,16 +1,17 @@
 ﻿package models
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/go-echarts/go-echarts/v2/charts"
-	"github.com/go-echarts/go-echarts/v2/components"
-	"github.com/go-echarts/go-echarts/v2/opts"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
+
+	"github.com/go-echarts/go-echarts/v2/charts"
+	"github.com/go-echarts/go-echarts/v2/components"
+	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
 //
@@ -35,10 +36,10 @@ func TaskWeekReport(m Report) error {
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	itemsList := strings.Split(m.Items, ",")
@@ -50,10 +51,10 @@ func TaskWeekReport(m Report) error {
 		task.Result = "监控项为空"
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	//获取bandwith 列表
@@ -90,7 +91,7 @@ func TaskWeekReport(m Report) error {
 		//	fmt.Println(ItemInfo[0])
 		//判断是否为空
 		if len(ItemInfo) == 0 {
-			logs.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		hostinfo, err := GetHost(ItemInfo[0].Hostid)
@@ -171,10 +172,10 @@ func TaskWeekReport(m Report) error {
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	filelist = append(filelist, htmlname)
@@ -193,10 +194,10 @@ func TaskWeekReport(m Report) error {
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	//remote file
@@ -211,7 +212,7 @@ func TaskWeekReport(m Report) error {
 			task.Result = err.Error()
 			_, err = task.Create()
 			if err != nil {
-				logs.Error(err)
+				logger.Log.Error(err)
 				return err
 			}
 		}
@@ -258,7 +259,7 @@ func TaskWeekReport(m Report) error {
 		task.Files = zipfilename
 		task.Result = err.Error()
 		_, err = task.Create()
-		logs.Error(err)
+		logger.Log.Error(err)
 		if err != nil {
 			return err
 		}

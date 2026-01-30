@@ -14,7 +14,7 @@ import (
 	"time"
 	v1 "zbxtable/api/v1"
 	"zbxtable/pkg/templates"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	model "zbxtable/internal/model"
 
@@ -87,11 +87,11 @@ func runWeb(*cli.Context) error {
 		fmt.Println("Warning: Logger initialization failed:", logErr)
 		fmt.Println("Using stdout for logging")
 		// 确保 Log 不为 nil
-		if utils.Log == nil {
-			utils.Log = logrus.New()
-			utils.Log.SetOutput(os.Stdout)
-			utils.Log.SetLevel(logrus.InfoLevel)
-			utils.Log.SetFormatter(&logrus.TextFormatter{
+		if logger.Log == nil {
+			logger.Log = logrus.New()
+			logger.Log.SetOutput(os.Stdout)
+			logger.Log.SetLevel(logrus.InfoLevel)
+			logger.Log.SetFormatter(&logrus.TextFormatter{
 				FullTimestamp:   true,
 				TimestampFormat: "2006-01-02 15:04:05",
 			})
@@ -100,32 +100,32 @@ func runWeb(*cli.Context) error {
 
 	// 释放模板文件到 ./template 目录
 	if err := templates.RestoreTemplates(); err != nil {
-		utils.Log.Error("Failed to restore template files:", err)
+		logger.Log.Error("Failed to restore template files:", err)
 		// 不退出程序，继续运行
 	}
 
 	// 检查安装状态
 	installed := checkInstallStatus()
 	if !installed {
-		utils.Log.Info("系统未安装，启动安装引导模式")
+		logger.Log.Info("系统未安装，启动安装引导模式")
 		// 未安装时，只启动 Web 服务器，不连接数据库
 		r := v1.InitRouter()
 		httpport := "8085"
-		utils.Log.Info("Starting Gin server in installation mode on port:", httpport)
-		utils.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
+		logger.Log.Info("Starting Gin server in installation mode on port:", httpport)
+		logger.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
 		r.Run(":" + httpport)
 		return nil
 	}
 
 	// 已安装，加载配置文件并连接数据库
-	utils.Log.Info("系统已安装，加载配置并连接数据库")
+	logger.Log.Info("系统已安装，加载配置并连接数据库")
 	var err error
 	webCfg, err = ini.Load("./config/app.conf")
 	if err != nil {
-		utils.Log.Error("Failed to load config file:", err)
+		logger.Log.Error("Failed to load config file:", err)
 		os.Exit(1)
 	}
-	utils.Log.Info(motd)
+	logger.Log.Info(motd)
 	model.ModelsInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
 		InitConfig("zabbix_token"),
 		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
@@ -145,7 +145,7 @@ func runWeb(*cli.Context) error {
 	if httpport == "" {
 		httpport = "8085"
 	}
-	utils.Log.Info("Starting Gin server on port:", httpport)
+	logger.Log.Info("Starting Gin server on port:", httpport)
 	r.Run(":" + httpport)
 	return nil
 }
@@ -156,13 +156,13 @@ func initLoggerSafe() error {
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
 		// 配置文件不存在，使用默认日志配置：./log/yyyy-MM-dd.log
-		err = utils.InitLogger("", 1, 7, 10000, 100, true)
+		err = logger.InitLogger("", 1, 7, 10000, 100, true)
 		if err != nil {
 			// 如果日志初始化失败，使用标准输出
-			utils.Log = logrus.New()
-			utils.Log.SetOutput(os.Stdout)
-			utils.Log.SetLevel(logrus.InfoLevel)
-			utils.Log.SetFormatter(&logrus.TextFormatter{
+			logger.Log = logrus.New()
+			logger.Log.SetOutput(os.Stdout)
+			logger.Log.SetLevel(logrus.InfoLevel)
+			logger.Log.SetFormatter(&logrus.TextFormatter{
 				FullTimestamp:   true,
 				TimestampFormat: "2006-01-02 15:04:05",
 			})
@@ -197,13 +197,13 @@ func initLoggerSafe() error {
 		daily = true // 默认启用按天分割
 	}
 
-	err = utils.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
+	err = logger.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
 	if err != nil {
 		// 如果日志初始化失败，使用标准输出
-		utils.Log = logrus.New()
-		utils.Log.SetOutput(os.Stdout)
-		utils.Log.SetLevel(logrus.InfoLevel)
-		utils.Log.SetFormatter(&logrus.TextFormatter{
+		logger.Log = logrus.New()
+		logger.Log.SetOutput(os.Stdout)
+		logger.Log.SetLevel(logrus.InfoLevel)
+		logger.Log.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp:   true,
 			TimestampFormat: "2006-01-02 15:04:05",
 		})
@@ -264,12 +264,12 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	}
 	resp, err := dClient.Get(addURL)
 	if err != nil {
-		utils.Log.Error("Zabbix Web get request failed:", err)
+		logger.Log.Error("Zabbix Web get request failed:", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusPreconditionFailed {
-		utils.Log.Error("Zabbix Web is incorrectly!")
+		logger.Log.Error("Zabbix Web is incorrectly!")
 		return "", errors.New("Zabbix Web is incorrectly")
 	}
 	// api定义
@@ -279,7 +279,7 @@ func CheckZabbixAPI(args ...string) (string, error) {
 	} else {
 		_, err := webAPI.Login(user, pass)
 		if err != nil {
-			utils.Log.Error("connect Zabbix API failed", err)
+			logger.Log.Error("connect Zabbix API failed", err)
 			return "", err
 		}
 	}
@@ -291,13 +291,13 @@ func CheckZabbixAPI(args ...string) (string, error) {
 		"hostids": "10084",
 	})
 	if err != nil {
-		utils.Log.Error("connect Zabbix API failed", err)
+		logger.Log.Error("connect Zabbix API failed", err)
 		return "", err
 	}
 	//version get
 	version, err := webAPI.Version()
 	if err != nil {
-		utils.Log.Error("connect Zabbix API failed", err)
+		logger.Log.Error("connect Zabbix API failed", err)
 		return "", err
 	}
 	return version, nil
@@ -357,7 +357,7 @@ func InitConfig(v string) string {
 	}
 	p, err := webCfg.Section("").GetKey(v)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return ""
 	}
 	return p.String()

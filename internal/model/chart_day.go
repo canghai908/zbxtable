@@ -1,16 +1,17 @@
 ﻿package models
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/go-echarts/go-echarts/v2/charts"
-	"github.com/go-echarts/go-echarts/v2/components"
-	"github.com/go-echarts/go-echarts/v2/opts"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
+
+	"github.com/go-echarts/go-echarts/v2/charts"
+	"github.com/go-echarts/go-echarts/v2/components"
+	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
 const DowloadPath = "./download/"
@@ -50,10 +51,10 @@ func TaskDayReport(m Report) error {
 		task.Result = err.Error()
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	itemsList := strings.Split(m.Items, ",")
@@ -65,10 +66,10 @@ func TaskDayReport(m Report) error {
 		task.Result = "监控项为空"
 		_, err = task.Create()
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
-		logs.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	//获取bandwith 列表
@@ -104,12 +105,12 @@ func TaskDayReport(m Report) error {
 		//获取item信息
 		ItemInfo, err := GetItemByID(v)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		//判断是否为空
 		if len(ItemInfo) == 0 {
-			logs.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		//	fmt.Println(ItemInfo[0])
@@ -264,7 +265,7 @@ func TaskDayReport(m Report) error {
 	tolist := strings.Split(m.Emails, ",")
 	err = Sendmail(tolist, Subject, zipfilename, byhtml)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		//写入日志
 		taskend := time.Now()
 		task.EndTime = taskend

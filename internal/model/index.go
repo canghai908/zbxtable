@@ -3,8 +3,7 @@ package models
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/logger"
 )
 
 func getCountByType(hostType string) (int64, error) {
@@ -69,7 +68,7 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 	var top_n int64
 	p, err := strconv.ParseInt(top_num, 10, 64)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		top_n = 5
 	} else {
 		top_n = p
@@ -138,12 +137,12 @@ func GetOverviewData() (OverviewList, error) {
 		var ArrayOne []Hosts
 		p, err := CacheGet(v + "_OVERVIEW")
 		if err != nil || p == "" {
-			logs.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		err = json.Unmarshal([]byte(p), &ArrayOne)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		listmap[v] = ArrayOne
@@ -158,13 +157,13 @@ func GetOverviewData() (OverviewList, error) {
 func GetEgressData() (EgressList, error) {
 	p, err := CacheGet("Egress")
 	if err != nil || p == "" {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return EgressList{}, err
 	}
 	var data EgressList
 	err = json.Unmarshal([]byte(p), &data)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return EgressList{}, err
 	}
 	return data, nil
@@ -173,7 +172,7 @@ func GetEgressData() (EgressList, error) {
 func GetZbxSession() (string, error) {
 	p, err := CacheGet("zbx_session")
 	if err != nil || p == "" {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return "", err
 	}
 	return p, nil

@@ -3,7 +3,7 @@
 import (
 	"strconv"
 	"time"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 type TaskLog struct {
@@ -57,7 +57,7 @@ func CreateTaskLog(taskModel Report, status int) (int64, error) {
 func (m *TaskLog) Create() (id int64, err error) {
 	err = DB.Create(m).Error
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return 0, err
 	}
 	return int64(m.Id), err
@@ -70,7 +70,7 @@ func (taskLog *TaskLog) Update(m *Report) (int64, error) {
 	if err == nil {
 		result := DB.Model(&Report{}).Where("id = ?", m.ID).Updates(m)
 		if result.Error == nil {
-			utils.Log.Debug("Number of records updated in database:", result.RowsAffected)
+			logger.Log.Debug("Number of records updated in database:", result.RowsAffected)
 		}
 		return int64(m.ID), nil
 	}
@@ -93,7 +93,7 @@ func GetTaskLogList(page, limit, report_id string) (cnt int64, topo []TaskLog, e
 	// 获取总数
 	err = query.Count(&cnt).Error
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return 0, []TaskLog{}, err
 	}
 
@@ -101,7 +101,7 @@ func GetTaskLogList(page, limit, report_id string) (cnt int64, topo []TaskLog, e
 	offset := (pages - 1) * limits
 	err = query.Order("start_time DESC").Limit(limits).Offset(offset).Find(&tasklog).Error
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return 0, []TaskLog{}, err
 	}
 	return cnt, tasklog, nil
@@ -110,7 +110,7 @@ func GetTaskLogList(page, limit, report_id string) (cnt int64, topo []TaskLog, e
 func (taskLog *TaskLog) Clear() (int64, error) {
 	result := DB.Delete(&TaskLog{})
 	if result.Error != nil {
-		utils.Log.Debug(result.Error)
+		logger.Log.Debug(result.Error)
 		return 0, result.Error
 	}
 	return result.RowsAffected, nil

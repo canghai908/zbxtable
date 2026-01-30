@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 	"zbxtable/internal/model"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -140,7 +140,7 @@ func ExportInspect(c *gin.Context) {
 	for kk, v := range hostdata {
 		b, err := models.GetItemByKey(v.HostID, "system.cpu.util[,idle]")
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.JSON(http.StatusOK, ExpRes)
@@ -148,7 +148,7 @@ func ExportInspect(c *gin.Context) {
 		}
 		mem1, err := models.GetItemByKey(v.HostID, "vm.memory.size[total]")
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.JSON(http.StatusOK, ExpRes)
@@ -156,7 +156,7 @@ func ExportInspect(c *gin.Context) {
 		}
 		mem2, err := models.GetItemByKey(v.HostID, "vm.memory.size[available]")
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			ExpRes.Code = 200
 			ExpRes.Message = err.Error()
 			c.JSON(http.StatusOK, ExpRes)

@@ -1,10 +1,10 @@
 package models
 
 import (
-	"github.com/astaxie/beego/logs"
 	"math"
 	"strconv"
 	"strings"
+	"zbxtable/pkg/logger"
 )
 
 // TemplateGet func
@@ -17,19 +17,19 @@ func TemplateGet(page, limit, templates string) ([]Template, int64, error) {
 		"selectDiscoveries": "count", "selectScreens": "count",
 		"selectHosts": hostspar})
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []Template{}, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []Template{}, 0, err
 	}
 
 	var hb []Template
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []Template{}, 0, err
 	}
 	var dt []Template

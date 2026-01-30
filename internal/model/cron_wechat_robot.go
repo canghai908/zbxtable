@@ -8,8 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	template2 "zbxtable/pkg/utils"
-
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
 
@@ -44,7 +43,7 @@ func SendWechatRobot(event *Event) {
 		Select("id", "username", "email", "wechat", "wechat_robot_key", "phone", "ding_talk").
 		Find(&plist).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	var tplname string
@@ -53,24 +52,24 @@ func SendWechatRobot(event *Event) {
 	} else {
 		tplname = "./template/wechat_problem.tpl"
 	}
-	event.Level = template2.AlertSeverityTo(event.Level)
-	event.Status = template2.AlertType(event.Status)
+	event.Level = utils.AlertSeverityTo(event.Level)
+	event.Status = utils.AlertType(event.Status)
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, event)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	for _, v := range plist {
 		if v.WechatRobotKey != "" {
 			SendWechatRobotAlert(v, event, body.String())
 		} else {
-			utils.Log.Warningf("User %s does not have wechat_robot_key configured", v.Username)
+			logger.Log.Warningf("User %s does not have wechat_robot_key configured", v.Username)
 		}
 	}
 }
@@ -108,14 +107,14 @@ func SendWechatRobotAlert(user Manager, event *Event, content string) error {
 	// 序列化消息
 	messageBytes, err := json.Marshal(message)
 	if err != nil {
-		utils.Log.Error("Failed to marshal wechat robot message:", err)
+		logger.Log.Error("Failed to marshal wechat robot message:", err)
 		return err
 	}
 
 	// 发送HTTP POST请求
 	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(messageBytes))
 	if err != nil {
-		utils.Log.Error("Failed to send wechat robot message:", err)
+		logger.Log.Error("Failed to send wechat robot message:", err)
 		var elog EventLog
 		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
 			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
@@ -124,7 +123,7 @@ func SendWechatRobotAlert(user Manager, event *Event, content string) error {
 		}
 		_, err = AddEventLog(&elog)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 		}
 		return err
 	}
@@ -134,7 +133,7 @@ func SendWechatRobotAlert(user Manager, event *Event, content string) error {
 	var elog EventLog
 	if resp.StatusCode != http.StatusOK {
 		errorMsg := fmt.Sprintf("HTTP status code: %d", resp.StatusCode)
-		utils.Log.Error("Wechat robot API returned error:", errorMsg)
+		logger.Log.Error("Wechat robot API returned error:", errorMsg)
 		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
 			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
 			NotifyTime: time.Now(), NotifyContent: content,
@@ -151,7 +150,7 @@ func SendWechatRobotAlert(user Manager, event *Event, content string) error {
 	// 添加事件日志
 	_, err = AddEventLog(&elog)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
 
 	return nil
@@ -172,7 +171,7 @@ func PopAllWechatRobot() []*Event {
 		var event Event
 		err = json.Unmarshal([]byte(reply), &event)
 		if err != nil {
-			utils.Log.Error(err, reply)
+			logger.Log.Error(err, reply)
 			continue
 		}
 		ret = append(ret, &event)

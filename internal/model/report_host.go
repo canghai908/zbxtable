@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
-	"github.com/astaxie/beego/logs"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -130,7 +130,7 @@ func TaskHostReport(m Report) error {
 		// 获取主机信息
 		hostInfo, err := GetHost(hostConfig.HostID)
 		if err != nil {
-			logs.Error("获取主机信息失败:", err)
+			logger.Log.Error("获取主机信息失败:", err)
 			continue
 		}
 
@@ -139,14 +139,14 @@ func TaskHostReport(m Report) error {
 			// 获取指标信息
 			itemInfo, err := GetItemByID(itemID)
 			if err != nil || len(itemInfo) == 0 {
-				logs.Error("获取指标信息失败:", err)
+				logger.Log.Error("获取指标信息失败:", err)
 				continue
 			}
 
 			// 获取历史数据
 			historyData, err := GetHistoryByItemIDTTTT(itemInfo[0].Itemid, itemInfo[0].ValueType, start, end)
 			if err != nil {
-				logs.Error("获取历史数据失败:", err)
+				logger.Log.Error("获取历史数据失败:", err)
 				continue
 			}
 
@@ -187,7 +187,7 @@ func TaskHostReport(m Report) error {
 	if len(allItemsData) > 0 {
 		xlsfilename, err := CreateMultiSheetHostReportXlsx(allItemsData, m.Name, m.Cycle, StrStart, StrEnd)
 		if err != nil {
-			logs.Error("生成多sheet Excel报表失败:", err)
+			logger.Log.Error("生成多sheet Excel报表失败:", err)
 		} else {
 			filelist = append(filelist, xlsfilename)
 		}
@@ -217,7 +217,7 @@ func TaskHostReport(m Report) error {
 	// 生成PDF报表
 	pdfname, err := CreateHostReportPDF(m, ChartList, StrStart, StrEnd)
 	if err != nil {
-		logs.Error("生成PDF报表失败:", err)
+		logger.Log.Error("生成PDF报表失败:", err)
 	} else {
 		filelist = append(filelist, pdfname)
 	}
@@ -256,12 +256,12 @@ func TaskHostReport(m Report) error {
 	if m.Emails != "" {
 		byhtml, err := CreateHostMailTable(m, ChartList, StrStart, StrEnd)
 		if err != nil {
-			logs.Error("生成邮件内容失败:", err)
+			logger.Log.Error("生成邮件内容失败:", err)
 		} else {
 			tolist := strings.Split(m.Emails, ",")
 			err = Sendmail(tolist, Subject, zipfilename, byhtml)
 			if err != nil {
-				logs.Error("发送邮件失败:", err)
+				logger.Log.Error("发送邮件失败:", err)
 				task.EndTime = time.Now()
 				task.Status = Failed
 				task.TotalTime = time.Now().Unix() - Tend.Unix()
@@ -281,7 +281,7 @@ func TaskHostReport(m Report) error {
 	task.Files = zipfilename
 	_, err = task.Create()
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 
 	return nil
@@ -454,14 +454,14 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 	}
 
 	if !fontAdded {
-		logs.Error("无法添加字体文件，尝试的路径:", fontPaths, "最后错误:", fontErr)
+		logger.Log.Error("无法添加字体文件，尝试的路径:", fontPaths, "最后错误:", fontErr)
 		return "", fmt.Errorf("无法添加字体文件: %v", fontErr)
 	}
 
 	// 设置字体
 	err := pdf.SetFont("msty", "", 12)
 	if err != nil {
-		logs.Error("设置字体失败:", err)
+		logger.Log.Error("设置字体失败:", err)
 		return "", fmt.Errorf("设置字体失败: %v", err)
 	}
 
@@ -521,7 +521,7 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 				yPos = imageY + estimatedImageHeight + 20
 			} else {
 				// 如果获取图表失败，在 PDF 中输出提示信息
-				logs.Warning(fmt.Sprintf("获取图表图片失败 (ItemID: %s): %v", chartData.ItemID, imgErr))
+				logger.Log.Warn(fmt.Sprintf("获取图表图片失败 (ItemID: %s): %v", chartData.ItemID, imgErr))
 				pdf.SetX(10)
 				pdf.SetY(yPos + 20)
 				if !passwordConfigured {
@@ -683,7 +683,7 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		// 数据样式设置
 		stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 		if err != nil {
-			logs.Error("创建样式失败:", err)
+			logger.Log.Error("创建样式失败:", err)
 		}
 
 		lea := len(itemData.HistoryData)

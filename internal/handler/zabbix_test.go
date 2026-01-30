@@ -2,11 +2,10 @@ package handler
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"zbxtable/internal/model"
+	models "zbxtable/internal/model"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +71,7 @@ func TestListZabbixInstancesGin(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, float64(200), response["code"])
-	
+
 	data := response["data"].([]interface{})
 	assert.Len(t, data, 2)
 }
@@ -162,7 +161,7 @@ func TestGetZabbixInstanceGin(t *testing.T) {
 	var response map[string]interface{}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	
+
 	if response["code"] == float64(200) {
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, "Test Instance", data["name"])
@@ -233,7 +232,7 @@ func TestDeleteZabbixInstanceGin(t *testing.T) {
 	var response map[string]interface{}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	
+
 	if response["code"] == float64(200) {
 		// 验证已删除
 		_, err = models.GetZabbixInstanceByID(inst.ID)
@@ -315,22 +314,21 @@ func TestToSafeResponse(t *testing.T) {
 	assert.Equal(t, inst.Name, safeResp.Name)
 	assert.Equal(t, inst.WebURL, safeResp.WebURL)
 	assert.Equal(t, inst.Enabled, safeResp.Enabled)
-	
+
 	// 注意：ZabbixInstanceSafeResponse 不包含 User, Pass, Token 字段
 	// 这里无法直接验证，但可以通过 JSON 序列化验证
 	jsonData, err := json.Marshal(safeResp)
 	assert.NoError(t, err)
-	
+
 	var jsonMap map[string]interface{}
 	err = json.Unmarshal(jsonData, &jsonMap)
 	assert.NoError(t, err)
-	
+
 	_, hasUser := jsonMap["user"]
 	_, hasPass := jsonMap["pass"]
 	_, hasToken := jsonMap["token"]
-	
+
 	assert.False(t, hasUser, "Safe response should not contain user field")
 	assert.False(t, hasPass, "Safe response should not contain pass field")
 	assert.False(t, hasToken, "Safe response should not contain token field")
 }
-

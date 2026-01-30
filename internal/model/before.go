@@ -3,6 +3,7 @@
 import (
 	"fmt"
 	"strings"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
 
@@ -17,12 +18,12 @@ func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error)
 	err := json.Unmarshal([]byte(p2), &mes)
 	if err != nil {
 		fmt.Println("CCCC")
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return 0, err
 	}
 	occurTime, err := utils.ParTime(mes.EventTime)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return 0, err
 	}
 	var meal = Alarm{
@@ -48,7 +49,7 @@ func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error)
 	}
 	id, err := AddAlarm(&meal)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return 0, err
 	}
 	//alert gen

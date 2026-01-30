@@ -8,9 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/logger"
 )
 
 // Jar struct
@@ -48,7 +46,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	}
 	request, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
-		logs.Error("Fatal error ", err.Error())
+		logger.Log.Error("Fatal error ", err.Error())
 		return
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
@@ -59,7 +57,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response, err := client.Do(request)
 	if err != nil {
-		logs.Error("Fatal error ", err.Error())
+		logger.Log.Error("Fatal error ", err.Error())
 		return
 	}
 	defer response.Body.Close()
@@ -73,27 +71,32 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		}
 		data, err := io.ReadAll(reader)
 		if err != nil {
-			logs.Error("Failed to read response data: %+v", err)
+			logger.Log.Error("Failed to read response data: %+v", err)
 		}
-		//if beego.BConfig.RunMode == "dev" {
-		//	logs.Info("Login to zabbix response body is:", string(data))
-		//}
+		// 开发模式下可以打印响应体用于调试
+		// runmode := GetConfKey("runmode")
+		// if runmode == "dev" {
+		//	logger.Log.Info("Login to zabbix response body is:", string(data))
+		// }
 		if strings.Contains(string(data), "blocked") {
-			logs.Error("Login to Zabbix failed!")
+			logger.Log.Error("Login to Zabbix failed!")
 			os.Exit(1)
 		}
 	} else {
 		os.Exit(1)
 	}
-	if beego.BConfig.RunMode == "dev" {
-		logs.Info("Login to zabbix  successfully！http status code:", response.StatusCode)
+	
+	// 开发模式下打印详细信息
+	runmode := GetConfKey("runmode")
+	if runmode == "dev" {
+		logger.Log.Info("Login to zabbix  successfully！http status code:", response.StatusCode)
 	} else {
-		logs.Info("Login to zabbix  successfully!")
+		logger.Log.Info("Login to zabbix  successfully!")
 	}
 	//解析并把cookies存如redis
 	u, err := url.Parse(ZabbixWeb)
 	if err != nil {
-		logs.Error("Failed to parse URL: %v", err)
+		logger.Log.Error("Failed to parse URL: %v", err)
 		return
 	}
 	//把cookies设置到缓存中
@@ -101,12 +104,12 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	for _, cookie := range cookies {
 		value, err := url.QueryUnescape(cookie.Value)
 		if err != nil {
-			logs.Error("解码失败:", err)
+			logger.Log.Error("解码失败:", err)
 			return
 		}
 		err = CacheSet("zbx_session", value, 0)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return
 		}
 	}

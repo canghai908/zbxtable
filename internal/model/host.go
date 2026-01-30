@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
-
-	"github.com/astaxie/beego/logs"
 )
 
 // HostsList func
@@ -293,7 +292,7 @@ func GetHostInfoTopology(hostid string) (Hosts, error) {
 	}
 	count, err := GetTriggerHostCount(hostid)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 
 	var d Hosts
@@ -641,7 +640,7 @@ func GetHostsList(HostType string) ([]Hosts, int64, error) {
 			var err error
 			count, err = GetTriggerHostCount(v.Hostid)
 			if err != nil {
-				logs.Error(err)
+				logger.Log.Error(err)
 				count = 0
 			}
 			if len(v.Interfaces) != 0 {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"sync"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
 
@@ -21,7 +22,7 @@ func GetAllTopoData() (cnt int64, topodata []TopologyData, err error) {
 	var topologys []TopologyData
 	err = DB.Order("created_at DESC").Find(&topologys).Error
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return 0, []TopologyData{}, err
 	}
 	cnt = int64(len(topologys))
@@ -30,7 +31,7 @@ func GetAllTopoData() (cnt int64, topodata []TopologyData, err error) {
 func GetTriggerValueByTriggerID(TriggerID string) (value string, err error) {
 	tri, err := GetTriggerValue(TriggerID)
 	if err != nil || len(tri) == 0 {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return "2", err
 	}
 	return tri[0].Value, nil
@@ -39,7 +40,7 @@ func GetTriggerValueByTriggerID(TriggerID string) (value string, err error) {
 func GetFlowByFlowID(FLowID string) (flow string, err error) {
 	p, err := GetItemByID(FLowID)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return "", err
 	}
 	if len(p) == 0 {
@@ -69,11 +70,11 @@ func GetHostInfoByID(hostid string, wg *sync.WaitGroup, info chan string) {
 	defer wg.Done()
 	p, err := GetHostInfoTopology(hostid)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 	}
 	StrP, err := json.Marshal(&p)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 	}
 	info <- string(StrP)
 	return

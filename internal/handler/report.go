@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 	"zbxtable/internal/model"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -109,7 +109,7 @@ func CreateReportGin(c *gin.Context) {
 				go func() {
 					err := models.TaskHostReport(*report)
 					if err != nil {
-						utils.Log.Error("实时报表生成失败:", err)
+						logger.Log.Error("实时报表生成失败:", err)
 						report.ExecStatus = "3" // 失败
 					} else {
 						report.ExecStatus = "2" // 成功

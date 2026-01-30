@@ -2,7 +2,7 @@
 
 import (
 	"errors"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 
 	"gorm.io/gorm"
 )
@@ -89,7 +89,7 @@ func InitMenuData() {
 	var count int64
 	err := DB.Model(&Menu{}).Count(&count).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return
 	}
 	if count > 0 {
@@ -98,7 +98,7 @@ func InitMenuData() {
 	menus := getMenuDefinitions()
 	err = DB.Create(&menus).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 	}
 }
 
@@ -121,17 +121,17 @@ func CheckAndAddMenus() {
 				menuToInsert := menuDef
 				err = DB.Create(&menuToInsert).Error
 				if err != nil {
-					utils.Log.Error("添加一级菜单失败:", menuDef.Name, err)
+					logger.Log.Error("添加一级菜单失败:", menuDef.Name, err)
 					continue
 				}
 				parentMenuMap[idx+1] = menuToInsert.Id // 索引从1开始，对应ParentId
-				utils.Log.Info("成功添加一级菜单:", menuDef.Name)
+				logger.Log.Info("成功添加一级菜单:", menuDef.Name)
 			} else if err != nil {
-				utils.Log.Error("查询一级菜单失败:", menuDef.Name, err)
+				logger.Log.Error("查询一级菜单失败:", menuDef.Name, err)
 				continue
 			} else {
 				parentMenuMap[idx+1] = existingMenu.Id
-				utils.Log.Debug("一级菜单已存在:", menuDef.Name)
+				logger.Log.Debug("一级菜单已存在:", menuDef.Name)
 			}
 		}
 	}
@@ -142,7 +142,7 @@ func CheckAndAddMenus() {
 			// 获取父菜单的实际ID
 			parentId, exists := parentMenuMap[menuDef.ParentId]
 			if !exists {
-				utils.Log.Warning("找不到父菜单，跳过菜单:", menuDef.Name, "ParentId:", menuDef.ParentId)
+				logger.Log.Warning("找不到父菜单，跳过菜单:", menuDef.Name, "ParentId:", menuDef.ParentId)
 				continue
 			}
 
@@ -155,20 +155,20 @@ func CheckAndAddMenus() {
 				menuToInsert.ParentId = parentId // 使用数据库中的实际父菜单ID
 				err = DB.Create(&menuToInsert).Error
 				if err != nil {
-					utils.Log.Error("添加菜单失败:", menuDef.Name, err)
+					logger.Log.Error("添加菜单失败:", menuDef.Name, err)
 					continue
 				}
-				utils.Log.Info("成功添加菜单:", menuDef.Name)
+				logger.Log.Info("成功添加菜单:", menuDef.Name)
 			} else if err != nil {
-				utils.Log.Error("查询菜单失败:", menuDef.Name, err)
+				logger.Log.Error("查询菜单失败:", menuDef.Name, err)
 				continue
 			} else {
-				utils.Log.Debug("菜单已存在:", menuDef.Name)
+				logger.Log.Debug("菜单已存在:", menuDef.Name)
 			}
 		}
 	}
 
-	utils.Log.Info("菜单检查完成")
+	logger.Log.Info("菜单检查完成")
 }
 
 type MenuItem struct {

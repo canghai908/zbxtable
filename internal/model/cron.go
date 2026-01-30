@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
 	"github.com/robfig/cron/v3"
@@ -32,20 +33,20 @@ func InitTask() {
 	
 	// 启动调度器
 	cronScheduler.Start()
-	utils.Log.Info("Cron scheduler started")
+	logger.Log.Info("Cron scheduler started")
 }
 
 // StopTask 停止定时任务
 func StopTask() {
 	if cronScheduler != nil {
 		cronScheduler.Stop()
-		utils.Log.Info("Cron scheduler stopped")
+		logger.Log.Info("Cron scheduler stopped")
 	}
 }
 func CreateWeekReport() error {
 	_, list, err := GetALlReport()
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	//遍历周报
@@ -74,14 +75,14 @@ func CreateWeekReport() error {
 						err = TaskWeekReport(v)
 					}
 					if err != nil {
-						utils.Log.Error(err)
+						logger.Log.Error(err)
 						///update status failed
 						v.ExecStatus = strconv.Itoa(Failed)
 						v.StartAt = start
 						v.EndAt = time.Now()
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
-							utils.Log.Error(err)
+							logger.Log.Error(err)
 						}
 						continue
 					}
@@ -91,7 +92,7 @@ func CreateWeekReport() error {
 					v.EndAt = time.Now()
 					err = UpdateReportExecStatusByID(&v)
 					if err != nil {
-						utils.Log.Error(err)
+						logger.Log.Error(err)
 						continue
 					}
 				}
@@ -103,7 +104,7 @@ func CreateWeekReport() error {
 func CreateDayReport() error {
 	_, list, err := GetALlReport()
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	for _, v := range list {
@@ -130,14 +131,14 @@ func CreateDayReport() error {
 						err = TaskDayReport(v)
 					}
 					if err != nil {
-						utils.Log.Error(err)
+						logger.Log.Error(err)
 						//更新report状态
 						v.ExecStatus = strconv.Itoa(Failed)
 						v.StartAt = start
 						v.EndAt = time.Now()
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
-							utils.Log.Error(err)
+							logger.Log.Error(err)
 						}
 						continue
 					}
@@ -147,7 +148,7 @@ func CreateDayReport() error {
 					v.EndAt = time.Now()
 					err = UpdateReportExecStatusByID(&v)
 					if err != nil {
-						utils.Log.Error(err)
+						logger.Log.Error(err)
 						continue
 					}
 				}
@@ -171,18 +172,18 @@ func TOP() error {
 		"selectInventory":  "extend",
 		"selectInterfaces": SelectInterfacesPar})
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	var hb ListHosts
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	if len(hb) == 0 {
@@ -248,7 +249,7 @@ func TOP() error {
 			}
 			err = CacheZAdd("LIN_MEM", v.Host, float64MEM)
 			if err != nil {
-				utils.Log.Debug(err)
+				logger.Log.Debug(err)
 				return err
 			}
 		}
@@ -261,13 +262,13 @@ func UpdateEdgeDataById(id int) error {
 	//get topodata
 	p, err := GetTopologyById(id)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	var allEdges AllEdge
 	err = json.Unmarshal([]byte(p.Edges), &allEdges)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	var wg sync.WaitGroup
@@ -291,7 +292,7 @@ func UpdateEdgeDataById(id int) error {
 			if v.Attrs.Line.FlowID != "" {
 				flow, err := GetFlowByFlowID(v.Attrs.Line.FlowID)
 				if err != nil {
-					utils.Log.Error(err)
+					logger.Log.Error(err)
 				}
 				v.Labels[0].Attrs.Label.Text = flow
 			}
@@ -299,7 +300,7 @@ func UpdateEdgeDataById(id int) error {
 			if v.Attrs.Line.TriggerID != "" {
 				status, err := GetTriggerValueByTriggerID(v.Attrs.Line.TriggerID)
 				if err != nil {
-					utils.Log.Error(err)
+					logger.Log.Error(err)
 				}
 				switch {
 				//trigger正常 未告警
@@ -323,7 +324,7 @@ func UpdateEdgeDataById(id int) error {
 	}
 	edgeStr, err := json.Marshal(aedge)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	var Topo Topology
@@ -331,7 +332,7 @@ func UpdateEdgeDataById(id int) error {
 	Topo.Edges = string(edgeStr)
 	err = UpdateTopologyEdgesByID(&Topo)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return err
 	}
 	return nil
@@ -344,17 +345,17 @@ func GetTypeHostList() error {
 	for _, v := range list {
 		p, _, err := GetHostsList(v)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		//hosts info to cache
 		hostsdata, err := json.Marshal(p)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 		}
 		err = CacheSet(v+"_OVERVIEW", string(hostsdata), 3600*time.Second)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 		//inventor info to cache
@@ -366,7 +367,7 @@ func GetTypeHostList() error {
 			tid, err = strconv.ParseInt(vv.HostID, 10, 64)
 			if err != nil {
 				tid = 0
-				utils.Log.Error(err)
+				logger.Log.Error(err)
 			}
 			t.ID = tid
 			t.Name = vv.Name
@@ -374,11 +375,11 @@ func GetTypeHostList() error {
 		}
 		data, err := json.Marshal(tt)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 		}
 		err = CacheSet(v+"_INVENTORY", string(data), 3600*time.Second)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			continue
 		}
 	}
@@ -390,7 +391,7 @@ func EgressCache() error {
 	var v Egress
 	err := DB.First(&v, 1).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	var itemList []string
@@ -415,12 +416,12 @@ func EgressCache() error {
 	itemList = append(itemList, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
 	list, err := GetItemByIDS(itemList)
 	if err != nil {
-		utils.Log.Error("出口Item数据获取异常", err)
+		logger.Log.Error("出口Item数据获取异常", err)
 		return errors.New("出口Item数据获取异常")
 	}
 	//数据异常返回
 	if len(list) != 4 {
-		utils.Log.Error("出口Item数据结果异常", len(list))
+		logger.Log.Error("出口Item数据结果异常", len(list))
 		return errors.New("出口Item数据结果异常")
 	}
 	var dList EgressList
@@ -458,7 +459,7 @@ func SyncInventory() error {
 	var list []System
 	err = GetDB().Where("id = ?", 1).Find(&list).Error
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return err
 	}
 	if len(list) == 0 {

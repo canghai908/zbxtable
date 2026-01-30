@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
 
@@ -127,7 +128,7 @@ func CheckNowByID(m *Report) (err error) {
 		v.ExecStatus = strconv.Itoa(Running)
 		v.StartAt = start
 		if err := UpdateReportExecStatusByID(&v); err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
 
@@ -138,7 +139,7 @@ func CheckNowByID(m *Report) (err error) {
 		}
 		taskErr := TaskHostReport(vTemp)
 		if taskErr != nil {
-			utils.Log.Error(taskErr)
+			logger.Log.Error(taskErr)
 			v.ExecStatus = strconv.Itoa(Failed)
 			v.EndAt = time.Now()
 			UpdateReportExecStatusByID(&v)
@@ -148,7 +149,7 @@ func CheckNowByID(m *Report) (err error) {
 		v.ExecStatus = strconv.Itoa(Success)
 		v.EndAt = time.Now()
 		if err := UpdateReportExecStatusByID(&v); err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			return err
 		}
 		return nil
@@ -178,7 +179,7 @@ func CheckNowByID(m *Report) (err error) {
 				taskErr = TaskDayReport(v)
 			}
 			if taskErr != nil {
-				utils.Log.Error(taskErr)
+				logger.Log.Error(taskErr)
 				return taskErr
 			}
 			// 更新 report 状态
@@ -186,7 +187,7 @@ func CheckNowByID(m *Report) (err error) {
 			v.StartAt = start
 			v.EndAt = time.Now()
 			if err := UpdateReportExecStatusByID(&v); err != nil {
-				utils.Log.Error(err)
+				logger.Log.Error(err)
 				return err
 			}
 		}
@@ -204,7 +205,7 @@ func CheckNowByID(m *Report) (err error) {
 				taskErr = TaskWeekReport(v)
 			}
 			if taskErr != nil {
-				utils.Log.Error(taskErr)
+				logger.Log.Error(taskErr)
 				return taskErr
 			}
 			// 更新 report 状态
@@ -212,7 +213,7 @@ func CheckNowByID(m *Report) (err error) {
 			v.StartAt = start
 			v.EndAt = time.Now()
 			if err := UpdateReportExecStatusByID(&v); err != nil {
-				utils.Log.Error(err)
+				logger.Log.Error(err)
 				return err
 			}
 		}
@@ -232,7 +233,7 @@ func UpdateReportExecStatusByID(m *Report) (err error) {
 			"end_at":      m.EndAt,
 		}).Error
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 		}
 	}
 	return
@@ -251,7 +252,7 @@ func UpdateReportsStatusByID(m *Report) (err error) {
 		}
 		err = DB.Model(&Report{}).Where("id = ?", m.ID).Update("status", newStatus).Error
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 		}
 	}
 	return
@@ -267,7 +268,7 @@ func DeleteReport(id int) (err error) {
 		if result.Error != nil {
 			return result.Error
 		}
-		utils.Log.Debug("Number of records deleted in database:", result.RowsAffected)
+		logger.Log.Debug("Number of records deleted in database:", result.RowsAffected)
 	}
 	return
 }

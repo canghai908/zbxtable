@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
 	zabbix "github.com/canghai908/zabbix-go"
@@ -67,15 +68,15 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	runmode := GetConfKey("runmode")
 	err := InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport, runmode)
 	if err != nil {
-		utils.Log.Error("Failed to connect database: ", err)
+		logger.Log.Error("Failed to connect database: ", err)
 		os.Exit(1)
 	}
-	utils.Log.Info("Database connected!")
+	logger.Log.Info("Database connected!")
 
 	// 自动迁移表
 	err = AutoMigrate()
 	if err != nil {
-		utils.Log.Error("Failed to auto migrate: ", err)
+		logger.Log.Error("Failed to auto migrate: ", err)
 		os.Exit(1)
 	}
 
@@ -89,7 +90,7 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 
 	// 安装后首次启动允许不配置 Zabbix：跳过 Zabbix 初始化
 	if strings.TrimSpace(zabbix_web) == "" {
-		utils.Log.Info("Zabbix is not configured, skipping Zabbix initialization")
+		logger.Log.Info("Zabbix is not configured, skipping Zabbix initialization")
 		return
 	}
 
@@ -105,12 +106,12 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	}
 	resp, err := dClient.Get(addURL)
 	if err != nil {
-		utils.Log.Error("Zabbix Web get request failed:", err)
+		logger.Log.Error("Zabbix Web get request failed:", err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusPreconditionFailed {
-		utils.Log.Error("Zabbix Web is incorrectly!")
+		logger.Log.Error("Zabbix Web is incorrectly!")
 		os.Exit(1)
 	}
 	//api变量
@@ -120,7 +121,7 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	} else {
 		_, err = API.Login(zabbix_user, zabbix_pass)
 		if err != nil {
-			utils.Log.Error(err)
+			logger.Log.Error(err)
 			os.Exit(1)
 		}
 	}
@@ -132,13 +133,13 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		"hostids": "10084",
 	})
 	if err != nil {
-		utils.Log.Error("connect Zabbix API failed:", err)
+		logger.Log.Error("connect Zabbix API failed:", err)
 		os.Exit(1)
 	}
 	//Zabbix version
 	ZBX_VER, err = API.Version()
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		os.Exit(1)
 	}
 	verArr := strings.Split(ZBX_VER, ".")
@@ -149,33 +150,33 @@ func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	} else {
 		ZBX_V = false
 	}
-	utils.Log.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
+	logger.Log.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
 	//	zabbix web login (only if token is not configured)
 	if zabbix_pass != "" {
 		LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
 	} else {
-		utils.Log.Info("Zabbix pass is not configured, skipping web login")
+		logger.Log.Info("Zabbix pass is not configured, skipping web login")
 	}
 
 	//gen tpl (企业微信配置优先从系统配置表读取，其次回退到 app.conf)
 	agentIDStr := GetConfigValueByKey("wechat_agentid", GetConfKey("wechat_agentid"))
 	if agentIDStr == "" {
-		utils.Log.Info("wechat_agentid is empty, WeChat app will not be initialized")
+		logger.Log.Info("wechat_agentid is empty, WeChat app will not be initialized")
 	} else {
 		AgentId, err := strconv.ParseInt(agentIDStr, 10, 64)
 		if err != nil {
-			utils.Log.Error("wechat_agentid parse error:", err)
+			logger.Log.Error("wechat_agentid parse error:", err)
 			os.Exit(1)
 		}
 		corpid := GetConfigValueByKey("wechat_corpid", GetConfKey("wechat_corpid"))
 		secret := GetConfigValueByKey("wechat_secret", GetConfKey("wechat_secret"))
 		if corpid == "" || secret == "" {
-			utils.Log.Info("wechat_corpid or wechat_secret is empty, WeChat app will not be initialized")
+			logger.Log.Info("wechat_corpid or wechat_secret is empty, WeChat app will not be initialized")
 		} else {
 			client := workwx.New(corpid)
 			WeApp = client.WithApp(secret, AgentId)
 			WeApp.SpawnAccessTokenRefresher()
-			utils.Log.Info("WeChat inited!")
+			logger.Log.Info("WeChat inited!")
 		}
 	}
 }
@@ -189,14 +190,14 @@ func DatabaseInit() {
 	if err == nil && v.Operation == "" {
 		err := DB.Model(&Manager{}).Where("id = ?", v.ID).Update("operation", "['add', 'edit', 'delete','update']").Error
 		if err != nil {
-			utils.Log.Info(err)
+			logger.Log.Info(err)
 			return
 		}
-		utils.Log.Info("update admin operation successfully")
+		logger.Log.Info("update admin operation successfully")
 	}
 	//添加管理员账号
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		utils.Log.Info("the admin user does not exist, create a new admin account later!")
+		logger.Log.Info("the admin user does not exist, create a new admin account later!")
 		var manager Manager
 		manager.Username = "admin"
 		manager.Password, _ = utils.PasswordHash("Zbxtable")
@@ -206,16 +207,16 @@ func DatabaseInit() {
 		manager.Status = 0
 		err := DB.Create(&manager).Error
 		if err != nil {
-			utils.Log.Info(err)
+			logger.Log.Info(err)
 			return
 		}
-		utils.Log.Info("create an administrator account successfully, the admin ID is:", manager.ID)
+		logger.Log.Info("create an administrator account successfully, the admin ID is:", manager.ID)
 	}
 	//初始化系统数据
 	var cnt []System
 	err = DB.Find(&cnt).Error
 	if err != nil {
-		utils.Log.Info(err)
+		logger.Log.Info(err)
 		return
 	}
 	if len(cnt) == 0 {
@@ -227,17 +228,17 @@ func DatabaseInit() {
 		}
 		err := DB.Create(&sys).Error
 		if err != nil {
-			utils.Log.Info("Init system info error！", err)
+			logger.Log.Info("Init system info error！", err)
 			return
 		}
-		utils.Log.Info("Init system data successfully!")
+		logger.Log.Info("Init system data successfully!")
 	}
 	//出口
 	//初始化系统数据
 	var cne []Egress
 	err = DB.Find(&cne).Error
 	if err != nil {
-		utils.Log.Info(err)
+		logger.Log.Info(err)
 		return
 	}
 	if len(cne) == 0 {
@@ -246,10 +247,10 @@ func DatabaseInit() {
 		}
 		err := DB.Create(&egress).Error
 		if err != nil {
-			utils.Log.Info("Init egress info error！")
+			logger.Log.Info("Init egress info error！")
 			return
 		}
-		utils.Log.Info("Init egress data successfully!")
+		logger.Log.Info("Init egress data successfully!")
 	}
 	// 默认配置初始化（包括面板、邮件、微信、Ollama 等）
 	defaultConfigs := []Config{
@@ -279,10 +280,10 @@ func DatabaseInit() {
 		err = DB.Where("`key` = ?", cfgItem.Key).First(&existing).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if insertErr := DB.Create(&cfgItem).Error; insertErr != nil {
-				utils.Log.Infof("Init config key %s error: %v", cfgItem.Key, insertErr)
+				logger.Log.Infof("Init config key %s error: %v", cfgItem.Key, insertErr)
 				continue
 			}
-			utils.Log.Infof("Init config key %s successfully!", cfgItem.Key)
+			logger.Log.Infof("Init config key %s successfully!", cfgItem.Key)
 		}
 	}
 	//默认菜单初始化
@@ -293,7 +294,7 @@ func DatabaseInit() {
 	var cRule []Rule
 	err = DB.Where("m_type = ?", "2").Find(&cRule).Error
 	if err != nil {
-		utils.Log.Info(err)
+		logger.Log.Info(err)
 		return
 	}
 	if len(cRule) == 0 {
@@ -309,10 +310,10 @@ func DatabaseInit() {
 		}
 		err := DB.Create(&defaultRule).Error
 		if err != nil {
-			utils.Log.Info("Init default rule error！", err)
+			logger.Log.Info("Init default rule error！", err)
 			return
 		}
-		utils.Log.Info("Init default rule successfully!")
+		logger.Log.Info("Init default rule successfully!")
 	}
 }
 
@@ -366,13 +367,13 @@ func GetConfKey(v string) string {
 	// 其次从 config/app.conf 读取
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
-		utils.Log.Error(err)
-		utils.Log.Error("Please run 'zbxtable init' to create app.conf")
+		logger.Log.Error(err)
+		logger.Log.Error("Please run 'zbxtable init' to create app.conf")
 		return ""
 	}
 	p, err := cfg.Section("").GetKey(v)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return ""
 	}
 	return p.String()

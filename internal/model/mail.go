@@ -10,25 +10,24 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	template2 "zbxtable/pkg/utils"
+	"zbxtable/pkg/utils"
 
-	"github.com/astaxie/beego"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/jordan-wright/email"
 )
 
 func Sendmail(To []string, Subject, attach string, temp []byte) error {
 	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
-	from := GetConfigValueByKey("email_from", beego.AppConfig.String("email_from"))
-	nickname := GetConfigValueByKey("email_nickname", beego.AppConfig.String("email_nickname"))
-	secret := GetConfigValueByKey("email_secret", beego.AppConfig.String("email_secret"))
-	host := GetConfigValueByKey("email_host", beego.AppConfig.String("email_host"))
-	portStr := GetConfigValueByKey("email_port", beego.AppConfig.String("email_port"))
+	from := GetConfigValueByKey("email_from", GetConfKey("email_from"))
+	nickname := GetConfigValueByKey("email_nickname", GetConfKey("email_nickname"))
+	secret := GetConfigValueByKey("email_secret", GetConfKey("email_secret"))
+	host := GetConfigValueByKey("email_host", GetConfKey("email_host"))
+	portStr := GetConfigValueByKey("email_port", GetConfKey("email_port"))
 	if portStr == "" {
 		portStr = "465"
 	}
 	port, _ := strconv.Atoi(portStr)
-	isSSlStr := GetConfigValueByKey("email_isSSl", beego.AppConfig.String("email_isSSl"))
+	isSSlStr := GetConfigValueByKey("email_isSSl", GetConfKey("email_isSSl"))
 	isSSL := strings.ToLower(isSSlStr) == "true"
 	auth := smtp.PlainAuth("", from, secret, host)
 	e := email.NewEmail()
@@ -103,9 +102,9 @@ func CreateMailTable(m Report, chartdata []ChartData) ([]byte, error) {
 		one.ItemName = v.Name
 		one.IP = v.IP
 		one.Host = v.Host
-		one.LinkBinWith = template2.FormatTrafficFloat64(v.LinkBandWidth[0].Value.(float64))
+		one.LinkBinWith = utils.FormatTrafficFloat64(v.LinkBandWidth[0].Value.(float64))
 		ttt := Avg(v.Data)
-		one.Avg = template2.FormatTrafficFloat64(Avg(v.Data))
+		one.Avg = utils.FormatTrafficFloat64(Avg(v.Data))
 		one.AVgPre = AvgPer(ttt, v.LinkBandWidth[0].Value.(float64)) + "%"
 		plist = append(plist, one)
 	}

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 // GetZmsTopologyById retrieves ZmsTopology by Id. Returns error if
@@ -67,7 +67,7 @@ func AddTopology(m *Topology) (id int64, err error) {
 	m.Status = "0"
 	err = DB.Create(m).Error
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return 0, err
 	}
 	return int64(m.ID), err
@@ -154,18 +154,18 @@ func GetTopologyFromWeather() (Data, error) {
 		"output":          OutputPar,
 		"searchInventory": SearchInventoryInventoryPar})
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return Data{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return Data{}, err
 	}
 	var hb ListHosts
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return Data{}, err
 	}
 
@@ -173,7 +173,7 @@ func GetTopologyFromWeather() (Data, error) {
 	var lines [][]string
 	f, err := os.Open("./part.conf")
 	if err != nil {
-		utils.Log.Debug(err)
+		logger.Log.Debug(err)
 		return Data{}, err
 	}
 	defer f.Close()

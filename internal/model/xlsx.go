@@ -2,11 +2,12 @@
 
 import (
 	"bytes"
-	"github.com/astaxie/beego/logs"
-	"github.com/xuri/excelize/v2"
 	"strconv"
 	"time"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // Crt excel table
@@ -84,11 +85,11 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		logs.Error("创建样式失败", err)
+		logger.Log.Error("创建样式失败", err)
 	}
 	styleleft, err := xlsx.NewStyle(`{"alignment":{"horizontal":"left"}}`)
 	if err != nil {
-		logs.Error("创建样式失败", err)
+		logger.Log.Error("创建样式失败", err)
 	}
 	lea := len(Filedata[0].FileSystemDataADD)
 	//设置单元格对其方式
@@ -191,7 +192,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式
@@ -282,7 +283,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式
@@ -342,7 +343,7 @@ func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 	//数据样式设置
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	lea := len(Filedata)
 	//设置单元格对其方式
@@ -441,7 +442,7 @@ func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 	index := xlsx.NewSheet("Sheet1")
 	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	var ValueTypeStr string
 	switch HostType {

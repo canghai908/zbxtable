@@ -10,8 +10,7 @@ import (
 	"net/url"
 	"sync"
 	"time"
-
-	"github.com/astaxie/beego/logs"
+	"zbxtable/pkg/logger"
 
 	"github.com/signintech/gopdf"
 )
@@ -23,13 +22,13 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	pdf.AddPage()
 	err := pdf.AddTTFFont("msty", "./msty.ttf")
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []byte{}, err
 	}
 
 	err = pdf.SetFont("msty", "", 8)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []byte{}, err
 	}
 	//表头配置
@@ -46,18 +45,18 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 		rep, err := API.CallWithError("graph.get", Params{"output": "extend",
 			"hostids": vv, "sortfiled": "name"})
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return []byte{}, err
 		}
 		hba, err := json.Marshal(rep.Result)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return []byte{}, err
 		}
 		var hb []GraphInfo
 		err = json.Unmarshal(hba, &hb)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 			return []byte{}, err
 		}
 		//轮训图形
@@ -93,7 +92,7 @@ func SaveImagePDF(hostids []string, start, end string) ([]byte, error) {
 	var b bytes.Buffer
 	err = pdf.Write(&b)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return []byte{}, err
 	}
 	return b.Bytes(), nil
@@ -116,7 +115,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	data.Set("graphid", grupinfo.GraphID)
 	data.Set("from", start)
@@ -129,7 +128,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	urlPath := URL.String()
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	reqest1.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	reqest1.Header.Add("Accept-Encoding", "gzip, deflate")
@@ -138,7 +137,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 	reqest1.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response1, err := client1.Do(reqest1)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 	}
 	defer response1.Body.Close()
 	if response1.StatusCode == 200 {
@@ -151,7 +150,7 @@ func GetPdfImageHolder(grupinfo GraphInfo, start, end string, wg *sync.WaitGroup
 		}
 		imgH2, err := gopdf.ImageHolderByReader(reader)
 		if err != nil {
-			logs.Error(err)
+			logger.Log.Error(err)
 		}
 		pdfHolder <- imgH2
 	}
@@ -172,7 +171,7 @@ func GetPNGGraph(GraphID, start, end string) (png string, err error) {
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return "", err
 	}
 	data.Set("graphid", GraphID)
@@ -190,7 +189,7 @@ func GetPNGGraph(GraphID, start, end string) (png string, err error) {
 	urlPath := URL.String()
 	request, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return "", err
 	}
 	request.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -200,7 +199,7 @@ func GetPNGGraph(GraphID, start, end string) (png string, err error) {
 	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 	response1, err := client1.Do(request)
 	if err != nil {
-		logs.Error(err)
+		logger.Log.Error(err)
 		return "", err
 	}
 	defer response1.Body.Close()

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"zbxtable/pkg/utils"
+	"zbxtable/pkg/logger"
 )
 
 //GetApplicationByHostid st
@@ -16,14 +16,14 @@ func GetApplicationByHostid(hostid string) ([]Application, int64, error) {
 	//log.Println(rep.Result)
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return []Application{}, 0, err
 	}
 
 	var hb []Application
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		utils.Log.Error(err)
+		logger.Log.Error(err)
 		return []Application{}, 0, err
 	}
 	return hb, int64(len(hb)), err
