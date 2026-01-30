@@ -111,9 +111,18 @@ func CreateZabbixTenantGin(c *gin.Context) {
 		m.NotifyMethod = "webhook"
 	}
 
+	// 创建租户
 	if err := models.CreateZabbixTenant(m); err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
+	}
+
+	// 创建成功后，自动测试连接并更新版本信息
+	// 查询刚创建的租户（获取ID）
+	tenant, err := models.GetZabbixTenantByTenantID(m.TenantID)
+	if err == nil && tenant != nil {
+		// 测试连接并更新版本
+		_, _, _ = models.TestAndUpdateZabbixTenant(int64(tenant.ID))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok"})
@@ -190,6 +199,11 @@ func UpdateZabbixTenantGin(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
+
+	// 更新成功后，自动测试连接并更新版本信息
+	// 注意：UpdateZabbixTenant 内部已经处理了连接变更时重置版本
+	// 这里再次测试以获取最新版本
+	tenant, _, _ = models.TestAndUpdateZabbixTenant(id)
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
 }
