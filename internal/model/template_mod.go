@@ -1,6 +1,6 @@
-package models
+package model
 
-//TemplateList struct
+// TemplateList struct
 type TemplateList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -10,7 +10,7 @@ type TemplateList struct {
 	} `json:"data"`
 }
 
-//Template struct a
+// Template struct a
 type Template struct {
 	Host       string `json:"host"`
 	Templateid string `json:"templateid"`
@@ -28,7 +28,7 @@ type Template struct {
 	Discoveries  string `json:"discoveries"`
 }
 
-//Template struct a
+// Template struct a
 type TemplateByItemList struct {
 	Host       string `json:"host"`
 	Templateid string `json:"templateid"`

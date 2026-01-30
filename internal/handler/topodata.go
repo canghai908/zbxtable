@@ -12,7 +12,7 @@ import (
 // GetTopoDataByID 获取拓扑数据
 func GetTopoDataByID(c *gin.Context) {
 	idStr := c.Param("id")
-	var TopologyRes models.TopologyInfo
+	var TopologyRes model.TopologyInfo
 	TopologyRes.Code = 200
 	TopologyRes.Message = idStr
 	c.JSON(http.StatusOK, TopologyRes)
@@ -25,14 +25,14 @@ func CreateTopoData(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	pid := gjson.Get(string(body), "pid").String()
 	vtype := gjson.Get(string(body), "v_type").String()
 	ptype := gjson.Get(string(body), "type").String()
 	tid := gjson.Get(string(body), "tid").String()
-	var TopologyRes models.TopologyList
-	v := models.TopologyData{PID: pid, Type: ptype, VType: vtype, TID: tid}
-	_, err = models.AddTopoData(&v)
+	var TopologyRes model.TopologyList
+	v := model.TopologyData{PID: pid, Type: ptype, VType: vtype, TID: tid}
+	_, err = model.AddTopoData(&v)
 	if err != nil {
 		TopologyRes.Code = 500
 		TopologyRes.Message = err.Error()

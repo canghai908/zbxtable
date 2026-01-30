@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"testing"
@@ -255,4 +255,3 @@ func TestRule_UpdateFields(t *testing.T) {
 	assert.Equal(t, "1,2,3,4", retrieved.UserIds)
 	assert.Equal(t, "1,2,3", retrieved.GroupIds)
 }
-

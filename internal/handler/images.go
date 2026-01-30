@@ -37,10 +37,10 @@ func GetImage(c *gin.Context) {
 	}
 	client1 := &http.Client{
 		Transport: tr,
-		Jar:       models.JAR,
+		Jar:       model.JAR,
 		Timeout:   99999999999999,
 	}
-	ZabbixWeb := models.GetConfKey("zabbix_web")
+	ZabbixWeb := model.GetConfKey("zabbix_web")
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)

@@ -37,9 +37,9 @@ func GetAllAlarm(c *gin.Context) {
 	tenant_id := c.Query("tenant_id")
 	status := c.Query("status")
 	level := c.Query("level")
-	
-	var AlarmRes models.AlarmList
-	cnt, al, err := models.GetAllAlarm(Begin, End, page, limit, hosts, ip, tenant_id, status, level)
+
+	var AlarmRes model.AlarmList
+	cnt, al, err := model.GetAllAlarm(Begin, End, page, limit, hosts, ip, tenant_id, status, level)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()
@@ -56,7 +56,7 @@ func GetAllAlarm(c *gin.Context) {
 func GetAlarmByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	v, err := models.GetAlarmByID(id)
+	v, err := model.GetAlarmByID(id)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 	} else {
@@ -66,8 +66,8 @@ func GetAlarmByID(c *gin.Context) {
 
 // GetAlarmTenant 获取告警租户列表
 func GetAlarmTenant(c *gin.Context) {
-	var TenantRes models.AlarmTendantList
-	cnt, al, err := models.GetAlarmTenant()
+	var TenantRes model.AlarmTendantList
+	cnt, al, err := model.GetAlarmTenant()
 	if err != nil {
 		TenantRes.Code = 200
 		TenantRes.Message = err.Error()
@@ -89,9 +89,9 @@ func AnalysisAlarm(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ListAnalysisAlarm
-	var AnalysisRes models.AnalysisList
+
+	var v model.ListAnalysisAlarm
+	var AnalysisRes model.AnalysisList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		AnalysisRes.Code = 500
@@ -108,7 +108,7 @@ func AnalysisAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	arraytitle, piee, na, va, err := models.AnalysisAlarm(Start, End, v.TenantID)
+	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, v.TenantID)
 	if err != nil {
 		AnalysisRes.Code = 500
 		AnalysisRes.Message = err.Error()
@@ -131,9 +131,9 @@ func ExportAlarm(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ListExportAlarm
-	var AlarmRes models.AlarmList
+
+	var v model.ListExportAlarm
+	var AlarmRes model.AlarmList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		AlarmRes.Code = 500
@@ -150,7 +150,7 @@ func ExportAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	cnt, err := models.ExportAlarm(Start, End, v.Hosts, v.TenantID, v.Status, v.Level)
+	cnt, err := model.ExportAlarm(Start, End, v.Hosts, v.TenantID, v.Status, v.Level)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()

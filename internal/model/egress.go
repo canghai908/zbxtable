@@ -1,10 +1,10 @@
-package models
+package model
 
 import (
 	"time"
 )
 
-//TableName alarm
+// TableName alarm
 func (t *Egress) TableName() string {
 	return TableName("egress")
 }
@@ -21,7 +21,7 @@ type Egress struct {
 	Status    int       `gorm:"column:status" json:"status"`
 }
 
-//get id
+// get id
 func GetEgress() (v *Egress, err error) {
 	v = &Egress{}
 	err = DB.Where("id = ?", 1).First(v).Error
@@ -31,7 +31,7 @@ func GetEgress() (v *Egress, err error) {
 	return v, nil
 }
 
-//get all
+// get all
 func UpdateEgress(m *Egress) (err error) {
 	var v Egress
 	err = DB.Where("id = ?", m.ID).First(&v).Error

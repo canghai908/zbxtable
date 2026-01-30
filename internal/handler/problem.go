@@ -9,8 +9,8 @@ import (
 
 // GetAllProblem 获取未恢复告警
 func GetAllProblem(c *gin.Context) {
-	var ProblemsRes models.ProblemsRes
-	b, cnt, err := models.GetProblems()
+	var ProblemsRes model.ProblemsRes
+	b, cnt, err := model.GetProblems()
 	if err != nil {
 		ProblemsRes.Code = 500
 		ProblemsRes.Message = err.Error()

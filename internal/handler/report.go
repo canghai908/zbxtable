@@ -19,8 +19,8 @@ func GetReportGin(c *gin.Context) {
 	name := c.Query("name")
 	reportType := c.Query("report_type")
 
-	var res models.ReportRes
-	count, hs, err := models.GetAllReportsLimt(page, limit, name, reportType)
+	var res model.ReportRes
+	count, hs, err := model.GetAllReportsLimt(page, limit, name, reportType)
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()
@@ -38,8 +38,8 @@ func GetReportOneGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	var res models.ReportRes
-	v, err := models.GetReportsByID(id)
+	var res model.ReportRes
+	v, err := model.GetReportsByID(id)
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()
@@ -85,12 +85,12 @@ func CreateReportGin(c *gin.Context) {
 		endTime, _ = time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
 	}
 
-	var res models.ReportRes
-	v := models.Report{Name: name, Items: items, LinkBandWidth: linkbandwidth,
+	var res model.ReportRes
+	v := model.Report{Name: name, Items: items, LinkBandWidth: linkbandwidth,
 		HostIds: host_ids, ItemIds: item_ids,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
-	id, err := models.AddReport(&v)
+	id, err := model.AddReport(&v)
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()
@@ -98,16 +98,16 @@ func CreateReportGin(c *gin.Context) {
 		// 如果是实时报表，立即生成
 		if report_mode == "realtime" && report_type == "host" {
 			// 重新读取完整的报表数据
-			report, err := models.GetReportsByID(int(id))
+			report, err := model.GetReportsByID(int(id))
 			if err == nil {
 				// 设置执行状态为处理中
 				report.ExecStatus = "1" // 处理中
 				report.StartAt = time.Now()
-				models.UpdateReportExecStatusByID(report)
+				model.UpdateReportExecStatusByID(report)
 
 				// 异步生成报表
 				go func() {
-					err := models.TaskHostReport(*report)
+					err := model.TaskHostReport(*report)
 					if err != nil {
 						logger.Log.Error("实时报表生成失败:", err)
 						report.ExecStatus = "3" // 失败
@@ -115,7 +115,7 @@ func CreateReportGin(c *gin.Context) {
 						report.ExecStatus = "2" // 成功
 					}
 					report.EndAt = time.Now()
-					models.UpdateReportExecStatusByID(report)
+					model.UpdateReportExecStatusByID(report)
 				}()
 			}
 		}
@@ -161,12 +161,12 @@ func UpdateReportGin(c *gin.Context) {
 	}
 
 	id, _ := strconv.Atoi(idStr)
-	var res models.ReportRes
-	v := models.Report{ID: id, Name: name, Items: items, LinkBandWidth: linkbandwidth,
+	var res model.ReportRes
+	v := model.Report{ID: id, Name: name, Items: items, LinkBandWidth: linkbandwidth,
 		HostIds: host_ids, ItemIds: item_ids,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
-	if err := models.UpdateReportByID(&v); err == nil {
+	if err := model.UpdateReportByID(&v); err == nil {
 		res.Code = 200
 		res.Message = "保存成功"
 	} else {
@@ -181,8 +181,8 @@ func DeleteReportGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	var res models.ReportRes
-	if err := models.DeleteReport(id); err == nil {
+	var res model.ReportRes
+	if err := model.DeleteReport(id); err == nil {
 		res.Code = 200
 		res.Message = "删除成功"
 	} else {
@@ -203,9 +203,9 @@ func CheckNowGin(c *gin.Context) {
 	idStr := gjson.Get(string(body), "id").String()
 	id, _ := strconv.Atoi(idStr)
 
-	var res models.ReportRes
-	v := models.Report{ID: id}
-	err = models.CheckNowByID(&v)
+	var res model.ReportRes
+	v := model.Report{ID: id}
+	err = model.CheckNowByID(&v)
 	if err == nil {
 		res.Code = 200
 		res.Message = "生成成功"
@@ -229,9 +229,9 @@ func UpdateReportStatusGin(c *gin.Context) {
 	idStr := gjson.Get(string(body), "id").String()
 	id, _ := strconv.Atoi(idStr)
 
-	var res models.TopologyList
-	v := models.Report{ID: id}
-	err = models.UpdateReportsStatusByID(&v)
+	var res model.TopologyList
+	v := model.Report{ID: id}
+	err = model.UpdateReportsStatusByID(&v)
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()
@@ -239,7 +239,7 @@ func UpdateReportStatusGin(c *gin.Context) {
 		res.Code = 200
 		res.Message = "更新成功"
 	}
-	res.Data.Items = []models.Topology{}
+	res.Data.Items = []model.Topology{}
 	c.JSON(http.StatusOK, res)
 }
 
@@ -258,8 +258,8 @@ func GetReportHostsGin(c *gin.Context) {
 		limit = "1000"
 	}
 
-	var res models.HostList
-	hosts, count, err := models.HostsList(hostType, page, limit, "", "", "", "")
+	var res model.HostList
+	hosts, count, err := model.HostsList(hostType, page, limit, "", "", "", "")
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()
@@ -277,15 +277,15 @@ func GetReportHostsGin(c *gin.Context) {
 func GetReportItemsGin(c *gin.Context) {
 	hostID := c.Query("host_id")
 	if hostID == "" {
-		var res models.ItemList
+		var res model.ItemList
 		res.Code = 500
 		res.Message = "host_id参数不能为空"
 		c.JSON(http.StatusOK, res)
 		return
 	}
 
-	var res models.ItemList
-	items, count, err := models.GetAllItemByHostID(hostID)
+	var res model.ItemList
+	items, count, err := model.GetAllItemByHostID(hostID)
 	if err != nil {
 		res.Code = 500
 		res.Message = err.Error()

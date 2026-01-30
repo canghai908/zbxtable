@@ -1,4 +1,4 @@
-package models
+package model
 
 // HostList struct
 type HostList struct {

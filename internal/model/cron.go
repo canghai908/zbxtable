@@ -1,4 +1,4 @@
-﻿package models
+﻿package model
 
 import (
 	"errors"
@@ -20,17 +20,17 @@ var (
 func InitTask() {
 	// 创建 cron 调度器
 	cronScheduler = cron.New(cron.WithSeconds())
-	
+
 	// 添加任务
 	// 注意：cron 表达式格式为 "秒 分 时 日 月 周"
 	// toolbox 的 "0/30 * * * * *" 表示每30秒执行一次
 	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = TOP() })
 	cronScheduler.AddFunc("0 55 23 * * *", func() { _ = CreateDayReport() })  // 每天23:55执行
 	cronScheduler.AddFunc("0 55 17 * * 5", func() { _ = CreateWeekReport() }) // 每周五17:55执行
-	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = GetTypeHostList() })   // 每5分钟执行
-	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = EgressCache() })      // 每30秒执行
-	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })     // 每5分钟执行
-	
+	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = GetTypeHostList() })  // 每5分钟执行
+	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = EgressCache() })     // 每30秒执行
+	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
+
 	// 启动调度器
 	cronScheduler.Start()
 	logger.Log.Info("Cron scheduler started")

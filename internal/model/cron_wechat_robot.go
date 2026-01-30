@@ -1,7 +1,8 @@
-﻿package models
+﻿package model
 
 import (
 	"bytes"
+
 	"fmt"
 	"html/template"
 	"net/http"

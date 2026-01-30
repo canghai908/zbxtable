@@ -1,4 +1,4 @@
-package models
+package model
 
 // ListQuery struct
 type ListQuery struct {

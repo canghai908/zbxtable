@@ -1,10 +1,10 @@
-package models
+package model
 
 import (
 	"zbxtable/pkg/logger"
 )
 
-//GetTrendByItemID by itemid limit
+// GetTrendByItemID by itemid limit
 func GetTrendByItemID(itemid string, limit string) ([]Trend, error) {
 	par := []string{"itemid", "clock", "num", "value_min", "value_avg", "value_max"}
 	par1 := []string{itemid}
@@ -28,7 +28,7 @@ func GetTrendByItemID(itemid string, limit string) ([]Trend, error) {
 	return hb, err
 }
 
-//GetTrendData by itemid limit
+// GetTrendData by itemid limit
 func GetTrendData(itemid, timefrom, timetill string) ([]Trend, error) {
 	output := []string{"itemid", "clock", "num", "value_min", "value_avg", "value_max"}
 	itemids := []string{itemid}
@@ -52,7 +52,7 @@ func GetTrendData(itemid, timefrom, timetill string) ([]Trend, error) {
 	return hb, err
 }
 
-//GetTrendDataByItemid by itemid limit
+// GetTrendDataByItemid by itemid limit
 func GetTrendDataByItemid(item Item, time_from, time_till int64) ([]Trend, error) {
 	output := []string{"itemid", "clock", "num", "value_min", "value_avg", "value_max"}
 	itemids := []string{item.Itemid}

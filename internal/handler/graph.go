@@ -18,9 +18,9 @@ func GetGraphByHostID(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.GraphListQuery
-	var GraphRes models.GraphList
+
+	var v model.GraphListQuery
+	var GraphRes model.GraphList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		GraphRes.Code = 200
@@ -44,7 +44,7 @@ func GetGraphByHostID(c *gin.Context) {
 	End = en.Unix()
 
 	id, _ := strconv.Atoi(v.Hostid)
-	vv, count, err := models.GetGraphByHostID(id, Start, End)
+	vv, count, err := model.GetGraphByHostID(id, Start, End)
 	if err != nil {
 		GraphRes.Code = 500
 		GraphRes.Message = "获取图形数据错误"
@@ -65,9 +65,9 @@ func ExportGraph(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.GraphExpQuery
-	var GraphRes models.GraphList
+
+	var v model.GraphExpQuery
+	var GraphRes model.GraphList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		GraphRes.Code = 200
@@ -89,7 +89,7 @@ func ExportGraph(c *gin.Context) {
 	en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
 	Start = st.Format("2006-01-02 15:04:05")
 	End = en.Format("2006-01-02 15:04:05")
-	vvv, err := models.SaveImagePDF(v.Hostids, Start, End)
+	vvv, err := model.SaveImagePDF(v.Hostids, Start, End)
 	if err != nil {
 		GraphRes.Code = 500
 		GraphRes.Message = "获取图形数据错误"

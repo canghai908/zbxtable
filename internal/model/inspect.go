@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"github.com/360EntSecGroup-Skylar/excelize"
 )
 
-//ExpInspect 按组巡检报告导出
+// ExpInspect 按组巡检报告导出
 func ExpInspect(groupname string, Insp []Insp) ([]byte, error) {
 
 	f := excelize.NewFile()

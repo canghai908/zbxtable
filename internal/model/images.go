@@ -1,10 +1,11 @@
-package models
+package model
 
 import (
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
 	"encoding/base64"
+
 	"io"
 	"net/http"
 	"net/url"

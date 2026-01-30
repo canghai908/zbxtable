@@ -12,8 +12,8 @@ import (
 
 // GetAllSystem 获取系统配置列表
 func GetAllSystem(c *gin.Context) {
-	var SystemRes models.SystemList
-	cnt, val, err := models.GetALlSystem()
+	var SystemRes model.SystemList
+	cnt, val, err := model.GetALlSystem()
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -30,8 +30,8 @@ func GetAllSystem(c *gin.Context) {
 func GetSystemByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var SystemRes models.SystemList
-	val, err := models.GetSystemByID(int64(id))
+	var SystemRes model.SystemList
+	val, err := model.GetSystemByID(int64(id))
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -51,7 +51,7 @@ func UpdateSystem(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 	cpuCore := gjson.Get(string(body), "cpu_core").String()
@@ -61,15 +61,15 @@ func UpdateSystem(c *gin.Context) {
 	memoryTotalId := gjson.Get(string(body), "memory_total_id").String()
 	memoryUsedId := gjson.Get(string(body), "memory_used_id").String()
 	memoryUtilizationId := gjson.Get(string(body), "memory_utilization_id").String()
-	model := gjson.Get(string(body), "model").String()
+	mode := gjson.Get(string(body), "model").String()
 	pingTemplateId := gjson.Get(string(body), "ping_template_id").String()
-	
-	var SystemRes models.SystemList
-	v := models.System{ID: int64(id), CPUCore: cpuCore, CPUUtilizationID: cpuUtilizationId,
-		GroupID: groupId, MemoryTotalID: memoryTotalId, UptimeID: uptimeId, Model: model,
+
+	var SystemRes model.SystemList
+	v := model.System{ID: int64(id), CPUCore: cpuCore, CPUUtilizationID: cpuUtilizationId,
+		GroupID: groupId, MemoryTotalID: memoryTotalId, UptimeID: uptimeId, Model: mode,
 		MemoryUsedID: memoryUsedId, MemoryUtilizationID: memoryUtilizationId,
 		PingTemplateID: pingTemplateId}
-	err = models.UpdateSystem(&v)
+	err = model.UpdateSystem(&v)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -84,8 +84,8 @@ func UpdateSystem(c *gin.Context) {
 func SystemInit(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var SystemRes models.SystemList
-	err := models.SystemInit(int64(id))
+	var SystemRes model.SystemList
+	err := model.SystemInit(int64(id))
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -102,8 +102,8 @@ func SystemInit(c *gin.Context) {
 
 // GetEgress 获取出口带宽配置
 func GetEgress(c *gin.Context) {
-	var SystemRes models.SystemList
-	val, err := models.GetEgress()
+	var SystemRes model.SystemList
+	val, err := model.GetEgress()
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -123,18 +123,18 @@ func UpdateEgress(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	nameone := gjson.Get(string(body), "name_one").String()
 	in_one := gjson.Get(string(body), "in_one").String()
 	out_one := gjson.Get(string(body), "out_one").String()
 	nametwo := gjson.Get(string(body), "name_two").String()
 	in_two := gjson.Get(string(body), "in_two").String()
 	out_two := gjson.Get(string(body), "out_two").String()
-	var SystemRes models.SystemList
-	v := models.Egress{ID: 1,
+	var SystemRes model.SystemList
+	v := model.Egress{ID: 1,
 		NameOne: nameone, InOne: in_one, OutOne: out_one,
 		NameTwo: nametwo, InTwo: in_two, OutTwo: out_two}
-	err = models.UpdateEgress(&v)
+	err = model.UpdateEgress(&v)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -149,8 +149,8 @@ func UpdateEgress(c *gin.Context) {
 
 // GetAllConfig 获取系统参数配置
 func GetAllConfig(c *gin.Context) {
-	var SystemRes models.SystemList
-	val, err := models.GetConfigList()
+	var SystemRes model.SystemList
+	val, err := model.GetConfigList()
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -172,11 +172,11 @@ func UpdateConfig(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	value := gjson.Get(string(body), "value").String()
-	var SystemRes models.SystemList
-	v := models.Config{ID: int64(id), Value: value}
-	err = models.UpdateConfig(&v)
+	var SystemRes model.SystemList
+	v := model.Config{ID: int64(id), Value: value}
+	err = model.UpdateConfig(&v)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()

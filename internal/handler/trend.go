@@ -11,7 +11,7 @@ import (
 func GetTrendByItemID(c *gin.Context) {
 	itemID := c.Query("item_id")
 	limit := c.Query("limit")
-	v, err := models.GetTrendByItemID(itemID, limit)
+	v, err := model.GetTrendByItemID(itemID, limit)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 	} else {

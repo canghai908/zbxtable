@@ -1,11 +1,12 @@
-﻿package models
+﻿package model
 
 import (
 	"sync"
 	"time"
 
-	"github.com/patrickmn/go-cache"
 	"zbxtable/pkg/logger"
+
+	"github.com/patrickmn/go-cache"
 )
 
 var (

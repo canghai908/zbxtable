@@ -13,9 +13,9 @@ func GetTaskLogByReportID(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	reportid := c.Query("report_id")
-	
-	var TaskLogRes models.TaskRes
-	count, hs, err := models.GetTaskLogList(page, limit, reportid)
+
+	var TaskLogRes model.TaskRes
+	count, hs, err := model.GetTaskLogList(page, limit, reportid)
 	if err != nil {
 		TaskLogRes.Code = 500
 		TaskLogRes.Message = err.Error()
@@ -32,8 +32,8 @@ func GetTaskLogByReportID(c *gin.Context) {
 func DeleteTaskLog(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var ReportRes models.ReportRes
-	if err := models.DeleteTaskLog(id); err == nil {
+	var ReportRes model.ReportRes
+	if err := model.DeleteTaskLog(id); err == nil {
 		ReportRes.Code = 200
 		ReportRes.Message = "删除成功"
 	} else {

@@ -1,4 +1,4 @@
-package models
+package model
 
 import "time"
 
@@ -8,7 +8,7 @@ const (
 	NotifyDefault        // 2
 )
 
-//Alarm struct
+// Alarm struct
 type Alarm struct {
 	ID               int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	ZabbixInstanceID int       `gorm:"column:zabbix_instance_id;index" json:"zabbix_instance_id"`
@@ -33,13 +33,13 @@ type Alarm struct {
 	NotifyStatus     string    `gorm:"column:notify_status;size:10" json:"notify_status"`
 }
 
-//ListQueryAlarm query
+// ListQueryAlarm query
 type ListQueryAlarm struct {
 	Host   string   `json:"host"`
 	Period []string `json:"period"`
 }
 
-//ListExportAlarm struct
+// ListExportAlarm struct
 type ListExportAlarm struct {
 	Begin    string `json:"begin"`
 	End      string `json:"end"`
@@ -49,20 +49,20 @@ type ListExportAlarm struct {
 	Level    string `json:"level"`
 }
 
-//ListAnalysisAlarm qu
+// ListAnalysisAlarm qu
 type ListAnalysisAlarm struct {
 	Begin    string `json:"begin"`
 	End      string `json:"end"`
 	TenantID string `json:"tenant_id"`
 }
 
-//Pie struct
+// Pie struct
 type Pie struct {
 	Value int    `json:"value"`
 	Name  string `json:"name"`
 }
 
-//AlarmList struct
+// AlarmList struct
 type AlarmList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -72,7 +72,7 @@ type AlarmList struct {
 	} `json:"data"`
 }
 
-//AlarmList struct
+// AlarmList struct
 type AlarmTendantList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -82,7 +82,7 @@ type AlarmTendantList struct {
 	} `json:"data"`
 }
 
-//AnalysisList struct
+// AnalysisList struct
 type AnalysisList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

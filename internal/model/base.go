@@ -1,4 +1,4 @@
-﻿package models
+﻿package model
 
 import (
 	"bufio"
@@ -57,8 +57,8 @@ func GetAssetsHost() string {
 	return AssetsHost
 }
 
-// ModelsInit  p
-func ModelsInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
+// modelInit  p
+func ModelInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
 
 	//GetAssetsHost

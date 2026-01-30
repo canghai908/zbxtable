@@ -1,7 +1,8 @@
-﻿package models
+﻿package model
 
 import (
 	"bufio"
+
 	"os"
 	"strconv"
 	"strings"
@@ -144,7 +145,7 @@ func DeleteTopology(id int) (err error) {
 	return nil
 }
 
-//GetTopologyFromWeather node
+// GetTopologyFromWeather node
 func GetTopologyFromWeather() (Data, error) {
 	//get hw-switch
 	OutputPar := []string{"hostid", "host", "name"}

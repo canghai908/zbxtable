@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"log"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-//GetAllHostGroups func
+// GetAllHostGroups func
 func GetAllHostGroups(page, limit, groups string) ([]HostGroups, int64, error) {
 	rep, err := API.Call("hostgroup.get", Params{"output": "extend",
 		"selectHosts": "count"})
@@ -92,7 +92,7 @@ func GetAllHostGroups(page, limit, groups string) ([]HostGroups, int64, error) {
 	return newgroups, int64(len(dt)), err
 }
 
-//GetAllHostGroupsList func
+// GetAllHostGroupsList func
 func GetAllHostGroupsList() ([]HostTree, int64, error) {
 	selectHosts := []string{"hostid", "name", "status"}
 	rep, err := API.Call("hostgroup.get", Params{"output": "extend",
@@ -114,7 +114,7 @@ func GetAllHostGroupsList() ([]HostTree, int64, error) {
 	return hb, int64(len(hb)), err
 }
 
-//GetAllHostGroupsList func
+// GetAllHostGroupsList func
 func GetAllGroupsList() ([]HostTree, int64, error) {
 	rep, err := API.Call("hostgroup.get", Params{"output": "extend"})
 	if err != nil {
@@ -134,7 +134,7 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 	return hb, int64(len(hb)), err
 }
 
-//GetHostsInfoByGroupID func
+// GetHostsInfoByGroupID func
 func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	output := []string{"groupid", "name"}
 	selectHosts := []string{"hostid", "name", "status"}
@@ -161,7 +161,7 @@ func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	return hb, err
 }
 
-//GetHostsByGroupID func
+// GetHostsByGroupID func
 func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	output := []string{"groupid", "name"}
 	selectHosts := []string{"hostid", "name", "status"}
@@ -188,7 +188,7 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	return hb, err
 }
 
-//GetHostsByGroupIDList func
+// GetHostsByGroupIDList func
 func GetHostsByGroupIDList(GroupID string) ([]Hosts, error) {
 	output := []string{"groupid", "name"}
 	selectHosts := []string{"hostid", "name", "status"}

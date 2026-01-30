@@ -16,12 +16,12 @@ func GetAllHost(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	hosts := c.Query("hosts")
-	model := c.Query("model")
+	mode := c.Query("model")
 	ip := c.Query("ip")
 	available := c.Query("available")
-	
-	var HostRes models.HostList
-	hs, count, err := models.HostsList(HostType, page, limit, hosts, model, ip, available)
+
+	var HostRes model.HostList
+	hs, count, err := model.HostsList(HostType, page, limit, hosts, mode, ip, available)
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()
@@ -46,7 +46,7 @@ func GetHostByID(c *gin.Context) {
 	if id <= 10084 {
 		idStr = "10084"
 	}
-	v, err := models.GetHost(idStr)
+	v, err := model.GetHost(idStr)
 	if err != nil {
 		c.JSON(http.StatusOK, v.Error)
 	} else {
@@ -57,8 +57,8 @@ func GetHostByID(c *gin.Context) {
 // SearchHost 搜索主机
 func SearchHost(c *gin.Context) {
 	name := c.Query("name")
-	var HostRes models.HostList
-	val, err := models.GetNetHostByName(name)
+	var HostRes model.HostList
+	val, err := model.GetNetHostByName(name)
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()
@@ -80,11 +80,11 @@ func UpdateHost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.Hosts
-	var HostInfoRes models.HostInfo
+
+	var v model.Hosts
+	var HostInfoRes model.HostInfo
 	if err := jsoniter.Unmarshal(body, &v); err == nil {
-		if _, err := models.UpdateHost(&v); err == nil {
+		if _, err := model.UpdateHost(&v); err == nil {
 			HostInfoRes.Code = 200
 			HostInfoRes.Message = "保存成功"
 			HostInfoRes.Data.Items = v
@@ -102,7 +102,7 @@ func UpdateHost(c *gin.Context) {
 // GetMonItem 获取设备监控指标
 func GetMonItem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	hs, err := models.GetMonItem(hostid)
+	hs, err := model.GetMonItem(hostid)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		return
@@ -113,8 +113,8 @@ func GetMonItem(c *gin.Context) {
 // GetMonInterface 获取网络设备接口流量
 func GetMonInterface(c *gin.Context) {
 	hostid := c.Param("hostid")
-	var HostInterfaceRes models.HostInterfaceInfo
-	hs, err := models.GetInterfaceData(hostid)
+	var HostInterfaceRes model.HostInterfaceInfo
+	hs, err := model.GetInterfaceData(hostid)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
@@ -134,10 +134,10 @@ func GetOneInterface(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		return
 	}
-	
-	var v models.InterfaceData
+
+	var v model.InterfaceData
 	if err := jsoniter.Unmarshal(body, &v); err == nil {
-		b, err := models.GetInterfaceGraphData(v)
+		b, err := model.GetInterfaceGraphData(v)
 		if err != nil {
 			c.JSON(http.StatusOK, b)
 			return
@@ -151,8 +151,8 @@ func GetOneInterface(c *gin.Context) {
 // GetMonWinFileSystem 获取windows系统监控指标
 func GetMonWinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	var HostInterfaceRes models.HostInterfaceInfo
-	hs, err := models.GetMonWinData(hostid)
+	var HostInterfaceRes model.HostInterfaceInfo
+	hs, err := model.GetMonWinData(hostid)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
@@ -167,8 +167,8 @@ func GetMonWinFileSystem(c *gin.Context) {
 // GetMonLinFileSystem 获取文件系统详情
 func GetMonLinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	var HostInterfaceRes models.HostInterfaceInfo
-	hs, err := models.GetMonLinData(hostid)
+	var HostInterfaceRes model.HostInterfaceInfo
+	hs, err := model.GetMonLinData(hostid)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
@@ -183,35 +183,35 @@ func GetMonLinFileSystem(c *gin.Context) {
 // GetHostGraph 查看主机图形
 func GetHostGraph(c *gin.Context) {
 	// 检查是否配置了密码
-	if !models.IsPasswordConfigured() {
-		var HostInterfaceRes models.HostInterfaceInfo
+	if !model.IsPasswordConfigured() {
+		var HostInterfaceRes model.HostInterfaceInfo
 		HostInterfaceRes.Code = 403
 		HostInterfaceRes.Message = "配置文件中zabbix_pass没有配置,无法查看图形,请配置后重启应用查看"
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		var HostInterfaceRes models.HostInterfaceInfo
+		var HostInterfaceRes model.HostInterfaceInfo
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
-	
-	var v models.GraphReq
+
+	var v model.GraphReq
 	err = json.Unmarshal(body, &v)
 	if err != nil {
-		var HostInterfaceRes models.HostInterfaceInfo
+		var HostInterfaceRes model.HostInterfaceInfo
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
 	hostId := c.Param("hostid")
-	var HostInterfaceRes models.HostInterfaceInfo
-	hs, err := models.GetGraphData(hostId, v.Start, v.End)
+	var HostInterfaceRes model.HostInterfaceInfo
+	hs, err := model.GetGraphData(hostId, v.Start, v.End)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	models "zbxtable/internal/model"
+	model "zbxtable/internal/model"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
@@ -57,7 +57,7 @@ func WebSocketHandlerGin(c *gin.Context) {
 		// 发送数据
 		if string(ms) == "success" {
 			// 查询数据
-			val, err := models.GetTopologyById(id)
+			val, err := model.GetTopologyById(id)
 			if err != nil {
 				logger.Log.Debug(err)
 				continue
@@ -70,7 +70,7 @@ func WebSocketHandlerGin(c *gin.Context) {
 				continue
 			}
 			// 更新数据
-			err = models.UpdateEdgeDataById(id)
+			err = model.UpdateEdgeDataById(id)
 			if err != nil {
 				continue
 			}
@@ -81,8 +81,8 @@ func WebSocketHandlerGin(c *gin.Context) {
 
 // LoginGin 登录（Gin版本）
 func LoginGin(c *gin.Context) {
-	var res models.Auth
-	var manager models.Manager
+	var res model.Auth
+	var manager model.Manager
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -102,15 +102,15 @@ func LoginGin(c *gin.Context) {
 
 	// session timeout
 	var SessionTimeout int64
-	SessionTimeout, err = strconv.ParseInt(models.GetConfKey("timeout"), 10, 32)
+	SessionTimeout, err = strconv.ParseInt(model.GetConfKey("timeout"), 10, 32)
 	if err != nil {
 		logger.Log.Error(err)
 		SessionTimeout = 12
 	}
 
 	// 使用 GORM 查询
-	var Manager models.Manager
-	err = models.GetDB().Where("username = ?", manager.Username).First(&Manager).Error
+	var Manager model.Manager
+	err = model.GetDB().Where("username = ?", manager.Username).First(&Manager).Error
 	if err != nil {
 		res.Code = 400
 		res.Message = "用户名或密码错误"
@@ -141,7 +141,7 @@ func LoginGin(c *gin.Context) {
 		res.Data.User.Avatar = Manager.Avatar
 		res.Data.User.Role = Manager.Role
 		res.Data.User.Created = Manager.Created
-		res.Data.Roles = []models.Roles{{ID: Manager.Role, Operation: Manager.Operation}}
+		res.Data.Roles = []model.Roles{{ID: Manager.Role, Operation: Manager.Operation}}
 		c.JSON(http.StatusOK, res)
 		return
 	}
@@ -159,7 +159,7 @@ func LoginGin(c *gin.Context) {
 		res.Data.User.Name = Manager.Username
 		res.Data.User.Avatar = Manager.Avatar
 		res.Data.User.Created = Manager.Created
-		res.Data.Roles = []models.Roles{{ID: Manager.Role, Operation: Manager.Operation}}
+		res.Data.Roles = []model.Roles{{ID: Manager.Role, Operation: Manager.Operation}}
 		c.JSON(http.StatusOK, res)
 		return
 	}
@@ -198,7 +198,7 @@ func ReceiveGin(c *gin.Context) {
 	// 多租户 token 校验：优先使用租户绑定表；未配置绑定时回退到全局 token（兼容旧逻辑）
 	zabbixInstanceID := 0
 	fmt.Println(tenantid)
-	if binding, err := models.GetZabbixTenantByTenantID(tenantid); err == nil && binding != nil {
+	if binding, err := model.GetZabbixTenantByTenantID(tenantid); err == nil && binding != nil {
 		fmt.Println("aaaa")
 		if !binding.Enabled {
 			res.ID = 0
@@ -215,7 +215,7 @@ func ReceiveGin(c *gin.Context) {
 		}
 		zabbixInstanceID = binding.ID
 	} else {
-		if token != models.GetConfKey("token") {
+		if token != model.GetConfKey("token") {
 			res.ID = 0
 			res.Msg = "Token Error!"
 			logger.Log.Error("Token Error!")
@@ -233,7 +233,7 @@ func ReceiveGin(c *gin.Context) {
 	}
 	fmt.Println(string(body))
 
-	id, err := models.MsAdd(tenantid, zabbixInstanceID, body)
+	id, err := model.MsAdd(tenantid, zabbixInstanceID, body)
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()
@@ -254,7 +254,7 @@ func WebhookGin(c *gin.Context) {
 	}
 
 	tok := c.GetHeader("Token")
-	if tok != models.GetConfKey("token") {
+	if tok != model.GetConfKey("token") {
 		c.JSON(http.StatusOK, "Token Error!")
 		return
 	}

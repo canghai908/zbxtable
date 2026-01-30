@@ -11,7 +11,7 @@ import (
 func GetItemByKey(c *gin.Context) {
 	HostID := c.Query("host_id")
 	ItemKey := c.Query("item_key")
-	v, err := models.GetItemByKey(HostID, ItemKey)
+	v, err := model.GetItemByKey(HostID, ItemKey)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 	} else {
@@ -22,8 +22,8 @@ func GetItemByKey(c *gin.Context) {
 // GetAllItemByHostID 根据hostid获取主机所有item
 func GetAllItemByHostID(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemRes models.ItemList
-	v, count, err := models.GetAllItemByHostID(HostID)
+	var ItemRes model.ItemList
+	v, count, err := model.GetAllItemByHostID(HostID)
 	if err != nil {
 		ItemRes.Code = 500
 		ItemRes.Message = "获取错误"
@@ -39,8 +39,8 @@ func GetAllItemByHostID(c *gin.Context) {
 // GetAllTrafficItem 获取设备所有流量指标
 func GetAllTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemR models.ItemRes
-	v, count, err := models.GetAllTrafficItemByHostID(HostID)
+	var ItemR model.ItemRes
+	v, count, err := model.GetAllTrafficItemByHostID(HostID)
 	if err != nil {
 		ItemR.Code = 500
 		ItemR.Message = "获取错误"
@@ -56,8 +56,8 @@ func GetAllTrafficItem(c *gin.Context) {
 // GetAllReceiveTrafficItem 获取设备所有出流量
 func GetAllReceiveTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemR models.ItemRes
-	v, count, err := models.GetReceiveTrafficeItemByHostID(HostID)
+	var ItemR model.ItemRes
+	v, count, err := model.GetReceiveTrafficeItemByHostID(HostID)
 	if err != nil {
 		ItemR.Code = 500
 		ItemR.Message = "获取错误"

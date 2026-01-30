@@ -1,4 +1,4 @@
-package models
+package model
 
 // HistoryList struct
 type HistoryList struct {

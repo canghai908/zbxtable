@@ -18,9 +18,9 @@ func GetAllRule(c *gin.Context) {
 	tenant_id := c.Query("tenant_id")
 	m_type := c.Query("m_type")
 	status := c.Query("status")
-	
-	var RulRes models.RuleResp
-	cnt, al, err := models.GetRule(page, limit, name, tenant_id, m_type, status)
+
+	var RulRes model.RuleResp
+	cnt, al, err := model.GetRule(page, limit, name, tenant_id, m_type, status)
 	if err != nil {
 		RulRes.Code = 200
 		RulRes.Message = err.Error()
@@ -37,8 +37,8 @@ func GetAllRule(c *gin.Context) {
 func GetRuleByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var RulRes models.RuleResp
-	v, err := models.GetRuleByID(id)
+	var RulRes model.RuleResp
+	v, err := model.GetRuleByID(id)
 	if err != nil {
 		RulRes.Code = 500
 		RulRes.Message = err.Error()
@@ -58,7 +58,7 @@ func CreateRule(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	name := gjson.Get(string(body), "name").String()
 	tenant_id := gjson.Get(string(body), "tenant_id").String()
 	conditions := gjson.Get(string(body), "conditions").String()
@@ -71,12 +71,12 @@ func CreateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
-	
-	var RulRes models.RuleResp
-	v := models.Rule{Name: name, Conditions: conditions,
+
+	var RulRes model.RuleResp
+	v := model.Rule{Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
-	_, err = models.AddRule(&v)
+	_, err = model.AddRule(&v)
 	if err != nil {
 		RulRes.Code = 500
 		RulRes.Message = err.Error()
@@ -96,7 +96,7 @@ func UpdateRule(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	name := gjson.Get(string(body), "name").String()
 	tenant_id := gjson.Get(string(body), "tenant_id").String()
 	conditions := gjson.Get(string(body), "conditions").String()
@@ -109,18 +109,18 @@ func UpdateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
-	
+
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var RulRes models.RuleResp
-	v := models.Rule{ID: id, Name: name, Conditions: conditions,
+
+	var RulRes model.RuleResp
+	v := model.Rule{ID: id, Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
-	err = models.UpdateRule(&v, tuserStr)
+	err = model.UpdateRule(&v, tuserStr)
 	if err != nil {
 		RulRes.Code = 500
 		RulRes.Message = err.Error()
@@ -142,17 +142,17 @@ func UpdateRuleStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	status := gjson.Get(string(body), "status").String()
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var RulRes models.RuleResp
-	v := models.Rule{ID: id, Status: status}
-	err = models.UpdateRuleStatus(&v, tuserStr)
+
+	var RulRes model.RuleResp
+	v := model.Rule{ID: id, Status: status}
+	err = model.UpdateRuleStatus(&v, tuserStr)
 	if err != nil {
 		RulRes.Code = 500
 		RulRes.Message = err.Error()
@@ -174,9 +174,9 @@ func DeleteRule(c *gin.Context) {
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var RulRes models.RuleResp
-	err := models.DeleteRule(id, tuserStr)
+
+	var RulRes model.RuleResp
+	err := model.DeleteRule(id, tuserStr)
 	if err != nil {
 		RulRes.Code = 500
 		RulRes.Message = err.Error()

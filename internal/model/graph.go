@@ -1,10 +1,10 @@
-package models
+package model
 
 import (
 	"time"
 )
 
-//GetGraphByHostID by id
+// GetGraphByHostID by id
 func GetGraphByHostID(hostid int, start, end int64) ([]GraphInfo, int64, error) {
 	rep, err := API.CallWithError("graph.get", Params{"output": "extend",
 		"hostids": hostid, "sortfiled": "name"})

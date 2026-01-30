@@ -12,9 +12,9 @@ func GetAllHostGroup(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	groups := c.Query("groups")
-	
-	var HostGroupsRes models.HostGroupsList
-	hs, cnt, err := models.GetAllHostGroups(page, limit, groups)
+
+	var HostGroupsRes model.HostGroupsList
+	hs, cnt, err := model.GetAllHostGroups(page, limit, groups)
 	if err != nil {
 		HostGroupsRes.Code = 401
 		HostGroupsRes.Message = err.Error()
@@ -30,8 +30,8 @@ func GetAllHostGroup(c *gin.Context) {
 
 // GetAllHostGroupsList 获取所有主机组列表（树形）
 func GetAllHostGroupsList(c *gin.Context) {
-	var HostGroupsRes models.HostTreeList
-	hs, cnt, err := models.GetAllHostGroupsList()
+	var HostGroupsRes model.HostTreeList
+	hs, cnt, err := model.GetAllHostGroupsList()
 	if err != nil {
 		HostGroupsRes.Code = 401
 		HostGroupsRes.Message = err.Error()
@@ -46,8 +46,8 @@ func GetAllHostGroupsList(c *gin.Context) {
 
 // GetAllGroupsList 获取所有组列表
 func GetAllGroupsList(c *gin.Context) {
-	var HostGroupsRes models.HostTreeList
-	hs, cnt, err := models.GetAllGroupsList()
+	var HostGroupsRes model.HostTreeList
+	hs, cnt, err := model.GetAllGroupsList()
 	if err != nil {
 		HostGroupsRes.Code = 401
 		HostGroupsRes.Message = err.Error()
@@ -63,8 +63,8 @@ func GetAllGroupsList(c *gin.Context) {
 // GetHostsByGroupID 根据组ID获取主机列表
 func GetHostsByGroupID(c *gin.Context) {
 	GroupID := c.Param("id")
-	hs, err := models.GetHostsByGroupID(GroupID)
-	var HostsByGroupIDRes models.HostGroupBYGroupIDList
+	hs, err := model.GetHostsByGroupID(GroupID)
+	var HostsByGroupIDRes model.HostGroupBYGroupIDList
 	if err != nil {
 		HostsByGroupIDRes.Code = 401
 		HostsByGroupIDRes.Message = err.Error()

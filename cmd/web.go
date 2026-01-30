@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 	v1 "zbxtable/api/v1"
-	"zbxtable/pkg/templates"
 	"zbxtable/pkg/logger"
+	"zbxtable/pkg/templates"
 
 	model "zbxtable/internal/model"
 
@@ -126,7 +126,7 @@ func runWeb(*cli.Context) error {
 		os.Exit(1)
 	}
 	logger.Log.Info(motd)
-	model.ModelsInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
+	model.ModelInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
 		InitConfig("zabbix_token"),
 		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
 		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"),
@@ -310,7 +310,7 @@ func CheckConfExist() {
 
 // init config files
 func InitConfig(v string) string {
-	// 为了与 models.GetConfKey 行为一致，这里也实现：
+	// 为了与 model.GetConfKey 行为一致，这里也实现：
 	// 1）如果 .env 存在，则所有配置完全由 .env 决定（可以是空字符串），不会再回退到 app.conf
 	// 2）只有当 .env 不存在时，才从 app.conf 读取
 	initEnvOnce.Do(func() {

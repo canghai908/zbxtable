@@ -1,6 +1,6 @@
-package models
+package model
 
-//ItemList struct
+// ItemList struct
 type ItemList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -10,7 +10,7 @@ type ItemList struct {
 	} `json:"data"`
 }
 
-//ItemList struct
+// ItemList struct
 type ItemRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -20,7 +20,7 @@ type ItemRes struct {
 	} `json:"data"`
 }
 
-//Item struct
+// Item struct
 type Item struct {
 	Itemid               string        `json:"itemid"`
 	Type                 string        `json:"type,"`

@@ -1,10 +1,10 @@
-package models
+package model
 
 import (
 	"zbxtable/pkg/logger"
 )
 
-//GetApplicationByHostid st
+// GetApplicationByHostid st
 func GetApplicationByHostid(hostid string) ([]Application, int64, error) {
 	exp := []string{"applicationid", "name"}
 	output := []string{"itemid", "name", "value_type", "units"}

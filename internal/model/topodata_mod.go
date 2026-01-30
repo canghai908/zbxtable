@@ -1,8 +1,8 @@
-package models
+package model
 
 import "time"
 
-//TableName Topology
+// TableName Topology
 func (t *TopologyData) TableName() string {
 	return TableName("topology_data")
 }

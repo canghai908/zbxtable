@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	models "zbxtable/internal/model"
+	"zbxtable/internal/model"
 
 	"github.com/canghai908/zabbix-go"
 	"github.com/gin-gonic/gin"
@@ -155,7 +155,7 @@ func writeConfigFile(zabbix_web, zabbix_user, zabbix_pass,
 	}
 	// logger defaults (copyrequestbody 已废弃，不再写入)
 	cfg.Section("").NewKey("log_level", "6")
-	cfg.Section("").NewKey("log_path", "logs/app.log")
+	cfg.Section("").NewKey("log_path", "log")
 	cfg.Section("").NewKey("maxlines", "1000")
 	cfg.Section("").NewKey("maxsize", "0")
 	cfg.Section("").NewKey("maxdays", "10")
@@ -486,7 +486,7 @@ func DoInstall(c *gin.Context) {
 	}
 
 	// 初始化数据库
-	models.ModelsInit(
+	model.ModelInit(
 		"", "", "", "",
 		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
 

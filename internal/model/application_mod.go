@@ -1,4 +1,4 @@
-package models
+package model
 
 // ApplicationList struct
 type ApplicationList struct {

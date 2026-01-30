@@ -9,8 +9,8 @@ import (
 
 // GetAllTrigger 获取触发器列表
 func GetAllTrigger(c *gin.Context) {
-	var TriggersRes models.TriggersRes
-	b, cnt, err := models.GetTriggers()
+	var TriggersRes model.TriggersRes
+	b, cnt, err := model.GetTriggers()
 	if err != nil {
 		TriggersRes.Code = 500
 		TriggersRes.Message = err.Error()
@@ -26,8 +26,8 @@ func GetAllTrigger(c *gin.Context) {
 // GetTriggerList 根据主机ID获取Trigger列表
 func GetTriggerList(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var TriggersListRes models.TriggersListRes
-	b, cnt, err := models.GetTriggerList(HostID)
+	var TriggersListRes model.TriggersListRes
+	b, cnt, err := model.GetTriggerList(HostID)
 	if err != nil {
 		TriggersListRes.Code = 500
 		TriggersListRes.Message = err.Error()

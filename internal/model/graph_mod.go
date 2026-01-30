@@ -1,4 +1,4 @@
-package models
+package model
 
 type GraphList struct {
 	Code    int    `json:"code"`
@@ -9,36 +9,36 @@ type GraphList struct {
 	} `json:"data"`
 }
 
-//GraphListQuery struct
+// GraphListQuery struct
 type GraphListQuery struct {
 	Hostid string   `json:"hostid"`
 	Period []string `json:"period"`
 }
 
-//GraphExpQuery struc
+// GraphExpQuery struc
 type GraphExpQuery struct {
 	Hostids []string `json:"hostids"`
 	Period  []string `json:"period"`
 }
 
-//GraphInfo struct
+// GraphInfo struct
 type GraphInfo struct {
 	GraphID string `json:"graphid"`
 	Name    string `json:"name"`
 }
 
-//GraphIDList as
+// GraphIDList as
 type GraphIDList struct {
 	Hosts     string      `json:"hosts"`
 	GraphList []GraphInfo `json:"graphid"`
 }
 
-//GIDList struct
+// GIDList struct
 type GIDList struct {
 	GIDList []GraphIDList `json:"gidlist"`
 }
 
-//GraphByteInfo struct
+// GraphByteInfo struct
 type GraphByteInfo struct {
 	GraphID   string `json:"graphid"`
 	GraphByte []byte `json:"graphbyte"`

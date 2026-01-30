@@ -14,8 +14,8 @@ func GetRouters(c *gin.Context) {
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	var routeRes models.RouRes
-	info, err := models.GetRouter(tuserStr)
+	var routeRes model.RouRes
+	info, err := model.GetRouter(tuserStr)
 	if err != nil {
 		routeRes.Code = 500
 		routeRes.Message = "获取失败"
@@ -30,8 +30,8 @@ func GetRouters(c *gin.Context) {
 
 // GetBaseInfo 获取首页基础信息
 func GetBaseInfo(c *gin.Context) {
-	var InfoRes models.InfoRes
-	info, err := models.GetCountHost()
+	var InfoRes model.InfoRes
+	info, err := model.GetCountHost()
 	if err != nil {
 		InfoRes.Code = 500
 		InfoRes.Message = err.Error()
@@ -48,8 +48,8 @@ func GetResourceTop(c *gin.Context) {
 	host_type := c.Query("host_type")
 	metrics_type := c.Query("metrics_type")
 	top_num := c.Query("top_num")
-	var TopRes models.TopRes
-	info, err := models.GetTopList(host_type, metrics_type, top_num)
+	var TopRes model.TopRes
+	info, err := model.GetTopList(host_type, metrics_type, top_num)
 	if err != nil {
 		TopRes.Code = 500
 		TopRes.Message = err.Error()
@@ -63,8 +63,8 @@ func GetResourceTop(c *gin.Context) {
 
 // GetInventory 获取图谱资源
 func GetInventory(c *gin.Context) {
-	var TreeRes models.TreeRes
-	info, err := models.GetInventory()
+	var TreeRes model.TreeRes
+	info, err := model.GetInventory()
 	if err != nil {
 		TreeRes.Code = 500
 		TreeRes.Message = err.Error()
@@ -78,8 +78,8 @@ func GetInventory(c *gin.Context) {
 
 // GetOverview 获取汇总状态
 func GetOverview(c *gin.Context) {
-	var OverRes models.OverviewRes
-	info, err := models.GetOverviewData()
+	var OverRes model.OverviewRes
+	info, err := model.GetOverviewData()
 	if err != nil {
 		OverRes.Code = 500
 		OverRes.Message = err.Error()
@@ -93,8 +93,8 @@ func GetOverview(c *gin.Context) {
 
 // GetEgressData 获取出口带宽数据
 func GetEgressData(c *gin.Context) {
-	var EgrRes models.EgressRes
-	info, err := models.GetEgressData()
+	var EgrRes model.EgressRes
+	info, err := model.GetEgressData()
 	if err != nil {
 		EgrRes.Code = 500
 		EgrRes.Message = err.Error()
@@ -109,20 +109,20 @@ func GetEgressData(c *gin.Context) {
 
 // GetVersion 获取版本信息
 func GetVersion(c *gin.Context) {
-	var VerRes models.VerRes
+	var VerRes model.VerRes
 	VerRes.Code = 200
 	VerRes.Message = "获取成功"
-	VerRes.Data.Items.ZabbixVersion = models.ZBX_VER
-	VerRes.Data.Items.Version = models.Version
-	VerRes.Data.Items.GitHash = models.GitHash
-	VerRes.Data.Items.BuildTime = models.BuildTime
+	VerRes.Data.Items.ZabbixVersion = model.ZBX_VER
+	VerRes.Data.Items.Version = model.Version
+	VerRes.Data.Items.GitHash = model.GitHash
+	VerRes.Data.Items.BuildTime = model.BuildTime
 	c.JSON(http.StatusOK, VerRes)
 }
 
 // GetZbxSession 获取Zabbix Session
 func GetZbxSession(c *gin.Context) {
-	var SesRes models.SessionRes
-	session, err := models.GetZbxSession()
+	var SesRes model.SessionRes
+	session, err := model.GetZbxSession()
 	if err != nil {
 		SesRes.Code = 500
 		SesRes.Message = err.Error()

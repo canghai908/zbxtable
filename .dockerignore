@@ -9,7 +9,6 @@ zbxtable.exe
 tmp/
 download/
 log/
-logs/
 
 # 测试文件
 *_test.go

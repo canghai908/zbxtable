@@ -20,9 +20,9 @@ func ExportTrend(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ListQueryAll
-	var ExpRes models.ExpList
+
+	var v model.ListQueryAll
+	var ExpRes model.ExpList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		ExpRes.Code = 500
@@ -42,7 +42,7 @@ func ExportTrend(c *gin.Context) {
 	en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
 	Start = st.Unix()
 	End = en.Unix()
-	iodata, err := models.GetTrenDataFileName(v, Start, End)
+	iodata, err := model.GetTrenDataFileName(v, Start, End)
 	if err != nil {
 		ExpRes.Code = 200
 		ExpRes.Message = err.Error()
@@ -65,9 +65,9 @@ func ExportHistory(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ListQueryAll
-	var ExpRes models.ExpList
+
+	var v model.ListQueryAll
+	var ExpRes model.ExpList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		ExpRes.Code = 500
@@ -89,7 +89,7 @@ func ExportHistory(c *gin.Context) {
 	Start = st.Unix()
 	End = en.Unix()
 
-	iodata, err := models.GetHistoryDataFileName(v, Start, End)
+	iodata, err := model.GetHistoryDataFileName(v, Start, End)
 	if err != nil {
 		ExpRes.Code = 200
 		ExpRes.Message = err.Error()
@@ -112,9 +112,9 @@ func ExportInspect(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.HostGroupsPlist
-	var ExpRes models.ExpList
+
+	var v model.HostGroupsPlist
+	var ExpRes model.ExpList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		ExpRes.Code = 200
@@ -122,7 +122,7 @@ func ExportInspect(c *gin.Context) {
 		c.JSON(http.StatusOK, ExpRes)
 		return
 	}
-	hostdata, err := models.GetHostsByGroupIDList(v.GroupID)
+	hostdata, err := model.GetHostsByGroupIDList(v.GroupID)
 	if err != nil {
 		ExpRes.Code = 200
 		ExpRes.Message = err.Error()
@@ -136,9 +136,9 @@ func ExportInspect(c *gin.Context) {
 		V4 float64 `json:"v4"`
 	}
 	tt := make([]ss, len(hostdata))
-	yy := make([]models.Insp, len(hostdata))
+	yy := make([]model.Insp, len(hostdata))
 	for kk, v := range hostdata {
-		b, err := models.GetItemByKey(v.HostID, "system.cpu.util[,idle]")
+		b, err := model.GetItemByKey(v.HostID, "system.cpu.util[,idle]")
 		if err != nil {
 			logger.Log.Error(err)
 			ExpRes.Code = 200
@@ -146,7 +146,7 @@ func ExportInspect(c *gin.Context) {
 			c.JSON(http.StatusOK, ExpRes)
 			return
 		}
-		mem1, err := models.GetItemByKey(v.HostID, "vm.memory.size[total]")
+		mem1, err := model.GetItemByKey(v.HostID, "vm.memory.size[total]")
 		if err != nil {
 			logger.Log.Error(err)
 			ExpRes.Code = 200
@@ -154,7 +154,7 @@ func ExportInspect(c *gin.Context) {
 			c.JSON(http.StatusOK, ExpRes)
 			return
 		}
-		mem2, err := models.GetItemByKey(v.HostID, "vm.memory.size[available]")
+		mem2, err := model.GetItemByKey(v.HostID, "vm.memory.size[available]")
 		if err != nil {
 			logger.Log.Error(err)
 			ExpRes.Code = 200
@@ -173,12 +173,12 @@ func ExportInspect(c *gin.Context) {
 		for _, v := range b {
 			vint64, _ := strconv.ParseFloat(v.Lastvalue, 64)
 			if vint64 != 0 {
-				tt[kk].V3 = models.Round(100-vint64, 2)
+				tt[kk].V3 = model.Round(100-vint64, 2)
 			} else {
 				tt[kk].V3 = 0
 			}
 			if tt[kk].V1 != 0 {
-				tt[kk].V4 = models.Round(tt[kk].V2/tt[kk].V1, 2)
+				tt[kk].V4 = model.Round(tt[kk].V2/tt[kk].V1, 2)
 			} else {
 				tt[kk].V4 = 0
 			}
@@ -187,7 +187,7 @@ func ExportInspect(c *gin.Context) {
 		yy[kk].CPULoad = tt[kk].V3
 		yy[kk].MemPct = tt[kk].V4
 	}
-	ByteData, err := models.ExpInspect(v.Name, yy)
+	ByteData, err := model.ExpInspect(v.Name, yy)
 	if err != nil {
 		ExpRes.Code = 200
 		ExpRes.Message = err.Error()
@@ -210,9 +210,9 @@ func ExportHosts(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ExportHosts
-	var HostRes models.HostList
+
+	var v model.ExportHosts
+	var HostRes model.HostList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		HostRes.Code = 500
@@ -220,7 +220,7 @@ func ExportHosts(c *gin.Context) {
 		c.JSON(http.StatusOK, HostRes)
 		return
 	}
-	hs, err := models.GetHostList(v.Hosttype, v.Hosts, v.Model, v.Ip, v.Available)
+	hs, err := model.GetHostList(v.Hosttype, v.Hosts, v.Model, v.Ip, v.Available)
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()
@@ -241,9 +241,9 @@ func ExportInventory(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.ExportInventory
-	var HostRes models.HostList
+
+	var v model.ExportInventory
+	var HostRes model.HostList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		HostRes.Code = 500
@@ -251,7 +251,7 @@ func ExportInventory(c *gin.Context) {
 		c.JSON(http.StatusOK, HostRes)
 		return
 	}
-	hs, err := models.GetInventoryInfo(v.HostType)
+	hs, err := model.GetInventoryInfo(v.HostType)
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()

@@ -15,15 +15,15 @@ func GetAllGroup(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	name := c.Query("name")
-	
+
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var GrooupRes models.GroupResp
-	count, hs, err := models.GetGroup(page, limit, tuserStr, name)
+
+	var GrooupRes model.GroupResp
+	count, hs, err := model.GetGroup(page, limit, tuserStr, name)
 	if err != nil {
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
@@ -45,12 +45,12 @@ func CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
-	var GrooupRes models.GroupResp
-	v := models.UserGroup{Name: name, Note: note}
-	_, err = models.AddUserGroup(&v)
+	var GrooupRes model.GroupResp
+	v := model.UserGroup{Name: name, Note: note}
+	_, err = model.AddUserGroup(&v)
 	if err != nil {
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
@@ -68,19 +68,19 @@ func UpdateGroup(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes models.GroupResp
+		var GrooupRes model.GroupResp
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
 		c.JSON(http.StatusOK, GrooupRes)
 		return
 	}
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
 	tuser, _ := c.Get("username")
@@ -88,10 +88,10 @@ func UpdateGroup(c *gin.Context) {
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var GrooupRes models.GroupResp
-	v := models.UserGroup{ID: id, Name: name, Note: note}
-	err = models.UpdateUserGroup(&v, tuserStr)
+
+	var GrooupRes model.GroupResp
+	v := model.UserGroup{ID: id, Name: name, Note: note}
+	err = model.UpdateUserGroup(&v, tuserStr)
 	if err != nil {
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
@@ -109,29 +109,29 @@ func UpdateGroupMember(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes models.GroupResp
+		var GrooupRes model.GroupResp
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
 		c.JSON(http.StatusOK, GrooupRes)
 		return
 	}
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	member := gjson.Get(string(body), "member").String()
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var GrooupRes models.GroupResp
-	v := models.UserGroup{ID: id, Member: member}
-	err = models.UpdateGroupMember(&v, tuserStr)
+
+	var GrooupRes model.GroupResp
+	v := model.UserGroup{ID: id, Member: member}
+	err = model.UpdateGroupMember(&v, tuserStr)
 	if err != nil {
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
@@ -149,21 +149,21 @@ func DeleteGroup(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes models.GroupResp
+		var GrooupRes model.GroupResp
 		GrooupRes.Code = 500
 		GrooupRes.Message = err.Error()
 		c.JSON(http.StatusOK, GrooupRes)
 		return
 	}
-	
+
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
-	
-	var GrooupRes models.GroupResp
-	if err := models.DeleteGroup(id, tuserStr); err == nil {
+
+	var GrooupRes model.GroupResp
+	if err := model.DeleteGroup(id, tuserStr); err == nil {
 		GrooupRes.Code = 200
 		GrooupRes.Message = "删除成功"
 	} else {

@@ -1,10 +1,10 @@
-package models
+package model
 
 import (
 	"zbxtable/pkg/logger"
 )
 
-//ProblemsRes rest
+// ProblemsRes rest
 type ProblemsRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -14,7 +14,7 @@ type ProblemsRes struct {
 	} `json:"data"`
 }
 
-//Problems struct
+// Problems struct
 type Problems struct {
 	Acknowledged  string `json:"acknowledged"`
 	Clock         string `json:"clock"`
@@ -25,7 +25,7 @@ type Problems struct {
 	Severity      string `json:"severity"`
 }
 
-//GetProblems get porblems
+// GetProblems get porblems
 func GetProblems() ([]Problems, int64, error) {
 	par := []string{"eventid"}
 	problems, err := API.CallWithError("problem.get", Params{"output": "extend",

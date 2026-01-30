@@ -1,9 +1,9 @@
-package models
+package model
 
 import (
-	"zbxtable/pkg/logger"
 	"strings"
 	"time"
+	"zbxtable/pkg/logger"
 )
 
 // GetItemByKey bye key

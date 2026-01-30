@@ -1,4 +1,4 @@
-﻿package models
+﻿package model
 
 import (
 	"errors"
@@ -121,7 +121,7 @@ func UpdateUser(m *Manager, tuser string) error {
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-	
+
 	//密码不为空更新密码
 	if m.Password != "" {
 		updates := map[string]interface{}{
@@ -186,10 +186,10 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	var countUsers []Manager
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
-	
+
 	// 构建查询
 	query := DB.Model(&Manager{})
-	
+
 	// 管理员角色检查
 	var p Manager
 	err = DB.Where("username = ?", tuser).First(&p).Error
@@ -199,7 +199,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	if p.Role != "admin" {
 		query = query.Where("username = ?", tuser)
 	}
-	
+
 	// 条件过滤
 	if username != "" {
 		query = query.Where("username LIKE ?", "%"+username+"%")
@@ -207,14 +207,14 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	// 计数
 	err = query.Find(&countUsers).Error
 	if err != nil {
 		return 0, []Manager{}, err
 	}
 	cnt = int64(len(countUsers))
-	
+
 	// 分页查询
 	offset := (pages - 1) * limits
 	err = query.Select("id", "username", "role", "avatar", "email", "ding_talk",
@@ -223,7 +223,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	if err != nil {
 		return 0, []Manager{}, err
 	}
-	
+
 	return cnt, users, nil
 }
 

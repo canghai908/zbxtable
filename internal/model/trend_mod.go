@@ -1,6 +1,6 @@
-package models
+package model
 
-//TrendList struct
+// TrendList struct
 type TrendList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -10,7 +10,7 @@ type TrendList struct {
 	} `json:"data"`
 }
 
-//Trend struct
+// Trend struct
 type Trend struct {
 	Itemid   string `json:"itemid"`
 	Clock    string `json:"clock"`

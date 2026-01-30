@@ -1,11 +1,11 @@
-package models
+package model
 
 import (
-	"zbxtable/pkg/logger"
 	"strconv"
+	"zbxtable/pkg/logger"
 )
 
-//GetTriggers get porblems
+// GetTriggers get porblems
 func GetTriggers() ([]EndTrigger, int64, error) {
 	par11 := []string{"hostid", "name"}
 	filter := make(map[string]string)
@@ -50,7 +50,7 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 	return ma, int64(len(ma)), nil
 }
 
-//GetTriggerList get porblems
+// GetTriggerList get porblems
 func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
 	//par11 := []string{"hostid", "name"}
 	//filter := make(map[string]string)
@@ -78,7 +78,7 @@ func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
 	return hb, int64(len(hb)), nil
 }
 
-//GetTriggerList get porblems
+// GetTriggerList get porblems
 func GetTriggerHostCount(hostid string) (int64, error) {
 	filter := make(map[string]string)
 	filter["value"] = "1"
@@ -101,7 +101,7 @@ func GetTriggerHostCount(hostid string) (int64, error) {
 	return count, nil
 }
 
-//GetTriggerList get porblems
+// GetTriggerList get porblems
 func GetTriggerValue(triggerid string) ([]TriggerListStr, error) {
 	OutputPar := []string{"value", "status", "state", "description"}
 	triggers, err := API.CallWithError("trigger.get", Params{"output": OutputPar,

@@ -22,9 +22,9 @@ var updater = &selfupdate.Updater{
 }
 
 func GetVersion(version, gitHash, buildTime string) selfupdate.Updater {
-	models.Version = version
-	models.GitHash = gitHash
-	models.BuildTime = buildTime
+	model.Version = version
+	model.GitHash = gitHash
+	model.BuildTime = buildTime
 	updater.CurrentVersion = version
 	return *updater
 }

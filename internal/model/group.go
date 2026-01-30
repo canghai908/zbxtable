@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ type UserGroup struct {
 	Updated time.Time `gorm:"column:updated;autoUpdateTime" json:"updated_at"`
 }
 
-//ManagerInfo struct
+// ManagerInfo struct
 type GroupResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -26,7 +26,7 @@ type GroupResp struct {
 	} `json:"data"`
 }
 
-//TableName string
+// TableName string
 func (t *UserGroup) TableName() string {
 	return TableName("user_group")
 }
@@ -92,7 +92,7 @@ func GetGroup(page, limit, tuser, name string) (cnt int64, userlist []UserGroup,
 	return cnt, groups, nil
 }
 
-//udpate user
+// udpate user
 func UpdateUserGroup(m *UserGroup, tuser string) error {
 	//role检查
 	var p Manager
@@ -113,7 +113,7 @@ func UpdateUserGroup(m *UserGroup, tuser string) error {
 	return nil
 }
 
-//UpdateGroupMember user
+// UpdateGroupMember user
 func UpdateGroupMember(m *UserGroup, tuser string) error {
 	//role检查
 	var p Manager

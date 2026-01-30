@@ -12,9 +12,9 @@ import (
 func GetEventLogByAlarmID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	
-	var EveLogResp models.EventLogRes
-	v, err := models.GetEventLogByAlarmID(id)
+
+	var EveLogResp model.EventLogRes
+	v, err := model.GetEventLogByAlarmID(id)
 	if err != nil {
 		EveLogResp.Code = 500
 		EveLogResp.Message = "获取失败"

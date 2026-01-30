@@ -25,7 +25,7 @@ func AIChat(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
+
 	var userReq struct {
 		Message string `json:"message"`
 	}
@@ -51,11 +51,11 @@ func AIChat(c *gin.Context) {
 	}
 
 	// 从配置或系统配置表获取Ollama地址
-	ollamaHost := models.GetConfigValueByKey("ollama_host", models.GetConfKey("ollama_host"))
+	ollamaHost := model.GetConfigValueByKey("ollama_host", model.GetConfKey("ollama_host"))
 	if ollamaHost == "" {
 		ollamaHost = "http://localhost:11434"
 	}
-	ollamaModel := models.GetConfigValueByKey("ollama_model", models.GetConfKey("ollama_model"))
+	ollamaModel := model.GetConfigValueByKey("ollama_model", model.GetConfKey("ollama_model"))
 	if ollamaModel == "" {
 		ollamaModel = "deepseek-r1:32b"
 	}
@@ -133,7 +133,7 @@ func AIChat(c *gin.Context) {
 			} `json:"message"`
 			Done bool `json:"done"`
 		}
-					if err := jsoniter.Unmarshal(line, &response); err != nil {
+		if err := jsoniter.Unmarshal(line, &response); err != nil {
 			continue
 		}
 

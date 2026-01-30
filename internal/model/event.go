@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"time"
@@ -10,7 +10,7 @@ const (
 	//Notify               // 2
 )
 
-//AlarmList struct
+// AlarmList struct
 type EventLogRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -34,7 +34,7 @@ type EventLog struct {
 	Status        string    `gorm:"column:status;size:10" json:"status"`
 }
 
-//TableName alarm
+// TableName alarm
 func (t *EventLog) TableName() string {
 	return TableName("event_log")
 }

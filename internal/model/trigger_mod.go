@@ -1,6 +1,6 @@
-package models
+package model
 
-//TriggersRes rest
+// TriggersRes rest
 type TriggersRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -10,7 +10,7 @@ type TriggersRes struct {
 	} `json:"data"`
 }
 
-//TriggersRes rest
+// TriggersRes rest
 type TriggersListRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -20,7 +20,7 @@ type TriggersListRes struct {
 	} `json:"data"`
 }
 
-//LastTriggers struct
+// LastTriggers struct
 type LastTriggers struct {
 	Comments        string `json:"comments"`
 	CorrelationMode string `json:"correlation_mode"`
@@ -60,7 +60,7 @@ type LastTriggers struct {
 	Value              string `json:"value"`
 }
 
-//LastTriggers struct
+// LastTriggers struct
 type TriggerListStr struct {
 	Comments           string `json:"comments"`
 	CorrelationMode    string `json:"correlation_mode"`
@@ -84,7 +84,7 @@ type TriggerListStr struct {
 	Value              string `json:"value"`
 }
 
-//EndTrigger struct
+// EndTrigger struct
 type EndTrigger struct {
 	Acknowledged  string `json:"acknowledged"`
 	Hostid        string `json:"hostid"`

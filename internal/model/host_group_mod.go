@@ -1,6 +1,6 @@
-package models
+package model
 
-//HostGroupsList struct
+// HostGroupsList struct
 type HostGroupsList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -10,7 +10,7 @@ type HostGroupsList struct {
 	} `json:"data"`
 }
 
-//HostGroupBYGroupIDList struct
+// HostGroupBYGroupIDList struct
 type HostGroupBYGroupIDList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -20,7 +20,7 @@ type HostGroupBYGroupIDList struct {
 	} `json:"data"`
 }
 
-//HostGroups struct
+// HostGroups struct
 type HostGroups struct {
 	GroupID  string `json:"groupid"`
 	Name     string `json:"name"`
@@ -29,7 +29,7 @@ type HostGroups struct {
 	Hosts    string `json:"hosts"`
 }
 
-//HostGroupsPlist list
+// HostGroupsPlist list
 type HostGroupsPlist struct {
 	GroupID  string `json:"groupid,omitempty"`
 	Name     string `json:"name,omitempty"`
@@ -38,7 +38,7 @@ type HostGroupsPlist struct {
 	Hosts    []Host `json:"hosts,omitempty"`
 }
 
-//HostTreeList sst
+// HostTreeList sst
 type HostTreeList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -48,7 +48,7 @@ type HostTreeList struct {
 	} `json:"data"`
 }
 
-//HostTree struct
+// HostTree struct
 type HostTree struct {
 	GroupID   string `json:"groupid"`
 	Name      string `json:"name"`
@@ -63,7 +63,7 @@ type GroupHosts struct {
 	Status string `json:"status"`
 }
 
-//HostGroupBYGroupID struct
+// HostGroupBYGroupID struct
 type HostGroupBYGroupID struct {
 	GroupID string       `json:"groupid,omitempty"`
 	Name    string       `json:"name"`

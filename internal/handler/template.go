@@ -12,9 +12,9 @@ func GetAllTemplate(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	templates := c.Query("templates")
-	
-	var TemplateRes models.TemplateList
-	b, cnt, err := models.TemplateGet(page, limit, templates)
+
+	var TemplateRes model.TemplateList
+	b, cnt, err := model.TemplateGet(page, limit, templates)
 	if err != nil {
 		TemplateRes.Code = 500
 		TemplateRes.Message = "获取模版错误"
@@ -30,8 +30,8 @@ func GetAllTemplate(c *gin.Context) {
 
 // GetAllTemplateAll 获取所有模板
 func GetAllTemplateAll(c *gin.Context) {
-	var TemplateRes models.TemplateList
-	b, cnt, err := models.TemplateAllGet()
+	var TemplateRes model.TemplateList
+	b, cnt, err := model.TemplateAllGet()
 	if err != nil {
 		TemplateRes.Code = 500
 		TemplateRes.Message = "获取模版错误"
@@ -46,8 +46,8 @@ func GetAllTemplateAll(c *gin.Context) {
 
 // GetAllTemplateList 获取所有模板列表
 func GetAllTemplateList(c *gin.Context) {
-	var TemplateRes models.TemplateList
-	b, cnt, err := models.TemplateListGet()
+	var TemplateRes model.TemplateList
+	b, cnt, err := model.TemplateListGet()
 	if err != nil {
 		TemplateRes.Code = 500
 		TemplateRes.Message = "获取模版错误"
@@ -63,8 +63,8 @@ func GetAllTemplateList(c *gin.Context) {
 // GetItemByTemplateID 根据模板ID获取监控项
 func GetItemByTemplateID(c *gin.Context) {
 	templateid := c.Param("templateid")
-	var TemplateRes models.TemplateList
-	b, cnt, err := models.TemplateByItem(templateid)
+	var TemplateRes model.TemplateList
+	b, cnt, err := model.TemplateByItem(templateid)
 	if err != nil {
 		TemplateRes.Code = 500
 		TemplateRes.Message = "获取模版错误"

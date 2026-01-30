@@ -17,9 +17,9 @@ func GetHistoryByItemID(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
 		return
 	}
-	
-	var v models.HistoryQuery
-	var HistoryRes models.HistoryList
+
+	var v model.HistoryQuery
+	var HistoryRes model.HistoryList
 	err = jsoniter.Unmarshal(body, &v)
 	if err != nil {
 		HistoryRes.Code = 500
@@ -39,7 +39,7 @@ func GetHistoryByItemID(c *gin.Context) {
 	en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
 	Start = st.Unix()
 	End = en.Unix()
-	his, err := models.GetHistoryByItemID(v.Itemids, v.History, Start, End)
+	his, err := model.GetHistoryByItemID(v.Itemids, v.History, Start, End)
 	if err != nil {
 		HistoryRes.Code = 500
 		HistoryRes.Message = err.Error()

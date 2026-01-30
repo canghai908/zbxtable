@@ -26,7 +26,7 @@ start()
 {
     echo -n $"Starting ZbxTable: "
     cd $ZBXTABLE_HOME
-    nohup $ZBXTABLE_HOME/$APP_NAME web >> $ZBXTABLE_HOME/logs/$APP_NAME.log 2>&1 & echo $! >/tmp/$APP_NAME.pid &
+    nohup $ZBXTABLE_HOME/$APP_NAME web >> $ZBXTABLE_HOME/log/$APP_NAME.log 2>&1 & echo $! >/tmp/$APP_NAME.pid &
     rv=$?
     echo
     [ $rv -eq 0 ] && touch $lockfile

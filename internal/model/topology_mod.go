@@ -1,4 +1,4 @@
-package models
+package model
 
 import "time"
 
@@ -12,12 +12,12 @@ type Topology struct {
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
-//TableName Topology
+// TableName Topology
 func (t *Topology) TableName() string {
 	return TableName("topology")
 }
 
-//TopologyList struct
+// TopologyList struct
 type TopologyList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -27,7 +27,7 @@ type TopologyList struct {
 	} `json:"data"`
 }
 
-//TopologyList struct
+// TopologyList struct
 type TopologyInfo struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

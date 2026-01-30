@@ -1,4 +1,4 @@
-package models
+package model
 
 import (
 	"compress/gzip"
@@ -85,7 +85,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	} else {
 		os.Exit(1)
 	}
-	
+
 	// 开发模式下打印详细信息
 	runmode := GetConfKey("runmode")
 	if runmode == "dev" {

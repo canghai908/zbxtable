@@ -1,4 +1,4 @@
-package models
+package model
 
 import "time"
 
@@ -25,7 +25,7 @@ type Report struct {
 	UpdatedAt     time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
-//SystemList struct
+// SystemList struct
 type ReportRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
