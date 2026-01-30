@@ -37,9 +37,7 @@ func main() {
 	app.Version = version
 	app.Commands = []*cli.Command{
 		cmd.Web,
-		cmd.Install,
 		cmd.Update,
-		cmd.Uninstall,
 	}
 	app.Run(os.Args)
 }
