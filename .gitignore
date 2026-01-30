@@ -39,5 +39,5 @@ STRUCTURE_SIMPLIFICATION_REPORT.md
 TEST_README.md
 
 # 嵌入的前端文件（构建时从 zbxtable-web/web 复制）
-api/v1/web/
+api/v1/web/web/
 
