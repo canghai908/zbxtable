@@ -220,14 +220,14 @@ func DatabaseInit() {
 	}
 	if len(cnt) == 0 {
 		sys := []System{
-			{Name: "Linux操作系统", Status: 0},
-			{Name: "Windows操作系统", Status: 0},
-			{Name: "网络设备", Status: 0},
-			{Name: "物理服务器", Status: 0},
+			{Name: "Linux操作系统", Status: 0, InitedAt: time.Now()},
+			{Name: "Windows操作系统", Status: 0, InitedAt: time.Now()},
+			{Name: "网络设备", Status: 0, InitedAt: time.Now()},
+			{Name: "物理服务器", Status: 0, InitedAt: time.Now()},
 		}
 		err := DB.Create(&sys).Error
 		if err != nil {
-			utils.Log.Info("Init system info error！")
+			utils.Log.Info("Init system info error！", err)
 			return
 		}
 		utils.Log.Info("Init system data successfully!")

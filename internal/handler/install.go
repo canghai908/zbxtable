@@ -153,8 +153,6 @@ func writeConfigFile(zabbix_web, zabbix_user, zabbix_pass,
 	} else {
 		cfg.Section("").NewKey("timeout", timeout)
 	}
-	cfg.Section("").NewKey("appname", "zbxtable")
-	cfg.Section("").NewKey("token", token)
 	// logger defaults (copyrequestbody 已废弃，不再写入)
 	cfg.Section("").NewKey("log_level", "6")
 	cfg.Section("").NewKey("log_path", "logs/app.log")
