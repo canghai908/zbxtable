@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	WebhookName   = "ZbxTable Webhook"
+	WebhookName   = "ZbxTable"
 	WebhookAction = "ZbxTable Webhook"
 	WebhookGroup  = "ZbxTable Webhook"
 	WebhookUser   = "zbxtable-webhook"

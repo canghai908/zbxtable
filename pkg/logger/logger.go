@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -25,10 +26,18 @@ var (
 func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, daily bool) error {
 	Log = logrus.New()
 
+	// 启用调用者信息报告（显示文件名和行号）
+	Log.SetReportCaller(true)
+
 	// 设置日志格式
 	Log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "2006-01-02 15:04:05",
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			// 自定义调用者信息格式：只显示文件名（不含完整路径）和行号
+			filename := filepath.Base(f.File)
+			return "", fmt.Sprintf("[%s:%d]", filename, f.Line)
+		},
 	})
 
 	// 设置日志级别
