@@ -155,11 +155,76 @@ func TemplateListGet() ([]TemplateByItemList, int64, error) {
 	return hb, int64(len(hb)), nil
 }
 
+// TemplateListGetFromInstance 从指定实例获取模板列表
+func TemplateListGetFromInstance(instanceID string) ([]TemplateByItemList, int64, error) {
+	// 如果没有指定实例ID，使用全局API
+	if instanceID == "" {
+		return TemplateListGet()
+	}
+
+	// 获取指定实例的API
+	apiInstance, err := GetZabbixInstanceAPI(instanceID)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+
+	par := []string{"host", "name", "templateid"}
+	rep, err := apiInstance.API.Call("template.get", Params{"output": par})
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+
+	var hb []TemplateByItemList
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
 // TemplateAllGet func
 func TemplateByItem(templateid string) ([]TemplateByItemList, int64, error) {
 	par := []string{"host", "name", "templateid"}
 	itemParams := []string{"itemid", "name"}
 	rep, err := API.Call("template.get", Params{"output": par,
+		"templateids": templateid,
+		"selectItems": itemParams,
+	})
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	var hb []TemplateByItemList
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
+// TemplateByItemFromInstance 从指定实例根据模板ID获取监控项
+func TemplateByItemFromInstance(templateid string, instanceID string) ([]TemplateByItemList, int64, error) {
+	// 如果没有指定实例ID，使用全局API
+	if instanceID == "" {
+		return TemplateByItem(templateid)
+	}
+
+	// 获取指定实例的API
+	apiInstance, err := GetZabbixInstanceAPI(instanceID)
+	if err != nil {
+		return []TemplateByItemList{}, 0, err
+	}
+
+	par := []string{"host", "name", "templateid"}
+	itemParams := []string{"itemid", "name"}
+	rep, err := apiInstance.API.Call("template.get", Params{"output": par,
 		"templateids": templateid,
 		"selectItems": itemParams,
 	})

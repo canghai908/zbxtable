@@ -15,8 +15,7 @@ type ZabbixTenant struct {
 	WebhookToken string `gorm:"column:webhook_token;size:2048" json:"webhook_token"`             // Webhook 认证 Token（用于 MS-Agent/Webhook）
 
 	// 状态字段
-	Enabled  bool `gorm:"column:enabled;default:true" json:"enabled"`      // 是否启用
-	IsActive bool `gorm:"column:is_active;default:false" json:"is_active"` // 是否为当前激活的 Zabbix
+	Enabled bool `gorm:"column:enabled;default:true" json:"enabled"` // 是否启用
 
 	// 连接测试字段
 	Version         string     `gorm:"column:version;size:64" json:"version"`                      // Zabbix 版本

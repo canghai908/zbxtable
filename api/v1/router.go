@@ -119,8 +119,6 @@ func InitRouter() *gin.Engine {
 				zabbixGroup.PUT("/tenants/:id", handler.UpdateZabbixTenantGin)
 				zabbixGroup.DELETE("/tenants/:id", handler.DeleteZabbixTenantGin)
 				zabbixGroup.PUT("/tenants/:id/enabled", handler.EnableZabbixTenantGin)
-				zabbixGroup.PUT("/tenants/:id/activate", handler.ActivateZabbixTenantGin)
-				zabbixGroup.GET("/active", handler.GetActiveZabbixTenantGin)
 
 				// MS-Agent 安装相关
 				zabbixGroup.POST("/tenants/:id/install-msagent", handler.InstallMSAgentGin)

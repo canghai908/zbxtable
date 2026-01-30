@@ -46,8 +46,10 @@ func GetAllHostGroupsList(c *gin.Context) {
 
 // GetAllGroupsList 获取所有组列表
 func GetAllGroupsList(c *gin.Context) {
+	instanceID := c.Query("instance_id")
+	
 	var HostGroupsRes model.HostTreeList
-	hs, cnt, err := model.GetAllGroupsList()
+	hs, cnt, err := model.GetAllGroupsListFromInstance(instanceID)
 	if err != nil {
 		HostGroupsRes.Code = 401
 		HostGroupsRes.Message = err.Error()

@@ -82,7 +82,7 @@ func GetAlarmTenant(c *gin.Context) {
 	c.JSON(http.StatusOK, TenantRes)
 }
 
-// AnalysisAlarm 告警分析
+// AnalysisAlarm 告警分析（支持实例筛选）
 func AnalysisAlarm(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -108,7 +108,14 @@ func AnalysisAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, v.TenantID)
+	
+	// 支持 instance_id 参数
+	instanceID := v.InstanceID
+	if instanceID == "" {
+		instanceID = v.TenantID // 兼容旧的 tenant_id 字段
+	}
+	
+	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, instanceID)
 	if err != nil {
 		AnalysisRes.Code = 500
 		AnalysisRes.Message = err.Error()
@@ -124,7 +131,7 @@ func AnalysisAlarm(c *gin.Context) {
 	c.JSON(http.StatusOK, AnalysisRes)
 }
 
-// ExportAlarm 导出告警
+// ExportAlarm 导出告警（支持实例筛选）
 func ExportAlarm(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -150,7 +157,14 @@ func ExportAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	cnt, err := model.ExportAlarm(Start, End, v.Hosts, v.TenantID, v.Status, v.Level)
+	
+	// 支持 instance_id 参数
+	instanceID := v.InstanceID
+	if instanceID == "" {
+		instanceID = v.TenantID // 兼容旧的 tenant_id 字段
+	}
+	
+	cnt, err := model.ExportAlarm(Start, End, v.Hosts, instanceID, v.Status, v.Level, v.HostIP)
 	if err != nil {
 		AlarmRes.Code = 200
 		AlarmRes.Message = err.Error()

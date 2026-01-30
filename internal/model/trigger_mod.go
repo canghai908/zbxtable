@@ -94,4 +94,8 @@ type EndTrigger struct {
 	Severity      string `json:"severity"`
 	Eventid       string `json:"eventid"`
 	Objectid      string `json:"objectid"`
+	// 多实例支持字段
+	InstanceID   int    `json:"instance_id,omitempty"`
+	InstanceName string `json:"instance_name,omitempty"`
+	TenantID     string `json:"tenant_id,omitempty"`
 }

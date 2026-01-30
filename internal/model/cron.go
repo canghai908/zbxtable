@@ -158,14 +158,41 @@ func CreateDayReport() error {
 	return nil
 }
 
-// linux windows top data to redis
+// linux windows top data to redis (多实例聚合版本)
 func TOP() error {
+	// 获取所有启用的实例
+	instances, err := GetAllEnabledAPIInstances()
+	if err != nil {
+		logger.Log.Errorf("获取启用的实例失败: %v", err)
+		return err
+	}
+
+	// 清空旧数据
+	_ = CacheDelete("WIN_CPU")
+	_ = CacheDelete("WIN_MEM")
+	_ = CacheDelete("LIN_CPU")
+	_ = CacheDelete("LIN_MEM")
+
+	// 从所有实例收集数据
+	for _, inst := range instances {
+		err := TOPFromInstance(inst)
+		if err != nil {
+			logger.Log.Errorf("从实例 %s 收集 TOP 数据失败: %v", inst.Name, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+// TOPFromInstance 从指定实例收集 TOP 数据
+func TOPFromInstance(inst *APIInstance) error {
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	SearchInventoryKey := []string{"VM_WIN", "VM_LIN"}
 	SearchInventoryPar := make(map[string][]string)
 	SearchInventoryPar["type"] = SearchInventoryKey
-	rep, err := API.CallWithError("host.get", Params{
+	rep, err := inst.API.CallWithError("host.get", Params{
 		"output":           OutputPar,
 		"searchByAny":      true,
 		"searchInventory":  SearchInventoryPar,
@@ -187,12 +214,14 @@ func TOP() error {
 		return err
 	}
 	if len(hb) == 0 {
-		return errors.New("host list is null")
+		return nil // 该实例没有主机，不是错误
 	}
 	for _, v := range hb {
 		if v.Available == "0" {
 			continue
 		}
+		// 使用 "实例名_主机名" 作为唯一标识，避免不同实例的主机名冲突
+		hostKey := inst.TenantID + "_" + v.Host
 		switch v.Inventory.Type {
 		case "VM_WIN":
 			var float64CPU float64
@@ -204,7 +233,7 @@ func TOP() error {
 					float64CPU = 0
 				}
 			}
-			err = CacheZAdd("WIN_CPU", v.Host, float64CPU)
+			err = CacheZAdd("WIN_CPU", hostKey, float64CPU)
 			if err != nil {
 				return err
 			}
@@ -219,7 +248,7 @@ func TOP() error {
 					float64MEM = 0
 				}
 			}
-			err = CacheZAdd("WIN_MEM", v.Host, float64MEM)
+			err = CacheZAdd("WIN_MEM", hostKey, float64MEM)
 			if err != nil {
 				return err
 			}
@@ -233,7 +262,7 @@ func TOP() error {
 					float64CPU = 0
 				}
 			}
-			err = CacheZAdd("LIN_CPU", v.Host, float64CPU)
+			err = CacheZAdd("LIN_CPU", hostKey, float64CPU)
 			if err != nil {
 				return err
 			}
@@ -247,14 +276,14 @@ func TOP() error {
 					float64MEM = 0
 				}
 			}
-			err = CacheZAdd("LIN_MEM", v.Host, float64MEM)
+			err = CacheZAdd("LIN_MEM", hostKey, float64MEM)
 			if err != nil {
 				logger.Log.Debug(err)
 				return err
 			}
 		}
 	}
-	return err
+	return nil
 }
 
 // update topology data
@@ -441,7 +470,7 @@ func EgressCache() error {
 	return nil
 }
 
-// SyncInventory 同步主机分类及数据绑定
+// SyncInventory 同步主机分类及数据绑定（支持多实例）
 func SyncInventory() error {
 	var data []Config
 	//查询配置表，id 3为同步配置
@@ -456,21 +485,39 @@ func SyncInventory() error {
 	if data[0].Value != "1" {
 		return nil
 	}
-	var list []System
-	err = GetDB().Where("id = ?", 1).Find(&list).Error
+	
+	// 获取所有启用的实例
+	instances, err := GetAllEnabledAPIInstances()
 	if err != nil {
-		logger.Log.Error(err)
+		logger.Log.Errorf("获取启用的实例失败: %v", err)
 		return err
 	}
-	if len(list) == 0 {
-		return nil
-	}
-	for _, v := range list {
-		gList := strings.Split(v.GroupID, ",")
-		err = HostTypeSet(&v, gList)
+	
+	// 遍历每个实例，执行同步
+	for _, inst := range instances {
+		// 查询该实例的系统配置
+		var list []System
+		err = GetDB().Where("instance_id = ? AND status = ?", inst.ID, 1).Find(&list).Error
 		if err != nil {
-			return err
+			logger.Log.Errorf("查询实例 %s 的系统配置失败: %v", inst.Name, err)
+			continue
+		}
+		if len(list) == 0 {
+			logger.Log.Infof("实例 %s 没有已初始化的系统配置，跳过同步", inst.Name)
+			continue
+		}
+		
+		// 对该实例的每个系统配置执行同步
+		for _, v := range list {
+			gList := strings.Split(v.GroupID, ",")
+			err = HostTypeSetWithInstance(&v, gList, inst)
+			if err != nil {
+				logger.Log.Errorf("实例 %s 同步系统配置 %d 失败: %v", inst.Name, v.ID, err)
+				continue
+			}
+			logger.Log.Infof("实例 %s 同步系统配置 %d 成功", inst.Name, v.ID)
 		}
 	}
+	
 	return nil
 }

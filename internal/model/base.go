@@ -85,9 +85,6 @@ func ModelInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 	// 使用go-cache替代Redis（不再需要Redis连接）
 	InitCache()
 
-	// 尝试从数据库加载“当前激活的 Zabbix”
-	TryInitZabbixFromDB()
-
 	// 安装后首次启动允许不配置 Zabbix：跳过 Zabbix 初始化
 	if strings.TrimSpace(zabbix_web) == "" {
 		logger.Log.Info("Zabbix is not configured, skipping Zabbix initialization")

@@ -11,7 +11,6 @@ import (
 	"zbxtable/pkg/logger"
 
 	zabbix "github.com/canghai908/zabbix-go"
-	"gorm.io/gorm"
 )
 
 // TestZabbixTenantConfig 测试 Zabbix 配置能否连通
@@ -159,18 +158,7 @@ func UpdateZabbixTenant(id int64, patch *ZabbixTenant) (*ZabbixTenant, error) {
 
 // DeleteZabbixTenant 删除租户
 func DeleteZabbixTenant(id int64) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
-		var tenant ZabbixTenant
-		if err := tx.First(&tenant, id).Error; err != nil {
-			return err
-		}
-		if tenant.IsActive {
-			if err := tx.Model(&ZabbixTenant{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
-				return err
-			}
-		}
-		return tx.Delete(&ZabbixTenant{}, id).Error
-	})
+	return DB.Delete(&ZabbixTenant{}, id).Error
 }
 
 // SetZabbixTenantEnabled 启用/禁用
@@ -183,10 +171,6 @@ func SetZabbixTenantEnabled(id int64, enabled bool) (*ZabbixTenant, error) {
 		return nil, err
 	}
 	tenant.Enabled = enabled
-	if !enabled && tenant.IsActive {
-		_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Update("is_active", false).Error
-		tenant.IsActive = false
-	}
 	return &tenant, nil
 }
 
@@ -220,109 +204,6 @@ func TestAndUpdateZabbixTenant(id int64) (*ZabbixTenant, string, error) {
 	tenant.LastTestAt = &now
 	tenant.Version = ver
 	return &tenant, ver, nil
-}
-
-// ActivateZabbixTenant 设置为当前激活的 Zabbix
-func ActivateZabbixTenant(id int64) (*ZabbixTenant, error) {
-	var tenant ZabbixTenant
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.First(&tenant, id).Error; err != nil {
-			return err
-		}
-		if !tenant.Enabled {
-			return errors.New("该 Zabbix 已禁用，无法设为当前")
-		}
-		if err := tx.Model(&ZabbixTenant{}).Where("is_active = ?", true).Update("is_active", false).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&ZabbixTenant{}).Where("id = ?", id).Update("is_active", true).Error; err != nil {
-			return err
-		}
-		tenant.IsActive = true
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := ApplyActiveZabbixTenant(&tenant); err != nil {
-		return nil, err
-	}
-	return &tenant, nil
-}
-
-// GetActiveZabbixTenant 获取当前激活的租户
-func GetActiveZabbixTenant() (*ZabbixTenant, error) {
-	var tenant ZabbixTenant
-	err := DB.Where("is_active = ?", true).Order("id desc").First(&tenant).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &tenant, nil
-}
-
-// ApplyActiveZabbixTenant 应用到全局 API
-func ApplyActiveZabbixTenant(tenant *ZabbixTenant) error {
-	if tenant == nil {
-		return nil
-	}
-	if !tenant.Enabled {
-		return errors.New("该 Zabbix 已禁用")
-	}
-	web := strings.TrimRight(strings.TrimSpace(tenant.WebURL), "/")
-	if web == "" {
-		return nil
-	}
-	apiURL := web + "/api_jsonrpc.php"
-	api := zabbix.NewAPI(apiURL)
-	if strings.TrimSpace(tenant.Token) != "" {
-		api.SetAuth(strings.TrimSpace(tenant.Token))
-	} else if strings.TrimSpace(tenant.User) != "" || strings.TrimSpace(tenant.Pass) != "" {
-		_, err := api.Login(strings.TrimSpace(tenant.User), strings.TrimSpace(tenant.Pass))
-		if err != nil {
-			return err
-		}
-	}
-	API = api
-
-	if ver, err := API.Version(); err == nil {
-		ZBX_VER = ver
-		now := time.Now()
-		_ = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
-			"version":           ver,
-			"last_test_ok":      true,
-			"last_test_message": "连接成功",
-			"last_test_at":      &now,
-		}).Error
-		verArr := strings.Split(ZBX_VER, ".")
-		if len(verArr) >= 2 {
-			ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
-			ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
-			if ZbxMasterVer >= 6 || (ZbxMasterVer == 5 && ZbxMiddleVer == 4) {
-				ZBX_V = true
-			} else {
-				ZBX_V = false
-			}
-		}
-	}
-
-	// 登录 Zabbix Web 界面（用于获取图形等功能）
-	// 只有配置了用户名和密码时才登录（Token 方式无法用于 Web 登录）
-	if strings.TrimSpace(tenant.User) != "" && strings.TrimSpace(tenant.Pass) != "" {
-		LoginZabbixWeb(web, strings.TrimSpace(tenant.User), strings.TrimSpace(tenant.Pass))
-	}
-	return nil
-}
-
-// TryInitZabbixTenantFromDB 启动时自动初始化
-func TryInitZabbixTenantFromDB() {
-	tenant, err := GetActiveZabbixTenant()
-	if err != nil || tenant == nil {
-		return
-	}
-	_ = ApplyActiveZabbixTenant(tenant)
 }
 
 // UninstallMSAgentFromZabbixTenant 从 Zabbix 中卸载 MS-Agent 配置
@@ -408,12 +289,4 @@ func UninstallMSAgentFromZabbixTenant(id int64) error {
 
 	logger.Log.Info("MS-Agent 配置卸载完成！")
 	return nil
-}
-
-func TryInitZabbixFromDB() {
-	inst, err := GetActiveZabbixTenant()
-	if err != nil || inst == nil {
-		return
-	}
-	_ = ApplyActiveZabbixTenant(inst)
 }

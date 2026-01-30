@@ -14,6 +14,7 @@ type Alarm struct {
 	ZabbixInstanceID int       `gorm:"column:zabbix_instance_id;index" json:"zabbix_instance_id"`
 	TenantID         string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
 	TenantName       string    `gorm:"column:tenant_name;size:255" json:"tenant_name"`
+	InstanceName     string    `gorm:"-" json:"instance_name"` // 实例名称（动态填充，不存数据库）
 	HostID           string    `gorm:"column:host_id;size:255" json:"host_id"`
 	Hostname         string    `gorm:"column:hostname;size:255" json:"hostname"`
 	Host             string    `gorm:"column:host;size:200" json:"host"`
@@ -42,19 +43,22 @@ type ListQueryAlarm struct {
 
 // ListExportAlarm struct
 type ListExportAlarm struct {
-	Begin    string `json:"begin"`
-	End      string `json:"end"`
-	Hosts    string `json:"hosts"`
-	TenantID string `json:"tenant_id"`
-	Status   string `json:"status"`
-	Level    string `json:"level"`
+	Begin      string `json:"begin"`
+	End        string `json:"end"`
+	Hosts      string `json:"hosts"`
+	TenantID   string `json:"tenant_id"`   // 兼容旧字段
+	InstanceID string `json:"instance_id"` // 新字段
+	Status     string `json:"status"`
+	Level      string `json:"level"`
+	HostIP     string `json:"host_ip"`
 }
 
 // ListAnalysisAlarm qu
 type ListAnalysisAlarm struct {
-	Begin    string `json:"begin"`
-	End      string `json:"end"`
-	TenantID string `json:"tenant_id"`
+	Begin      string `json:"begin"`
+	End        string `json:"end"`
+	TenantID   string `json:"tenant_id"`   // 兼容旧字段
+	InstanceID string `json:"instance_id"` // 新字段
 }
 
 // Pie struct

@@ -20,7 +20,6 @@ type ZabbixTenantSafeResponse struct {
 	WebURL           string `json:"web_url"`
 	User             string `json:"user"`
 	Enabled          bool   `json:"enabled"`
-	IsActive         bool   `json:"is_active"`
 	Version          string `json:"version"`
 	LastTestOk       bool   `json:"last_test_ok"`
 	LastTestMessage  string `json:"last_test_message"`
@@ -44,7 +43,6 @@ func toTenantSafeResponse(tenant *model.ZabbixTenant) ZabbixTenantSafeResponse {
 		WebURL:           tenant.WebURL,
 		User:             tenant.User,
 		Enabled:          tenant.Enabled,
-		IsActive:         tenant.IsActive,
 		Version:          tenant.Version,
 		LastTestOk:       tenant.LastTestOk,
 		LastTestMessage:  tenant.LastTestMessage,
@@ -237,36 +235,6 @@ func EnableZabbixTenantGin(c *gin.Context) {
 	tenant, err := model.SetZabbixTenantEnabled(id, enabled)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
-}
-
-// ActivateZabbixTenantGin 设置为当前激活的租户
-func ActivateZabbixTenantGin(c *gin.Context) {
-	idStr := c.Param("id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-
-	tenant, err := model.ActivateZabbixTenant(id)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
-}
-
-// GetActiveZabbixTenantGin 获取当前激活的租户
-func GetActiveZabbixTenantGin(c *gin.Context) {
-	tenant, err := model.GetActiveZabbixTenant()
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
-		return
-	}
-
-	if tenant == nil {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": nil})
 		return
 	}
 

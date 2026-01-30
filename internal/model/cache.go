@@ -67,6 +67,24 @@ func CacheGet(key string) (string, error) {
 	return "", nil
 }
 
+// CacheDelete 删除键（兼容Redis Del）
+func CacheDelete(key string) error {
+	// 删除键值存储
+	Cache.Delete(key)
+	
+	// 删除队列
+	queueMu.Lock()
+	delete(queueStore, key)
+	queueMu.Unlock()
+	
+	// 删除排序集合
+	sortedSetMu.Lock()
+	delete(sortedSetStore, key)
+	sortedSetMu.Unlock()
+	
+	return nil
+}
+
 // ========== 队列操作（兼容Redis LPush/RPop）==========
 
 // CacheLPush 将值推入队列左侧（兼容Redis LPush）

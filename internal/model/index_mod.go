@@ -61,8 +61,9 @@ type TreeRes struct {
 	} `json:"data"`
 }
 type TopList struct {
-	Hostname string  `json:"hostname"`
-	Score    float64 `json:"score"`
+	Hostname     string  `json:"hostname"`
+	Score        float64 `json:"score"`
+	InstanceName string  `json:"instance_name,omitempty"` // 实例名称
 }
 
 type Treeinventory struct {

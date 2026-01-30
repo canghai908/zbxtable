@@ -54,10 +54,11 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 	}
 
 	query := DB.Model(&Alarm{}).Where("occurtime >= ? AND occurtime <= ?", begin, end)
-	// 默认按“当前激活的 Zabbix”过滤（避免多 Zabbix 场景下混淆）
-	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-		query = query.Where("zabbix_instance_id = ?", inst.ID)
-	}
+	// 多实例场景：显示所有实例的告警，不再过滤实例
+	// 注释掉原来的实例过滤逻辑，让用户可以看到所有实例的告警
+	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// }
 
 	if hosts != "" {
 		query = query.Where("host LIKE ?", "%"+hosts+"%")
@@ -88,6 +89,9 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 		return 0, []Alarm{}, err
 	}
 
+	// 填充实例名称
+	fillAlarmInstanceNames(&alarms)
+
 	return cnt, alarms, nil
 }
 
@@ -98,10 +102,11 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	}
 	var results []TenantResult
 	query := DB.Model(&Alarm{})
-	// 仅返回当前激活 Zabbix 下的租户列表
-	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-		query = query.Where("zabbix_instance_id = ?", inst.ID)
-	}
+	// 多实例场景：显示所有实例的租户
+	// 注释掉原来的实例过滤逻辑
+	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// }
 	err = query.Select("DISTINCT tenant_id").Find(&results).Error
 	if err != nil {
 		return 0, []Alarm{}, err
@@ -119,7 +124,7 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 
 // ExportAlarm export
 func ExportAlarm(begin, end time.Time,
-	hosts, tenant_id, status, level string) ([]byte, error) {
+	hosts, tenant_id, status, level, hostIP string) ([]byte, error) {
 	var alarms []Alarm
 	intbegin := begin.Unix()
 	intend := end.Unix()
@@ -138,11 +143,18 @@ func ExportAlarm(begin, end time.Time,
 	if level != "" {
 		query = query.Where("level = ?", level)
 	}
+	if hostIP != "" {
+		query = query.Where("host_ip LIKE ?", "%"+hostIP+"%")
+	}
 
 	err := query.Order("occurtime DESC").Find(&alarms).Error
 	if err != nil {
 		return []byte{}, err
 	}
+	
+	// 填充实例名称
+	fillAlarmInstanceNames(&alarms)
+	
 	cnt := int64(len(alarms))
 	pbye, err := CreateAlarmXlsx(alarms, cnt, intbegin, intend)
 	if err != nil {
@@ -170,10 +182,11 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
 		Where("(status = ? OR status = ?)", "故障", "1")
 
-	// 默认按“当前激活的 Zabbix”过滤
-	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-		query = query.Where("zabbix_instance_id = ?", inst.ID)
-	}
+	// 多实例场景：显示所有实例的告警分析
+	// 注释掉原来的实例过滤逻辑
+	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// }
 
 	if tenant_id != "" {
 		query = query.Where("tenant_id = ?", tenant_id)
@@ -199,9 +212,11 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
 		Where("(status = ? OR status = ?)", "故障", "1")
 
-	if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-		hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ID)
-	}
+	// 多实例场景：显示所有实例的主机统计
+	// 注释掉原来的实例过滤逻辑
+	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
+	// 	hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ID)
+	// }
 
 	if tenant_id != "" {
 		hostQuery = hostQuery.Where("tenant_id = ?", tenant_id)
@@ -218,4 +233,37 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	}
 
 	return ss, dpie, name, values, nil
+}
+
+// fillAlarmInstanceNames 填充告警数据的实例名称
+func fillAlarmInstanceNames(alarms *[]Alarm) {
+	if alarms == nil || len(*alarms) == 0 {
+		return
+	}
+
+	// 收集所有唯一的实例ID
+	instanceIDs := make(map[int]bool)
+	for _, alarm := range *alarms {
+		if alarm.ZabbixInstanceID > 0 {
+			instanceIDs[alarm.ZabbixInstanceID] = true
+		}
+	}
+
+	// 批量查询实例信息
+	instanceMap := make(map[int]string)
+	for id := range instanceIDs {
+		tenant, err := GetZabbixTenantByID(int64(id))
+		if err == nil && tenant != nil {
+			instanceMap[id] = tenant.Name
+		}
+	}
+
+	// 填充实例名称
+	for i := range *alarms {
+		if (*alarms)[i].ZabbixInstanceID > 0 {
+			if name, ok := instanceMap[(*alarms)[i].ZabbixInstanceID]; ok {
+				(*alarms)[i].InstanceName = name
+			}
+		}
+	}
 }

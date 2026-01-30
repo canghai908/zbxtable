@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -10,7 +11,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// GetAllHost 获取主机列表
+// GetAllHost 获取主机列表（多实例聚合）
 func GetAllHost(c *gin.Context) {
 	HostType := c.Query("hosttype")
 	page := c.Query("page")
@@ -21,7 +22,8 @@ func GetAllHost(c *gin.Context) {
 	available := c.Query("available")
 
 	var HostRes model.HostList
-	hs, count, err := model.HostsList(HostType, page, limit, hosts, mode, ip, available)
+	// 使用多实例查询
+	hs, count, err := model.HostsListMultiInstance(HostType, page, limit, hosts, mode, ip, available)
 	if err != nil {
 		HostRes.Code = 500
 		HostRes.Message = err.Error()
@@ -35,22 +37,38 @@ func GetAllHost(c *gin.Context) {
 	c.JSON(http.StatusOK, HostRes)
 }
 
-// GetHostByID 获取单个主机信息
+// GetHostByID 获取单个主机信息（多实例支持）
 func GetHostByID(c *gin.Context) {
 	idStr := c.Param("hostid")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
 	if id <= 10084 {
 		idStr = "10084"
 	}
-	v, err := model.GetHost(idStr)
+
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(idStr)
 	if err != nil {
-		c.JSON(http.StatusOK, v.Error)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("无法找到主机所属实例: %v", err)})
+		return
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("获取实例连接失败: %v", err)})
+		return
+	}
+
+	// 使用该实例的 API 查询主机详情
+	v, err := model.GetHostFromInstance(inst, idStr)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 	} else {
-		c.JSON(http.StatusOK, v)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "获取数据成功", "data": v})
 	}
 }
 
@@ -99,22 +117,60 @@ func UpdateHost(c *gin.Context) {
 	c.JSON(http.StatusOK, HostInfoRes)
 }
 
-// GetMonItem 获取设备监控指标
+// GetMonItem 获取设备监控指标（多实例支持）
 func GetMonItem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	hs, err := model.GetMonItem(hostid)
+
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(hostid)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("无法找到主机所属实例: %v", err)})
+		return
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("获取实例连接失败: %v", err)})
+		return
+	}
+
+	// 使用该实例的 API 查询监控指标
+	hs, err := model.GetMonItemFromInstance(inst, hostid)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, hs)
 }
 
-// GetMonInterface 获取网络设备接口流量
+// GetMonInterface 获取网络设备接口流量（多实例支持）
 func GetMonInterface(c *gin.Context) {
 	hostid := c.Param("hostid")
+
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(hostid)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("获取实例连接失败: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
 	var HostInterfaceRes model.HostInterfaceInfo
-	hs, err := model.GetInterfaceData(hostid)
+	// 使用该实例的 API 查询接口数据
+	hs, err := model.GetInterfaceDataFromInstance(inst, hostid)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()
@@ -148,54 +204,91 @@ func GetOneInterface(c *gin.Context) {
 	}
 }
 
-// GetMonWinFileSystem 获取windows系统监控指标
+// GetMonWinFileSystem 获取windows系统监控指标（多实例支持）
 func GetMonWinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	var HostInterfaceRes model.HostInterfaceInfo
-	hs, err := model.GetMonWinData(hostid)
-	if err != nil {
-		HostInterfaceRes.Code = 500
-		HostInterfaceRes.Message = err.Error()
-	}
-	HostInterfaceRes.Code = 200
-	HostInterfaceRes.Message = "获取数据成功"
-	HostInterfaceRes.Data.Items = hs
-	HostInterfaceRes.Data.Total = 2
-	c.JSON(http.StatusOK, HostInterfaceRes)
-}
 
-// GetMonLinFileSystem 获取文件系统详情
-func GetMonLinFileSystem(c *gin.Context) {
-	hostid := c.Param("hostid")
-	var HostInterfaceRes model.HostInterfaceInfo
-	hs, err := model.GetMonLinData(hostid)
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(hostid)
 	if err != nil {
-		HostInterfaceRes.Code = 500
-		HostInterfaceRes.Message = err.Error()
-	}
-	HostInterfaceRes.Code = 200
-	HostInterfaceRes.Message = "获取数据成功"
-	HostInterfaceRes.Data.Items = hs
-	HostInterfaceRes.Data.Total = 2
-	c.JSON(http.StatusOK, HostInterfaceRes)
-}
-
-// GetHostGraph 查看主机图形
-func GetHostGraph(c *gin.Context) {
-	// 检查是否配置了用户名和密码
-	if !model.IsPasswordConfigured() {
 		var HostInterfaceRes model.HostInterfaceInfo
-		HostInterfaceRes.Code = 403
-		HostInterfaceRes.Message = "当前 Zabbix 实例未配置用户名和密码，无法查看图形。请在【系统设置 > Zabbix 实例管理】中配置用户名和密码（注意：使用 Token 方式无法查看图形）"
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
 
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("获取实例连接失败: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	var HostInterfaceRes model.HostInterfaceInfo
+	// 使用该实例的 API 查询 Windows 监控数据
+	hs, err := model.GetMonWinDataFromInstance(inst, hostid)
+	if err != nil {
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = err.Error()
+	} else {
+		HostInterfaceRes.Code = 200
+		HostInterfaceRes.Message = "获取数据成功"
+		HostInterfaceRes.Data.Items = hs
+		HostInterfaceRes.Data.Total = 2
+	}
+	c.JSON(http.StatusOK, HostInterfaceRes)
+}
+
+// GetMonLinFileSystem 获取文件系统详情（多实例支持）
+func GetMonLinFileSystem(c *gin.Context) {
+	hostid := c.Param("hostid")
+
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(hostid)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("获取实例连接失败: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	var HostInterfaceRes model.HostInterfaceInfo
+	// 使用该实例的 API 查询 Linux 监控数据
+	hs, err := model.GetMonLinDataFromInstance(inst, hostid)
+	if err != nil {
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = err.Error()
+	} else {
+		HostInterfaceRes.Code = 200
+		HostInterfaceRes.Message = "获取数据成功"
+		HostInterfaceRes.Data.Items = hs
+		HostInterfaceRes.Data.Total = 2
+	}
+	c.JSON(http.StatusOK, HostInterfaceRes)
+}
+
+// GetHostGraph 查看主机图形（自动识别所属实例）
+func GetHostGraph(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		var HostInterfaceRes model.HostInterfaceInfo
 		HostInterfaceRes.Code = 500
-		HostInterfaceRes.Message = err.Error()
+		HostInterfaceRes.Message = "请求体读取失败"
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
@@ -209,9 +302,42 @@ func GetHostGraph(c *gin.Context) {
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}
+
 	hostId := c.Param("hostid")
+
+	// 查找该主机所属的实例
+	instanceID, err := model.FindInstanceByHostID(hostId)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := model.GetAPIByInstanceID(instanceID)
+	if err != nil {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 500
+		HostInterfaceRes.Message = fmt.Sprintf("获取实例连接失败: %v", err)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
+	// 检查是否配置了用户名和密码（查看图形需要）
+	tenant, _ := model.GetZabbixTenantByID(int64(instanceID))
+	if tenant == nil || tenant.User == "" || tenant.Pass == "" {
+		var HostInterfaceRes model.HostInterfaceInfo
+		HostInterfaceRes.Code = 403
+		HostInterfaceRes.Message = fmt.Sprintf("实例 %s 未配置用户名和密码，无法查看图形。请在【系统设置 > Zabbix 实例管理】中配置用户名和密码（注意：使用 Token 方式无法查看图形）", inst.Name)
+		c.JSON(http.StatusOK, HostInterfaceRes)
+		return
+	}
+
 	var HostInterfaceRes model.HostInterfaceInfo
-	hs, err := model.GetGraphData(hostId, v.Start, v.End)
+	// 使用该实例的 API 查询图形数据
+	hs, err := model.GetGraphDataFromInstance(inst, hostId, v.Start, v.End)
 	if err != nil {
 		HostInterfaceRes.Code = 500
 		HostInterfaceRes.Message = err.Error()

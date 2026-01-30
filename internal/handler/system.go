@@ -44,7 +44,7 @@ func GetSystemByID(c *gin.Context) {
 	c.JSON(http.StatusOK, SystemRes)
 }
 
-// UpdateSystem 更新系统配置
+// UpdateSystem 更新系统配置（支持多实例）
 func UpdateSystem(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -54,6 +54,21 @@ func UpdateSystem(c *gin.Context) {
 
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
+	
+	// 获取实例ID
+	instanceIDStr := gjson.Get(string(body), "instance_id").String()
+	if instanceIDStr == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请选择 Zabbix 实例"})
+		return
+	}
+	
+	// 查找实例获取数字ID
+	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
+		return
+	}
+	
 	cpuCore := gjson.Get(string(body), "cpu_core").String()
 	uptimeId := gjson.Get(string(body), "uptime_id").String()
 	cpuUtilizationId := gjson.Get(string(body), "cpu_utilization_id").String()
@@ -65,11 +80,20 @@ func UpdateSystem(c *gin.Context) {
 	pingTemplateId := gjson.Get(string(body), "ping_template_id").String()
 
 	var SystemRes model.SystemList
-	v := model.System{ID: int64(id), CPUCore: cpuCore, CPUUtilizationID: cpuUtilizationId,
-		GroupID: groupId, MemoryTotalID: memoryTotalId, UptimeID: uptimeId, Model: mode,
-		MemoryUsedID: memoryUsedId, MemoryUtilizationID: memoryUtilizationId,
-		PingTemplateID: pingTemplateId}
-	err = model.UpdateSystem(&v)
+	v := model.System{
+		ID:                  int64(id),
+		InstanceID:          tenant.ID,
+		CPUCore:             cpuCore,
+		CPUUtilizationID:    cpuUtilizationId,
+		GroupID:             groupId,
+		MemoryTotalID:       memoryTotalId,
+		UptimeID:            uptimeId,
+		Model:               mode,
+		MemoryUsedID:        memoryUsedId,
+		MemoryUtilizationID: memoryUtilizationId,
+		PingTemplateID:      pingTemplateId,
+	}
+	err = model.CreateOrUpdateSystem(&v)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -80,12 +104,33 @@ func UpdateSystem(c *gin.Context) {
 	c.JSON(http.StatusOK, SystemRes)
 }
 
-// SystemInit 初始化系统
+// SystemInit 初始化系统（支持多实例）
 func SystemInit(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
+	
+	// 读取请求体获取实例ID
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		return
+	}
+	
+	instanceIDStr := gjson.Get(string(body), "instance_id").String()
+	if instanceIDStr == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请选择 Zabbix 实例"})
+		return
+	}
+	
+	// 查找实例获取数字ID
+	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
+		return
+	}
+	
 	var SystemRes model.SystemList
-	err := model.SystemInit(int64(id))
+	err = model.SystemInitWithInstance(int64(id), tenant.ID)
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()

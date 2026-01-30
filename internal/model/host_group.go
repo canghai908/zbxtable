@@ -134,6 +134,37 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 	return hb, int64(len(hb)), err
 }
 
+// GetAllGroupsListFromInstance 从指定实例获取所有组列表
+func GetAllGroupsListFromInstance(instanceID string) ([]HostTree, int64, error) {
+	// 如果没有指定实例ID，使用全局API
+	if instanceID == "" {
+		return GetAllGroupsList()
+	}
+
+	// 获取指定实例的API
+	apiInstance, err := GetZabbixInstanceAPI(instanceID)
+	if err != nil {
+		return []HostTree{}, 0, err
+	}
+
+	rep, err := apiInstance.API.Call("hostgroup.get", Params{"output": "extend"})
+	if err != nil {
+		return []HostTree{}, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []HostTree{}, 0, err
+	}
+	var hb []HostTree
+
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		log.Println(err)
+		return []HostTree{}, 0, err
+	}
+	return hb, int64(len(hb)), err
+}
+
 // GetHostsInfoByGroupID func
 func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	output := []string{"groupid", "name"}

@@ -5,12 +5,34 @@ import (
 	"zbxtable/pkg/logger"
 )
 
-// GetTriggers get porblems
+// GetTriggers get porblems (多实例聚合版本)
 func GetTriggers() ([]EndTrigger, int64, error) {
+	// 获取所有启用的实例
+	instances, err := GetAllEnabledAPIInstances()
+	if err != nil {
+		logger.Log.Errorf("获取启用的实例失败: %v", err)
+		return []EndTrigger{}, 0, err
+	}
+
+	var allTriggers []EndTrigger
+	for _, inst := range instances {
+		triggers, _, err := GetTriggersFromInstance(inst)
+		if err != nil {
+			logger.Log.Errorf("从实例 %s 获取触发器失败: %v", inst.Name, err)
+			continue
+		}
+		allTriggers = append(allTriggers, triggers...)
+	}
+
+	return allTriggers, int64(len(allTriggers)), nil
+}
+
+// GetTriggersFromInstance 从指定实例获取触发器
+func GetTriggersFromInstance(inst *APIInstance) ([]EndTrigger, int64, error) {
 	par11 := []string{"hostid", "name"}
 	filter := make(map[string]string)
 	filter["value"] = "1"
-	triggers, err := API.CallWithError("trigger.get", Params{"output": "extend",
+	triggers, err := inst.API.CallWithError("trigger.get", Params{"output": "extend",
 		"sortfield":       "lastchange",
 		"sortorder":       "DESC",
 		"selectHosts":     par11,
@@ -45,6 +67,10 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		bs.Severity = v.LastEvent.Severity
 		bs.Eventid = v.LastEvent.Eventid
 		bs.Objectid = v.LastEvent.Objectid
+		// 添加实例信息
+		bs.InstanceID = inst.ID
+		bs.InstanceName = inst.Name
+		bs.TenantID = inst.TenantID
 		ma = append(ma, bs)
 	}
 	return ma, int64(len(ma)), nil

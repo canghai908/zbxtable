@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetImage 获取图形图片
+// GetImage 获取图形图片（多实例支持）
 func GetImage(c *gin.Context) {
 	idStr := c.Param("id")
 	var StartTime, EndTime string
@@ -30,33 +30,76 @@ func GetImage(c *gin.Context) {
 		}
 	}
 	GraphID := idStr
+
+	// 可选：从查询参数中获取 instance_id（如果前端传递）
+	instanceIDStr := c.Query("instance_id")
+
 	c.Header("Content-Type", "image/png")
 	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
 	c.Header("Pragma", "no-cache, value")
+
+	// 获取 Zabbix Web URL
+	var ZabbixWeb string
+	var jarToUse http.CookieJar
+
+	if instanceIDStr != "" {
+		// 如果提供了 instance_id，直接使用该实例
+		var instanceID int
+		_, err := fmt.Sscanf(instanceIDStr, "%d", &instanceID)
+		if err == nil {
+			if tenant, err := model.GetZabbixTenantByID(int64(instanceID)); err == nil && tenant != nil {
+				ZabbixWeb = tenant.WebURL
+				// 获取该实例的 Cookie Jar
+				if inst, err := model.GetAPIByInstanceID(instanceID); err == nil {
+					jarToUse = inst.JAR
+				}
+			}
+		}
+	}
+
+	// 如果没有提供 instance_id 或获取失败，尝试从所有启用的实例中查找
+	if ZabbixWeb == "" {
+		// 获取所有启用的实例
+		tenants, err := model.ListZabbixTenants()
+		if err != nil || len(tenants) == 0 {
+			logger.Log.Error("No Zabbix instances configured")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "No Zabbix instances configured"})
+			return
+		}
+
+		// 使用第一个启用的实例（多实例环境下，建议前端传递 instance_id）
+		for _, tenant := range tenants {
+			if tenant.Enabled {
+				ZabbixWeb = tenant.WebURL
+				// 获取该实例的 Cookie Jar
+				if inst, err := model.GetAPIByInstanceID(tenant.ID); err == nil {
+					jarToUse = inst.JAR
+				}
+				break
+			}
+		}
+	}
+
+	if ZabbixWeb == "" {
+		logger.Log.Error("No enabled Zabbix instance found")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No enabled Zabbix instance found"})
+		return
+	}
+
+	// 如果没有获取到特定实例的 JAR，使用全局 JAR
+	if jarToUse == nil {
+		jarToUse = model.JAR
+	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client1 := &http.Client{
 		Transport: tr,
-		Jar:       model.JAR,
+		Jar:       jarToUse,
 		Timeout:   99999999999999,
 	}
 
-	// 从当前激活的 Zabbix 实例获取 Web URL
-	var ZabbixWeb string
-	if tenant, err := model.GetActiveZabbixTenant(); err == nil && tenant != nil {
-		ZabbixWeb = tenant.WebURL
-	} else {
-		// 回退到配置文件（兼容旧版本）
-		ZabbixWeb = model.GetConfKey("zabbix_web")
-	}
-
-	if ZabbixWeb == "" {
-		logger.Log.Error("Zabbix Web URL is not configured")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Zabbix Web URL is not configured"})
-		return
-	}
-	fmt.Println("AACCC", ZabbixWeb)
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)

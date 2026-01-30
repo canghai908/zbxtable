@@ -5,6 +5,7 @@ import "time"
 // system
 type System struct {
 	ID                  int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	InstanceID          int       `gorm:"column:instance_id;index" json:"instance_id"`           // 实例ID
 	Name                string    `gorm:"column:name;size:255" json:"name"`
 	GroupID             string    `gorm:"column:group_id;size:255" json:"group_id"`
 	CPUUtilizationID    string    `gorm:"column:cpu_utilization_id;size:200" json:"cpu_utilization_id"`
