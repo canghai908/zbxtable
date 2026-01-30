@@ -26,9 +26,17 @@ func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error)
 		logger.Log.Error(err)
 		return 0, err
 	}
+	
+	// 获取实例名称
+	tenantName := ""
+	if tenant, err := GetZabbixTenantByTenantID(tenantid); err == nil && tenant != nil {
+		tenantName = tenant.Name
+	}
+	
 	var meal = Alarm{
 		ZabbixInstanceID: zabbixInstanceID,
 		TenantID:         tenantid,
+		TenantName:       tenantName,
 		HostID:           mes.HostsID,
 		Hostname:         mes.Hostname,
 		Host:             mes.HostHost,

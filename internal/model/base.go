@@ -380,31 +380,31 @@ func GetConfKey(v string) string {
 }
 
 // IsPasswordConfigured 检查是否配置了密码（用于图形查看）
-// 优先检查数据库中是否有激活的 Zabbix 实例配置
-// 如果数据库中没有，则回退到配置文件检查
+// 优先检查数据库中是否有激活的 Zabbix 实例配置了用户名和密码
+// 注意：查看图形需要用户名和密码，Token 方式无法用于 Web 登录
 func IsPasswordConfigured() bool {
 	// 1. 优先检查数据库中是否有激活的 Zabbix 实例
 	var activeInstance ZabbixTenant
 	err := DB.Where("is_active = ?", true).First(&activeInstance).Error
 	if err == nil {
-		// 找到激活的实例，检查是否配置了密码或 token
-		if activeInstance.Token != "" || activeInstance.Pass != "" {
+		// 找到激活的实例，检查是否配置了用户名和密码（查看图形必须用密码，Token 无法用于 Web 登录）
+		if strings.TrimSpace(activeInstance.User) != "" && strings.TrimSpace(activeInstance.Pass) != "" {
 			return true
 		}
 	}
 
-	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例
+	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例配置了密码
 	var anyInstance ZabbixTenant
 	err = DB.Where("enabled = ?", true).First(&anyInstance).Error
 	if err == nil {
-		// 找到可用的实例，检查是否配置了密码或 token
-		if anyInstance.Token != "" || anyInstance.Pass != "" {
+		// 找到可用的实例，检查是否配置了用户名和密码
+		if strings.TrimSpace(anyInstance.User) != "" && strings.TrimSpace(anyInstance.Pass) != "" {
 			return true
 		}
 	}
 
 	// 3. 回退到配置文件检查（兼容旧版本）
 	pass := GetConfKey("zabbix_pass")
-	token := GetConfKey("zabbix_token")
-	return pass != "" || token != ""
+	user := GetConfKey("zabbix_user")
+	return pass != "" && user != ""
 }

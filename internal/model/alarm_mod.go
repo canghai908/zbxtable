@@ -13,6 +13,7 @@ type Alarm struct {
 	ID               int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	ZabbixInstanceID int       `gorm:"column:zabbix_instance_id;index" json:"zabbix_instance_id"`
 	TenantID         string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
+	TenantName       string    `gorm:"column:tenant_name;size:255" json:"tenant_name"`
 	HostID           string    `gorm:"column:host_id;size:255" json:"host_id"`
 	Hostname         string    `gorm:"column:hostname;size:255" json:"hostname"`
 	Host             string    `gorm:"column:host;size:200" json:"host"`

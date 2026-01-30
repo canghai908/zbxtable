@@ -182,11 +182,11 @@ func GetMonLinFileSystem(c *gin.Context) {
 
 // GetHostGraph 查看主机图形
 func GetHostGraph(c *gin.Context) {
-	// 检查是否配置了密码
+	// 检查是否配置了用户名和密码
 	if !model.IsPasswordConfigured() {
 		var HostInterfaceRes model.HostInterfaceInfo
 		HostInterfaceRes.Code = 403
-		HostInterfaceRes.Message = "配置文件中zabbix_pass没有配置,无法查看图形,请配置后重启应用查看"
+		HostInterfaceRes.Message = "当前 Zabbix 实例未配置用户名和密码，无法查看图形。请在【系统设置 > Zabbix 实例管理】中配置用户名和密码（注意：使用 Token 方式无法查看图形）"
 		c.JSON(http.StatusOK, HostInterfaceRes)
 		return
 	}

@@ -307,6 +307,12 @@ func ApplyActiveZabbixTenant(tenant *ZabbixTenant) error {
 			}
 		}
 	}
+
+	// 登录 Zabbix Web 界面（用于获取图形等功能）
+	// 只有配置了用户名和密码时才登录（Token 方式无法用于 Web 登录）
+	if strings.TrimSpace(tenant.User) != "" && strings.TrimSpace(tenant.Pass) != "" {
+		LoginZabbixWeb(web, strings.TrimSpace(tenant.User), strings.TrimSpace(tenant.Pass))
+	}
 	return nil
 }
 

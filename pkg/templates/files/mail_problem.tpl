@@ -187,7 +187,15 @@
 																	<span style="font-family: Arial;">
 																		<strong>
 																			<span
-																				style="font-size: 13.3333px;">Tenant:</span>
+																				style="font-size: 13.3333px;">Instance ID:</span>
+																		</strong>
+																	</span>
+																</p>
+																<p style="text-align: left;">
+																	<span style="font-family: Arial;">
+																		<strong>
+																			<span
+																				style="font-size: 13.3333px;">Instance Name:</span>
 																		</strong>
 																	</span>
 																</p>
@@ -229,7 +237,10 @@
 															<td
 																style="width: 358px; text-align: left; border-color: #000000;">
 																<p style="text-align: left;">
-																	<span style="font-size: 10pt; font-family: Arial;"> {{.TenantID}}</span>
+																	<span style="font-size: 10pt; font-family: Arial;">{{.TenantID}}</span>
+																</p>
+																<p style="text-align: left;">
+																	<span style="font-size: 10pt; font-family: Arial;">{{.TenantName}}</span>
 																</p>
 																<p style="text-align: left;">
 																	<span style="font-size: 10pt; font-family: Arial;">{{.Hostname}}</span>

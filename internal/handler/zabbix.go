@@ -281,7 +281,7 @@ func InstallMSAgentGin(c *gin.Context) {
 	// 获取租户信息
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
 		return
 	}
 

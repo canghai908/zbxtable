@@ -1,5 +1,7 @@
 [{{.Status}}][{{.OccurTime.Format "15:04:05"}}]设备:{{.Hostname}}发生:{{.Message}}已恢复！
 =========================================
+实例ID: {{.TenantID}}
+实例名称: {{.TenantName}}
 告警主机: {{.Hostname}}
 主机IP：{{.HostsIP}}
 主机分组: {{.Hgroup}}

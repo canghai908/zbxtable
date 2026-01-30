@@ -71,15 +71,10 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		}
 		data, err := io.ReadAll(reader)
 		if err != nil {
-			logger.Log.Error("Failed to read response data: %+v", err)
+			logger.Log.Errorf("failed to read response data: %+v", err)
 		}
-		// 开发模式下可以打印响应体用于调试
-		// runmode := GetConfKey("runmode")
-		// if runmode == "dev" {
-		//	logger.Log.Info("Login to zabbix response body is:", string(data))
-		// }
 		if strings.Contains(string(data), "blocked") {
-			logger.Log.Error("Login to Zabbix failed!")
+			logger.Log.Error("login to Zabbix failed!")
 			os.Exit(1)
 		}
 	} else {
@@ -96,7 +91,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	//解析并把cookies存如redis
 	u, err := url.Parse(ZabbixWeb)
 	if err != nil {
-		logger.Log.Error("Failed to parse URL: %v", err)
+		logger.Log.Errorf("failed to parse URL: %v", err)
 		return
 	}
 	//把cookies设置到缓存中

@@ -44,6 +44,7 @@ func GenAlert(alarm *Alarm) bool {
 		event := &Event{
 			ID:            alarm.ID,
 			TenantID:      alarm.TenantID,
+			TenantName:    alarm.TenantName,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,
@@ -119,6 +120,7 @@ func GenAlert(alarm *Alarm) bool {
 		event := &Event{
 			ID:            alarm.ID,
 			TenantID:      alarm.TenantID,
+			TenantName:    alarm.TenantName,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,

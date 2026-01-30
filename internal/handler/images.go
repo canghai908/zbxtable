@@ -3,6 +3,7 @@ package handler
 import (
 	"compress/gzip"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -40,7 +41,22 @@ func GetImage(c *gin.Context) {
 		Jar:       model.JAR,
 		Timeout:   99999999999999,
 	}
-	ZabbixWeb := model.GetConfKey("zabbix_web")
+
+	// 从当前激活的 Zabbix 实例获取 Web URL
+	var ZabbixWeb string
+	if tenant, err := model.GetActiveZabbixTenant(); err == nil && tenant != nil {
+		ZabbixWeb = tenant.WebURL
+	} else {
+		// 回退到配置文件（兼容旧版本）
+		ZabbixWeb = model.GetConfKey("zabbix_web")
+	}
+
+	if ZabbixWeb == "" {
+		logger.Log.Error("Zabbix Web URL is not configured")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Zabbix Web URL is not configured"})
+		return
+	}
+	fmt.Println("AACCC", ZabbixWeb)
 	imgurl := ZabbixWeb + "/chart2.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)

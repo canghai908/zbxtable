@@ -182,7 +182,7 @@
 																<p style="text-align: left;">
 																	<span style="font-family: Arial;">
 																		<strong>
-																			<span style="font-size: 13.3333px;">Tenant:</span>
+																			<span style="font-size: 13.3333px;">Instance ID:</span>
 																		</strong>
 																	</span>
 																</p>
