@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 func GetGraphByHostID(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -62,7 +63,7 @@ func GetGraphByHostID(c *gin.Context) {
 func ExportGraph(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 

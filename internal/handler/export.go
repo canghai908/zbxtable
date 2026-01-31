@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,7 +18,7 @@ import (
 func ExportTrend(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -62,7 +63,7 @@ func ExportTrend(c *gin.Context) {
 func ExportHistory(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -109,7 +110,7 @@ func ExportHistory(c *gin.Context) {
 func ExportInspect(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -207,7 +208,7 @@ func ExportInspect(c *gin.Context) {
 func ExportHosts(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -238,7 +239,7 @@ func ExportHosts(c *gin.Context) {
 func ExportInventory(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 

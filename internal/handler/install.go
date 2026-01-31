@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/canghai908/zabbix-go"
 	"github.com/gin-gonic/gin"
@@ -202,12 +203,8 @@ func GetInstallStatus(c *gin.Context) {
 	confPath := "./config/app.conf"
 	_, err := os.Stat(confPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    200,
-			"message": "ok",
-			"data": gin.H{
-				"installed": false,
-			},
+		response.Success(c, gin.H{
+			"installed": false,
 		})
 		return
 	}
@@ -215,12 +212,8 @@ func GetInstallStatus(c *gin.Context) {
 	// 检查数据库连接是否配置
 	cfg, err := ini.Load(confPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    200,
-			"message": "ok",
-			"data": gin.H{
-				"installed": false,
-			},
+		response.Success(c, gin.H{
+			"installed": false,
 		})
 		return
 	}
@@ -230,12 +223,8 @@ func GetInstallStatus(c *gin.Context) {
 
 	// 检查数据库类型和数据库名
 	if dbtype == "" || dbname == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    200,
-			"message": "ok",
-			"data": gin.H{
-				"installed": false,
-			},
+		response.Success(c, gin.H{
+			"installed": false,
 		})
 		return
 	}
@@ -244,12 +233,8 @@ func GetInstallStatus(c *gin.Context) {
 	if dbtype != "sqlite" {
 		dbhost := cfg.Section("").Key("dbhost").String()
 		if dbhost == "" {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    200,
-				"message": "ok",
-				"data": gin.H{
-					"installed": false,
-				},
+			response.Success(c, gin.H{
+				"installed": false,
 			})
 			return
 		}
@@ -257,12 +242,8 @@ func GetInstallStatus(c *gin.Context) {
 
 	// 尝试连接数据库，检查表是否存在
 	// 这里简化处理，实际可以检查特定表是否存在
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "ok",
-		"data": gin.H{
-			"installed": true,
-		},
+	response.Success(c, gin.H{
+		"installed": true,
 	})
 }
 
@@ -280,48 +261,26 @@ type CheckDatabaseRequest struct {
 func CheckDatabase(c *gin.Context) {
 	var req CheckDatabaseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
 
 	// 对于非 SQLite 数据库，验证必需字段
 	if req.DBType != "sqlite" {
 		if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "参数错误: " + req.DBType + " 数据库需要 dbhost, dbuser, dbpass, dbport",
-				"data": gin.H{
-					"success": false,
-				},
-			})
+			response.BadRequest(c, "参数错误: "+req.DBType+" 数据库需要 dbhost, dbuser, dbpass, dbport")
 			return
 		}
 	}
 
 	err := checkDatabaseConnection(req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "数据库连接失败: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.InternalError(c, "数据库连接失败: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "数据库连接成功",
-		"data": gin.H{
-			"success": true,
-		},
+	response.SuccessWithMessage(c, "数据库连接成功", gin.H{
+		"success": true,
 	})
 }
 
@@ -337,32 +296,19 @@ type CheckZabbixRequest struct {
 func CheckZabbixAPI(c *gin.Context) {
 	var req CheckZabbixRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
+		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
 
 	version, err := checkZabbixAPISafe(req.ZabbixWeb, req.ZabbixUser, req.ZabbixPass, req.Token)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    500,
-			"message": "Zabbix API 连接失败: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.InternalError(c, "Zabbix API 连接失败: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "Zabbix API 连接成功",
-		"data": gin.H{
-			"success": true,
-			"version": version,
-		},
+	response.SuccessWithMessage(c, "Zabbix API 连接成功", gin.H{
+		"success": true,
+		"version": version,
 	})
 }
 
@@ -378,26 +324,14 @@ type InstallRequest struct {
 func DoInstall(c *gin.Context) {
 	var req InstallRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
 
 	// 对于非 SQLite 数据库，验证必需字段
 	if req.DBType != "sqlite" {
 		if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "参数错误: " + req.DBType + " 数据库需要 dbhost, dbuser, dbpass, dbport",
-				"data": gin.H{
-					"success": false,
-				},
-			})
+			response.BadRequest(c, "参数错误: "+req.DBType+" 数据库需要 dbhost, dbuser, dbpass, dbport")
 			return
 		}
 	}
@@ -411,13 +345,7 @@ func DoInstall(c *gin.Context) {
 		if err == nil {
 			dbtype := cfg.Section("").Key("dbtype").String()
 			if dbtype != "" {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"code":    400,
-					"message": "系统已安装，如需重新安装请先删除配置文件",
-					"data": gin.H{
-						"success": false,
-					},
-				})
+				response.BadRequest(c, "系统已安装，如需重新安装请先删除配置文件")
 				return
 			}
 		}
@@ -426,13 +354,7 @@ func DoInstall(c *gin.Context) {
 	// 再次验证数据库连接
 	err = checkDatabaseConnection(req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    500,
-			"message": "数据库连接失败: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.InternalError(c, "数据库连接失败: "+err.Error())
 		return
 	}
 
@@ -475,13 +397,7 @@ func DoInstall(c *gin.Context) {
 		req.HTTPPort, req.RunMode, req.Timeout, token,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "写入配置文件失败: " + err.Error(),
-			"data": gin.H{
-				"success": false,
-			},
-		})
+		response.InternalError(c, "写入配置文件失败: "+err.Error())
 		return
 	}
 
@@ -490,11 +406,7 @@ func DoInstall(c *gin.Context) {
 		"", "", "", "",
 		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "安装成功",
-		"data": gin.H{
-			"success": true,
-		},
+	response.SuccessWithMessage(c, "安装成功", gin.H{
+		"success": true,
 	})
 }

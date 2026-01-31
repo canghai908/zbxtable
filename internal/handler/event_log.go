@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,18 +13,10 @@ func GetEventLogByAlarmID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	var EveLogResp model.EventLogRes
 	v, err := model.GetEventLogByAlarmID(id)
 	if err != nil {
-		EveLogResp.Code = 500
-		EveLogResp.Message = "获取失败"
-		EveLogResp.Data.Items = nil
-		EveLogResp.Data.Total = 0
-	} else {
-		EveLogResp.Code = 200
-		EveLogResp.Message = "获取成功"
-		EveLogResp.Data.Items = v
-		EveLogResp.Data.Total = int64(len(v))
+		response.InternalError(c, "获取失败")
+		return
 	}
-	c.JSON(http.StatusOK, EveLogResp)
+	response.SuccessWithPage(c, v, int64(len(v)))
 }

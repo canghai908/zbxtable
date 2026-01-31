@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"zbxtable/pkg/response"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -22,7 +23,7 @@ func AIChat(c *gin.Context) {
 	// 解析请求体
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 

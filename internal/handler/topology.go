@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
@@ -51,7 +52,7 @@ func GetTopologyByID(c *gin.Context) {
 func CreateTopology(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -77,7 +78,7 @@ func UpdateTopology(c *gin.Context) {
 	idStr := c.Param("id")
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -119,7 +120,7 @@ func DeleteTopology(c *gin.Context) {
 func UpdateTopologyStatus(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 

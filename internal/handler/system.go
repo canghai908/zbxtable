@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
@@ -48,7 +49,7 @@ func GetSystemByID(c *gin.Context) {
 func UpdateSystem(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -58,14 +59,14 @@ func UpdateSystem(c *gin.Context) {
 	// 获取实例ID
 	instanceIDStr := gjson.Get(string(body), "instance_id").String()
 	if instanceIDStr == "" {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请选择 Zabbix 实例"})
+		response.BadRequest(c, "请选择 Zabbix 实例")
 		return
 	}
 	
 	// 查找实例获取数字ID
 	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
+		response.InternalError(c, "实例不存在")
 		return
 	}
 	
@@ -112,20 +113,20 @@ func SystemInit(c *gin.Context) {
 	// 读取请求体获取实例ID
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 	
 	instanceIDStr := gjson.Get(string(body), "instance_id").String()
 	if instanceIDStr == "" {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请选择 Zabbix 实例"})
+		response.BadRequest(c, "请选择 Zabbix 实例")
 		return
 	}
 	
 	// 查找实例获取数字ID
 	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
+		response.InternalError(c, "实例不存在")
 		return
 	}
 	
@@ -165,7 +166,7 @@ func GetEgress(c *gin.Context) {
 func UpdateEgress(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -214,7 +215,7 @@ func UpdateConfig(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 

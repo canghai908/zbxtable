@@ -2,9 +2,9 @@ package handler
 
 import (
 	"io"
-	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -19,43 +19,34 @@ func GetAllRule(c *gin.Context) {
 	m_type := c.Query("m_type")
 	status := c.Query("status")
 
-	var RulRes model.RuleResp
 	cnt, al, err := model.GetRule(page, limit, name, tenant_id, m_type, status)
 	if err != nil {
-		RulRes.Code = 200
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "ok"
-		RulRes.Data.Items = al
-		RulRes.Data.Total = cnt
+		response.DatabaseError(c, "获取规则列表失败: "+err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.SuccessWithPage(c, al, cnt)
 }
 
 // GetRuleByID 获取单个规则
 func GetRuleByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var RulRes model.RuleResp
+	
 	v, err := model.GetRuleByID(id)
 	if err != nil {
-		RulRes.Code = 500
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "ok"
-		RulRes.Data.Items = v
-		RulRes.Data.Total = 1
+		response.NotFound(c, "规则不存在")
+		return
 	}
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.Success(c, v)
 }
 
 // CreateRule 创建规则
 func CreateRule(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -71,20 +62,22 @@ func CreateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
+	
+	if name == "" {
+		response.ValidationError(c, "规则名称不能为空")
+		return
+	}
 
-	var RulRes model.RuleResp
 	v := model.Rule{Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
 	_, err = model.AddRule(&v)
 	if err != nil {
-		RulRes.Code = 500
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "创建成功"
+		response.DatabaseError(c, "创建规则失败: "+err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.SuccessWithMessage(c, "创建成功", nil)
 }
 
 // UpdateRule 更新规则
@@ -93,7 +86,7 @@ func UpdateRule(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -116,21 +109,16 @@ func UpdateRule(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var RulRes model.RuleResp
 	v := model.Rule{ID: id, Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
 	err = model.UpdateRule(&v, tuserStr)
 	if err != nil {
-		RulRes.Code = 500
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "修改成功"
+		response.DatabaseError(c, "更新规则失败: "+err.Error())
+		return
 	}
-	RulRes.Data.Items = nil
-	RulRes.Data.Total = 0
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
 // UpdateRuleStatus 更新规则状态
@@ -139,7 +127,7 @@ func UpdateRuleStatus(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -150,19 +138,14 @@ func UpdateRuleStatus(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var RulRes model.RuleResp
 	v := model.Rule{ID: id, Status: status}
 	err = model.UpdateRuleStatus(&v, tuserStr)
 	if err != nil {
-		RulRes.Code = 500
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "更新成功"
+		response.DatabaseError(c, "更新规则状态失败: "+err.Error())
+		return
 	}
-	RulRes.Data.Items = nil
-	RulRes.Data.Total = 0
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.SuccessWithMessage(c, "更新成功", nil)
 }
 
 // DeleteRule 删除规则
@@ -175,16 +158,11 @@ func DeleteRule(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var RulRes model.RuleResp
 	err := model.DeleteRule(id, tuserStr)
 	if err != nil {
-		RulRes.Code = 500
-		RulRes.Message = err.Error()
-	} else {
-		RulRes.Code = 200
-		RulRes.Message = "删除成功"
+		response.DatabaseError(c, "删除规则失败: "+err.Error())
+		return
 	}
-	RulRes.Data.Items = nil
-	RulRes.Data.Total = 0
-	c.JSON(http.StatusOK, RulRes)
+	
+	response.SuccessWithMessage(c, "删除成功", nil)
 }

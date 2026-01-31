@@ -3,10 +3,10 @@ package handler
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strconv"
 	model "zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -58,7 +58,7 @@ func toTenantSafeResponse(tenant *model.ZabbixTenant) ZabbixTenantSafeResponse {
 func ListZabbixTenantsGin(c *gin.Context) {
 	list, err := model.ListZabbixTenants()
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
@@ -68,7 +68,7 @@ func ListZabbixTenantsGin(c *gin.Context) {
 		safeList = append(safeList, toTenantSafeResponse(&tenant))
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": safeList})
+	response.Success(c, safeList)
 }
 
 // GetZabbixTenantGin 获取单个租户
@@ -78,18 +78,18 @@ func GetZabbixTenantGin(c *gin.Context) {
 
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+	response.Success(c, toTenantSafeResponse(tenant))
 }
 
 // CreateZabbixTenantGin 创建租户
 func CreateZabbixTenantGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -111,7 +111,7 @@ func CreateZabbixTenantGin(c *gin.Context) {
 
 	// 创建租户
 	if err := model.CreateZabbixTenant(m); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
@@ -123,14 +123,14 @@ func CreateZabbixTenantGin(c *gin.Context) {
 		_, _, _ = model.TestAndUpdateZabbixTenant(int64(tenant.ID))
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok"})
+	response.Success(c, nil)
 }
 
 // TestZabbixTenantConfigGin 测试配置（创建前）
 func TestZabbixTenantConfigGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -141,11 +141,11 @@ func TestZabbixTenantConfigGin(c *gin.Context) {
 
 	ver, err := model.TestZabbixTenantConfig(webURL, user, pass, token)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "连接成功", "data": gin.H{"version": ver}})
+	response.SuccessWithMessage(c, "连接成功", gin.H{"version": ver})
 }
 
 // TestZabbixTenantGin 测试租户连接
@@ -155,18 +155,14 @@ func TestZabbixTenantGin(c *gin.Context) {
 
 	tenant, ver, err := model.TestAndUpdateZabbixTenant(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "连接成功",
-		"data": gin.H{
-			"version":           ver,
-			"last_test_ok":      tenant.LastTestOk,
-			"last_test_message": tenant.LastTestMessage,
-		},
+	response.SuccessWithMessage(c, "连接成功", gin.H{
+		"version":           ver,
+		"last_test_ok":      tenant.LastTestOk,
+		"last_test_message": tenant.LastTestMessage,
 	})
 }
 
@@ -177,7 +173,7 @@ func UpdateZabbixTenantGin(c *gin.Context) {
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -194,7 +190,7 @@ func UpdateZabbixTenantGin(c *gin.Context) {
 
 	tenant, err := model.UpdateZabbixTenant(id, patch)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
@@ -203,7 +199,7 @@ func UpdateZabbixTenantGin(c *gin.Context) {
 	// 这里再次测试以获取最新版本
 	tenant, _, _ = model.TestAndUpdateZabbixTenant(id)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+	response.Success(c, toTenantSafeResponse(tenant))
 }
 
 // DeleteZabbixTenantGin 删除租户
@@ -212,11 +208,11 @@ func DeleteZabbixTenantGin(c *gin.Context) {
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 
 	if err := model.DeleteZabbixTenant(id); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok"})
+	response.Success(c, nil)
 }
 
 // EnableZabbixTenantGin 启用/禁用租户
@@ -226,7 +222,7 @@ func EnableZabbixTenantGin(c *gin.Context) {
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -234,11 +230,11 @@ func EnableZabbixTenantGin(c *gin.Context) {
 
 	tenant, err := model.SetZabbixTenantEnabled(id, enabled)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": toTenantSafeResponse(tenant)})
+	response.Success(c, toTenantSafeResponse(tenant))
 }
 
 // InstallMSAgentGin 在 Zabbix 中安装 MS-Agent 配置
@@ -249,17 +245,17 @@ func InstallMSAgentGin(c *gin.Context) {
 	// 获取租户信息
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "实例不存在"})
+		response.InternalError(c, "实例不存在")
 		return
 	}
 
 	// 在 Zabbix 中安装 MS-Agent 配置
 	if err := model.InstallMSAgentToZabbix(tenant.TenantID); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("安装失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("安装失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "MS-Agent 配置安装成功"})
+	response.SuccessWithMessage(c, "MS-Agent 配置安装成功", nil)
 }
 
 // InstallWebhookGin 在 Zabbix 中安装 Webhook 配置
@@ -270,7 +266,7 @@ func InstallWebhookGin(c *gin.Context) {
 	// 获取租户信息
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		response.InternalError(c, "租户不存在")
 		return
 	}
 
@@ -289,11 +285,11 @@ func InstallWebhookGin(c *gin.Context) {
 
 	// 在 Zabbix 中安装 Webhook 配置
 	if err := model.InstallWebhookToZabbix(tenant.TenantID, zbxtableURL); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("安装失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("安装失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "Webhook 配置安装成功"})
+	response.SuccessWithMessage(c, "Webhook 配置安装成功", nil)
 }
 
 // GenerateMSAgentInstallScriptGin 生成 MS-Agent 安装脚本
@@ -304,13 +300,13 @@ func GenerateMSAgentInstallScriptGin(c *gin.Context) {
 	// 获取租户信息
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		response.InternalError(c, "租户不存在")
 		return
 	}
 
 	// 检查是否已安装
 	if !tenant.MSAgentInstalled {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请先在 Zabbix 中安装 MS-Agent 配置"})
+		response.BadRequest(c, "请先在 Zabbix 中安装 MS-Agent 配置")
 		return
 	}
 
@@ -336,15 +332,11 @@ func GenerateMSAgentInstallScriptGin(c *gin.Context) {
 
 	script, err := model.GenerateMSAgentInstallScript(config)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("生成脚本失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("生成脚本失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "ok",
-		"data":    script,
-	})
+	response.Success(c, script)
 }
 
 // GetWebhookInfoGin 获取 Webhook 配置信息
@@ -355,13 +347,13 @@ func GetWebhookInfoGin(c *gin.Context) {
 	// 获取租户信息
 	tenant, err := model.GetZabbixTenantByID(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "租户不存在"})
+		response.InternalError(c, "租户不存在")
 		return
 	}
 
 	// 检查是否已安装
 	if !tenant.WebhookInstalled {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": "请先在 Zabbix 中安装 Webhook 配置"})
+		response.BadRequest(c, "请先在 Zabbix 中安装 Webhook 配置")
 		return
 	}
 
@@ -381,15 +373,11 @@ func GetWebhookInfoGin(c *gin.Context) {
 	// 获取 Webhook 信息
 	info, err := model.GetWebhookInfo(tenant.TenantID, zbxtableURL)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("获取信息失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("获取信息失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "ok",
-		"data":    info,
-	})
+	response.Success(c, info)
 }
 
 // UninstallMSAgentGin 卸载 MS-Agent 配置
@@ -399,11 +387,11 @@ func UninstallMSAgentGin(c *gin.Context) {
 
 	// 从 Zabbix 中卸载 MS-Agent 配置
 	if err := model.UninstallMSAgentFromZabbixTenant(id); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("卸载失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("卸载失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "MS-Agent 配置卸载成功"})
+	response.SuccessWithMessage(c, "MS-Agent 配置卸载成功", nil)
 }
 
 // UninstallWebhookGin 卸载 Webhook 配置
@@ -413,9 +401,9 @@ func UninstallWebhookGin(c *gin.Context) {
 
 	// 从 Zabbix 中卸载 Webhook 配置
 	if err := model.UninstallWebhookFromZabbixTenant(id); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("卸载失败: %v", err)})
+		response.InternalError(c, fmt.Sprintf("卸载失败: %v", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "Webhook 配置卸载成功"})
+	response.SuccessWithMessage(c, "Webhook 配置卸载成功", nil)
 }

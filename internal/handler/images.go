@@ -10,6 +10,7 @@ import (
 	"strings"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/logger"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,7 +64,7 @@ func GetImage(c *gin.Context) {
 		tenants, err := model.ListZabbixTenants()
 		if err != nil || len(tenants) == 0 {
 			logger.Log.Error("No Zabbix instances configured")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "No Zabbix instances configured"})
+			response.InternalError(c, "No Zabbix instances configured")
 			return
 		}
 
@@ -82,7 +83,7 @@ func GetImage(c *gin.Context) {
 
 	if ZabbixWeb == "" {
 		logger.Log.Error("No enabled Zabbix instance found")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No enabled Zabbix instance found"})
+		response.InternalError(c, "No enabled Zabbix instance found")
 		return
 	}
 
@@ -105,7 +106,7 @@ func GetImage(c *gin.Context) {
 	URL, err := url.Parse(imgurl)
 	if err != nil {
 		logger.Log.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 	data.Set("graphid", GraphID)
@@ -119,7 +120,7 @@ func GetImage(c *gin.Context) {
 	reqest1, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
 		logger.Log.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 	reqest1.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -130,7 +131,7 @@ func GetImage(c *gin.Context) {
 	response1, err := client1.Do(reqest1)
 	if err != nil {
 		logger.Log.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalError(c, err.Error())
 		return
 	}
 	defer response1.Body.Close()
@@ -145,11 +146,11 @@ func GetImage(c *gin.Context) {
 		data, err := io.ReadAll(reader)
 		if err != nil {
 			logger.Log.Error(err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.InternalError(c, err.Error())
 			return
 		}
 		c.Data(http.StatusOK, "image/png", data)
 	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch image"})
+		response.InternalError(c, "Failed to fetch image")
 	}
 }

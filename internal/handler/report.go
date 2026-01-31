@@ -2,11 +2,11 @@ package handler
 
 import (
 	"io"
-	"net/http"
 	"strconv"
 	"time"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/logger"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -19,18 +19,12 @@ func GetReportGin(c *gin.Context) {
 	name := c.Query("name")
 	reportType := c.Query("report_type")
 
-	var res model.ReportRes
 	count, hs, err := model.GetAllReportsLimt(page, limit, name, reportType)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		res.Code = 200
-		res.Message = "获取数据成功"
-		res.Data.Items = hs
-		res.Data.Total = count
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithPage(c, hs, count)
 }
 
 // GetReportOneGin 获取报表详情
@@ -38,24 +32,19 @@ func GetReportOneGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	var res model.ReportRes
 	v, err := model.GetReportsByID(id)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		res.Code = 200
-		res.Message = "获取成功"
-		res.Data.Items = v
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithMessage(c, "获取成功", v)
 }
 
 // CreateReportGin 创建报表
 func CreateReportGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -85,44 +74,41 @@ func CreateReportGin(c *gin.Context) {
 		endTime, _ = time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
 	}
 
-	var res model.ReportRes
 	v := model.Report{Name: name, Items: items, LinkBandWidth: linkbandwidth,
 		HostIds: host_ids, ItemIds: item_ids,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
 	id, err := model.AddReport(&v)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		// 如果是实时报表，立即生成
-		if report_mode == "realtime" && report_type == "host" {
-			// 重新读取完整的报表数据
-			report, err := model.GetReportsByID(int(id))
-			if err == nil {
-				// 设置执行状态为处理中
-				report.ExecStatus = "1" // 处理中
-				report.StartAt = time.Now()
-				model.UpdateReportExecStatusByID(report)
-
-				// 异步生成报表
-				go func() {
-					err := model.TaskHostReport(*report)
-					if err != nil {
-						logger.Log.Error("实时报表生成失败:", err)
-						report.ExecStatus = "3" // 失败
-					} else {
-						report.ExecStatus = "2" // 成功
-					}
-					report.EndAt = time.Now()
-					model.UpdateReportExecStatusByID(report)
-				}()
-			}
-		}
-		res.Code = 200
-		res.Message = "创建成功"
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	
+	// 如果是实时报表，立即生成
+	if report_mode == "realtime" && report_type == "host" {
+		// 重新读取完整的报表数据
+		report, err := model.GetReportsByID(int(id))
+		if err == nil {
+			// 设置执行状态为处理中
+			report.ExecStatus = "1" // 处理中
+			report.StartAt = time.Now()
+			model.UpdateReportExecStatusByID(report)
+
+			// 异步生成报表
+			go func() {
+				err := model.TaskHostReport(*report)
+				if err != nil {
+					logger.Log.Error("实时报表生成失败:", err)
+					report.ExecStatus = "3" // 失败
+				} else {
+					report.ExecStatus = "2" // 成功
+				}
+				report.EndAt = time.Now()
+				model.UpdateReportExecStatusByID(report)
+			}()
+		}
+	}
+	response.SuccessWithMessage(c, "创建成功", nil)
 }
 
 // UpdateReportGin 更新报表
@@ -130,7 +116,7 @@ func UpdateReportGin(c *gin.Context) {
 	idStr := c.Param("id")
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
@@ -161,19 +147,15 @@ func UpdateReportGin(c *gin.Context) {
 	}
 
 	id, _ := strconv.Atoi(idStr)
-	var res model.ReportRes
 	v := model.Report{ID: id, Name: name, Items: items, LinkBandWidth: linkbandwidth,
 		HostIds: host_ids, ItemIds: item_ids,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
-	if err := model.UpdateReportByID(&v); err == nil {
-		res.Code = 200
-		res.Message = "保存成功"
-	} else {
-		res.Code = 500
-		res.Message = err.Error()
+	if err := model.UpdateReportByID(&v); err != nil {
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithMessage(c, "保存成功", nil)
 }
 
 // DeleteReportGin 删除报表
@@ -181,66 +163,51 @@ func DeleteReportGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	var res model.ReportRes
-	if err := model.DeleteReport(id); err == nil {
-		res.Code = 200
-		res.Message = "删除成功"
-	} else {
-		res.Code = 500
-		res.Message = err.Error()
+	if err := model.DeleteReport(id); err != nil {
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithMessage(c, "删除成功", nil)
 }
 
 // CheckNowGin 测试报表
 func CheckNowGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
 	idStr := gjson.Get(string(body), "id").String()
 	id, _ := strconv.Atoi(idStr)
 
-	var res model.ReportRes
 	v := model.Report{ID: id}
 	err = model.CheckNowByID(&v)
-	if err == nil {
-		res.Code = 200
-		res.Message = "生成成功"
-	} else {
-		res.Code = 500
-		res.Message = err.Error()
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
 	}
-	res.Data.Items = nil
-	res.Data.Total = 0
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithMessage(c, "生成成功", nil)
 }
 
 // UpdateReportStatusGin 更新报表状态
 func UpdateReportStatusGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.InternalError(c, "请求体读取失败")
 		return
 	}
 
 	idStr := gjson.Get(string(body), "id").String()
 	id, _ := strconv.Atoi(idStr)
 
-	var res model.TopologyList
 	v := model.Report{ID: id}
 	err = model.UpdateReportsStatusByID(&v)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		res.Code = 200
-		res.Message = "更新成功"
+		response.InternalError(c, err.Error())
+		return
 	}
-	res.Data.Items = []model.Topology{}
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithMessage(c, "更新成功", nil)
 }
 
 // GetReportHostsGin 获取主机列表
@@ -258,43 +225,26 @@ func GetReportHostsGin(c *gin.Context) {
 		limit = "1000"
 	}
 
-	var res model.HostList
 	hosts, count, err := model.HostsList(hostType, page, limit, "", "", "", "")
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-		c.JSON(http.StatusOK, res)
+		response.InternalError(c, err.Error())
 		return
 	}
-	res.Code = 200
-	res.Message = "获取成功"
-	res.Data.Items = hosts
-	res.Data.Total = count
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithPage(c, hosts, count)
 }
 
 // GetReportItemsGin 获取指标列表
 func GetReportItemsGin(c *gin.Context) {
 	hostID := c.Query("host_id")
 	if hostID == "" {
-		var res model.ItemList
-		res.Code = 500
-		res.Message = "host_id参数不能为空"
-		c.JSON(http.StatusOK, res)
+		response.BadRequest(c, "host_id参数不能为空")
 		return
 	}
 
-	var res model.ItemList
 	items, count, err := model.GetAllItemByHostID(hostID)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-		c.JSON(http.StatusOK, res)
+		response.InternalError(c, err.Error())
 		return
 	}
-	res.Code = 200
-	res.Message = "获取成功"
-	res.Data.Items = items
-	res.Data.Total = count
-	c.JSON(http.StatusOK, res)
+	response.SuccessWithPage(c, items, count)
 }

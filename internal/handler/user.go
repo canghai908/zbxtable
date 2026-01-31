@@ -2,10 +2,10 @@ package handler
 
 import (
 	"io"
-	"net/http"
 	"strconv"
 	"time"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 	"zbxtable/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -26,27 +26,20 @@ func GetUserGin(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var res model.UserResp
 	count, hs, err := model.GetUser(page, limit, tuserStr, username, status)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-		res.Data.Items = nil
-		res.Data.Total = 0
-	} else {
-		res.Code = 200
-		res.Message = "获取数据成功"
-		res.Data.Items = hs
-		res.Data.Total = count
+		response.DatabaseError(c, "获取用户列表失败: "+err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, res)
+	
+	response.SuccessWithPage(c, hs, count)
 }
 
 // CreateUserGin 新建用户
 func CreateUserGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -58,6 +51,17 @@ func CreateUserGin(c *gin.Context) {
 	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
 	phone := gjson.Get(string(body), "phone").String()
 	ding_talk := gjson.Get(string(body), "ding_talk").String()
+	
+	// 验证必填字段
+	if username == "" {
+		response.ValidationError(c, "用户名不能为空")
+		return
+	}
+	if password == "" {
+		response.ValidationError(c, "密码不能为空")
+		return
+	}
+	
 	p, _ := utils.PasswordHash(password)
 	var operation string
 	switch role {
@@ -69,7 +73,6 @@ func CreateUserGin(c *gin.Context) {
 		operation = "[]"
 	}
 
-	var res model.UserResp
 	v := model.Manager{Username: username, Password: p, Operation: operation,
 		Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key, Phone: phone, DingTalk: ding_talk,
 		Status: 0, Role: role, Created: time.Now(),
@@ -77,15 +80,11 @@ func CreateUserGin(c *gin.Context) {
 	}
 	_, err = model.AddUser(&v)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		res.Code = 200
-		res.Message = "创建用户成功"
+		response.DatabaseError(c, "创建用户失败: "+err.Error())
+		return
 	}
-	res.Data.Items = nil
-	res.Data.Total = 1
-	c.JSON(http.StatusOK, res)
+	
+	response.SuccessWithMessage(c, "创建用户成功", nil)
 }
 
 // UpdateUserGin 更新用户信息
@@ -93,18 +92,13 @@ func UpdateUserGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var res model.UserResp
-		res.Code = 500
-		res.Message = err.Error()
-		res.Data.Items = nil
-		res.Data.Total = 0
-		c.JSON(http.StatusOK, res)
+		response.BadRequest(c, "无效的用户ID")
 		return
 	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -122,6 +116,7 @@ func UpdateUserGin(c *gin.Context) {
 	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
 	phone := gjson.Get(string(body), "phone").String()
 	dingTalk := gjson.Get(string(body), "ding_talk").String()
+	
 	var operation string
 	switch role {
 	case "admin":
@@ -131,6 +126,7 @@ func UpdateUserGin(c *gin.Context) {
 	default:
 		operation = "[]"
 	}
+	
 	var pass string
 	if password != "" {
 		pass, _ = utils.PasswordHash(password)
@@ -138,20 +134,15 @@ func UpdateUserGin(c *gin.Context) {
 		pass = ""
 	}
 
-	var res model.UserResp
 	v := model.Manager{ID: id, Password: pass, Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key,
 		Phone: phone, DingTalk: dingTalk, Role: role, Operation: operation}
 	err = model.UpdateUser(&v, tuserStr)
 	if err != nil {
-		res.Code = 500
-		res.Message = err.Error()
-	} else {
-		res.Code = 200
-		res.Message = "修改成功"
+		response.DatabaseError(c, "更新用户失败: "+err.Error())
+		return
 	}
-	res.Data.Items = nil
-	res.Data.Total = 0
-	c.JSON(http.StatusOK, res)
+	
+	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
 // DeleteUserGin 删除用户
@@ -159,12 +150,7 @@ func DeleteUserGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var res model.UserResp
-		res.Code = 500
-		res.Message = err.Error()
-		res.Data.Items = nil
-		res.Data.Total = 0
-		c.JSON(http.StatusOK, res)
+		response.BadRequest(c, "无效的用户ID")
 		return
 	}
 
@@ -175,15 +161,10 @@ func DeleteUserGin(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var res model.UserResp
-	if err := model.DeleteUser(id, tuserStr); err == nil {
-		res.Code = 200
-		res.Message = "删除成功"
-	} else {
-		res.Code = 500
-		res.Message = err.Error()
+	if err := model.DeleteUser(id, tuserStr); err != nil {
+		response.DatabaseError(c, "删除用户失败: "+err.Error())
+		return
 	}
-	res.Data.Items = nil
-	res.Data.Total = 0
-	c.JSON(http.StatusOK, res)
+	
+	response.SuccessWithMessage(c, "删除成功", nil)
 }

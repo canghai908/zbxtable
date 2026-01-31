@@ -2,9 +2,9 @@ package handler
 
 import (
 	"io"
-	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -22,45 +22,39 @@ func GetAllGroup(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var GrooupRes model.GroupResp
 	count, hs, err := model.GetGroup(page, limit, tuserStr, name)
 	if err != nil {
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-		GrooupRes.Data.Items = nil
-		GrooupRes.Data.Total = 0
-	} else {
-		GrooupRes.Code = 200
-		GrooupRes.Message = "获取数据成功"
-		GrooupRes.Data.Items = hs
-		GrooupRes.Data.Total = count
+		response.DatabaseError(c, "获取用户组列表失败: "+err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, GrooupRes)
+	
+	response.SuccessWithPage(c, hs, count)
 }
 
 // CreateGroup 新建用户组
 func CreateGroup(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
-	var GrooupRes model.GroupResp
+	
+	if name == "" {
+		response.ValidationError(c, "用户组名称不能为空")
+		return
+	}
+	
 	v := model.UserGroup{Name: name, Note: note}
 	_, err = model.AddUserGroup(&v)
 	if err != nil {
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-	} else {
-		GrooupRes.Code = 200
-		GrooupRes.Message = "创建用户组成功"
+		response.DatabaseError(c, "创建用户组失败: "+err.Error())
+		return
 	}
-	GrooupRes.Data.Items = nil
-	GrooupRes.Data.Total = 1
-	c.JSON(http.StatusOK, GrooupRes)
+	
+	response.SuccessWithMessage(c, "创建用户组成功", nil)
 }
 
 // UpdateGroup 更新用户组信息
@@ -68,40 +62,38 @@ func UpdateGroup(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes model.GroupResp
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-		c.JSON(http.StatusOK, GrooupRes)
+		response.BadRequest(c, "无效的用户组ID")
 		return
 	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
+	
+	if name == "" {
+		response.ValidationError(c, "用户组名称不能为空")
+		return
+	}
+	
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
 		tuserStr = tuser.(string)
 	}
 
-	var GrooupRes model.GroupResp
 	v := model.UserGroup{ID: id, Name: name, Note: note}
 	err = model.UpdateUserGroup(&v, tuserStr)
 	if err != nil {
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-	} else {
-		GrooupRes.Code = 200
-		GrooupRes.Message = "修改成功"
+		response.DatabaseError(c, "更新用户组失败: "+err.Error())
+		return
 	}
-	GrooupRes.Data.Items = nil
-	GrooupRes.Data.Total = 0
-	c.JSON(http.StatusOK, GrooupRes)
+	
+	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
 // UpdateGroupMember 更新组成员
@@ -109,16 +101,13 @@ func UpdateGroupMember(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes model.GroupResp
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-		c.JSON(http.StatusOK, GrooupRes)
+		response.BadRequest(c, "无效的用户组ID")
 		return
 	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": "请求体读取失败"})
+		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
@@ -129,19 +118,14 @@ func UpdateGroupMember(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var GrooupRes model.GroupResp
 	v := model.UserGroup{ID: id, Member: member}
 	err = model.UpdateGroupMember(&v, tuserStr)
 	if err != nil {
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-	} else {
-		GrooupRes.Code = 200
-		GrooupRes.Message = "修改成功"
+		response.DatabaseError(c, "更新组成员失败: "+err.Error())
+		return
 	}
-	GrooupRes.Data.Items = nil
-	GrooupRes.Data.Total = 0
-	c.JSON(http.StatusOK, GrooupRes)
+	
+	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
 // DeleteGroup 删除群组
@@ -149,10 +133,7 @@ func DeleteGroup(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		var GrooupRes model.GroupResp
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
-		c.JSON(http.StatusOK, GrooupRes)
+		response.BadRequest(c, "无效的用户组ID")
 		return
 	}
 
@@ -162,15 +143,10 @@ func DeleteGroup(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	var GrooupRes model.GroupResp
-	if err := model.DeleteGroup(id, tuserStr); err == nil {
-		GrooupRes.Code = 200
-		GrooupRes.Message = "删除成功"
-	} else {
-		GrooupRes.Code = 500
-		GrooupRes.Message = err.Error()
+	if err := model.DeleteGroup(id, tuserStr); err != nil {
+		response.DatabaseError(c, "删除用户组失败: "+err.Error())
+		return
 	}
-	GrooupRes.Data.Items = nil
-	GrooupRes.Data.Total = 0
-	c.JSON(http.StatusOK, GrooupRes)
+	
+	response.SuccessWithMessage(c, "删除成功", nil)
 }

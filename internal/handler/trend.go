@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"net/http"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,8 +13,8 @@ func GetTrendByItemID(c *gin.Context) {
 	limit := c.Query("limit")
 	v, err := model.GetTrendByItemID(itemID, limit)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
-	} else {
-		c.JSON(http.StatusOK, v)
+		response.InternalError(c, err.Error())
+		return
 	}
+	response.Success(c, v)
 }

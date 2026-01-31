@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"net/http"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,59 +13,41 @@ func GetItemByKey(c *gin.Context) {
 	ItemKey := c.Query("item_key")
 	v, err := model.GetItemByKey(HostID, ItemKey)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
-	} else {
-		c.JSON(http.StatusOK, v)
+		response.InternalError(c, err.Error())
+		return
 	}
+	response.Success(c, v)
 }
 
 // GetAllItemByHostID 根据hostid获取主机所有item
 func GetAllItemByHostID(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemRes model.ItemList
 	v, count, err := model.GetAllItemByHostID(HostID)
 	if err != nil {
-		ItemRes.Code = 500
-		ItemRes.Message = "获取错误"
-	} else {
-		ItemRes.Code = 200
-		ItemRes.Message = "获取数据成功"
-		ItemRes.Data.Items = v
-		ItemRes.Data.Total = count
+		response.InternalError(c, "获取错误")
+		return
 	}
-	c.JSON(http.StatusOK, ItemRes)
+	response.SuccessWithPage(c, v, count)
 }
 
 // GetAllTrafficItem 获取设备所有流量指标
 func GetAllTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemR model.ItemRes
 	v, count, err := model.GetAllTrafficItemByHostID(HostID)
 	if err != nil {
-		ItemR.Code = 500
-		ItemR.Message = "获取错误"
-	} else {
-		ItemR.Code = 200
-		ItemR.Message = "获取数据成功"
-		ItemR.Data.Items = v
-		ItemR.Data.Total = count
+		response.InternalError(c, "获取错误")
+		return
 	}
-	c.JSON(http.StatusOK, ItemR)
+	response.SuccessWithPage(c, v, count)
 }
 
 // GetAllReceiveTrafficItem 获取设备所有出流量
 func GetAllReceiveTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	var ItemR model.ItemRes
 	v, count, err := model.GetReceiveTrafficeItemByHostID(HostID)
 	if err != nil {
-		ItemR.Code = 500
-		ItemR.Message = "获取错误"
-	} else {
-		ItemR.Code = 200
-		ItemR.Message = "获取数据成功"
-		ItemR.Data.Items = v
-		ItemR.Data.Total = count
+		response.InternalError(c, "获取错误")
+		return
 	}
-	c.JSON(http.StatusOK, ItemR)
+	response.SuccessWithPage(c, v, count)
 }

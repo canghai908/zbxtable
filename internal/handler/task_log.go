@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,31 +14,21 @@ func GetTaskLogByReportID(c *gin.Context) {
 	limit := c.Query("limit")
 	reportid := c.Query("report_id")
 
-	var TaskLogRes model.TaskRes
 	count, hs, err := model.GetTaskLogList(page, limit, reportid)
 	if err != nil {
-		TaskLogRes.Code = 500
-		TaskLogRes.Message = err.Error()
-	} else {
-		TaskLogRes.Code = 200
-		TaskLogRes.Message = "获取数据成功"
-		TaskLogRes.Data.Items = hs
-		TaskLogRes.Data.Total = count
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, TaskLogRes)
+	response.SuccessWithPage(c, hs, count)
 }
 
 // DeleteTaskLog 删除任务日志
 func DeleteTaskLog(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	var ReportRes model.ReportRes
-	if err := model.DeleteTaskLog(id); err == nil {
-		ReportRes.Code = 200
-		ReportRes.Message = "删除成功"
-	} else {
-		ReportRes.Code = 500
-		ReportRes.Message = err.Error()
+	if err := model.DeleteTaskLog(id); err != nil {
+		response.InternalError(c, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, ReportRes)
+	response.SuccessWithMessage(c, "删除成功", nil)
 }
