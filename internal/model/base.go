@@ -28,13 +28,12 @@ var (
 		SortMapKeys:            true,
 		ValidateJsonRawMessage: true,
 	}.Froze()
-	ZBX_VER    string
-	ZBX_V      bool
-	Version    string
-	GitHash    string
-	BuildTime  string
-	AssetsHost string
-	WeApp      = &workwx.WorkwxApp{}
+	ZBX_VER   string
+	ZBX_V     bool
+	Version   string
+	GitHash   string
+	BuildTime string
+	WeApp     = &workwx.WorkwxApp{}
 
 	envConfig     map[string]string
 	envConfigOnce sync.Once
@@ -63,19 +62,8 @@ func TableName(str string) string {
 	return fmt.Sprintf("%s%s", "zbxtable_", str)
 }
 
-// GetAssetsHost
-func GetAssetsHost() string {
-	AssetsHost = GetConfKey("AssetsHost")
-	if AssetsHost == "" {
-		AssetsHost = "http://dl.cactifans.com/assets/"
-	}
-	return AssetsHost
-}
-
 // 接收数据库信息初始化
 func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
-	//GetAssetsHost 获取Assets地址
-	GetAssetsHost()
 	// 直接使用 GORM
 	runmode := GetConfKey("runmode")
 	err := InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport, runmode)
