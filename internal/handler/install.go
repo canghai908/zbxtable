@@ -15,7 +15,6 @@ import (
 	"github.com/canghai908/zabbix-go"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"gopkg.in/ini.v1"
 )
@@ -130,9 +129,9 @@ func checkDatabaseConnection(dbdriver, dbhost, dbuser, dbpass, dbname, dbport st
 }
 
 // writeConfigFile 写入配置文件
-func writeConfigFile(zabbix_web, zabbix_user, zabbix_pass,
+func writeConfigFile(
 	dbtype, dbhost, dbuser, dbpass, dbname, dbport,
-	httpport, runmode, timeout, token string) error {
+	httpport, runmode, timeout string) error {
 	cfg := ini.Empty()
 	// zbxtable info
 	//cfg.Section("").Key("appname").Comment = "zbxtable"
@@ -208,7 +207,6 @@ func GetInstallStatus(c *gin.Context) {
 		})
 		return
 	}
-
 	// 检查数据库连接是否配置
 	cfg, err := ini.Load(confPath)
 	if err != nil {
@@ -217,10 +215,8 @@ func GetInstallStatus(c *gin.Context) {
 		})
 		return
 	}
-
 	dbtype := cfg.Section("").Key("dbtype").String()
 	dbname := cfg.Section("").Key("dbname").String()
-
 	// 检查数据库类型和数据库名
 	if dbtype == "" || dbname == "" {
 		response.Success(c, gin.H{
@@ -228,7 +224,6 @@ func GetInstallStatus(c *gin.Context) {
 		})
 		return
 	}
-
 	// 对于非 SQLite 数据库，还需要检查 dbhost
 	if dbtype != "sqlite" {
 		dbhost := cfg.Section("").Key("dbhost").String()
@@ -239,8 +234,6 @@ func GetInstallStatus(c *gin.Context) {
 			return
 		}
 	}
-
-	// 尝试连接数据库，检查表是否存在
 	// 这里简化处理，实际可以检查特定表是否存在
 	response.Success(c, gin.H{
 		"installed": true,
@@ -358,11 +351,6 @@ func DoInstall(c *gin.Context) {
 		return
 	}
 
-	// 安装阶段不再强制验证 Zabbix（用户可在系统设置里添加多个 Zabbix）
-
-	// 生成 token
-	token := strings.ReplaceAll(uuid.New().String(), "-", "")
-
 	// 设置默认值
 	if req.HTTPPort == "" {
 		req.HTTPPort = "8085"
@@ -392,9 +380,8 @@ func DoInstall(c *gin.Context) {
 
 	// 写入配置文件
 	err = writeConfigFile(
-		"", "", "",
 		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort,
-		req.HTTPPort, req.RunMode, req.Timeout, token,
+		req.HTTPPort, req.RunMode, req.Timeout,
 	)
 	if err != nil {
 		response.InternalError(c, "写入配置文件失败: "+err.Error())
@@ -403,9 +390,12 @@ func DoInstall(c *gin.Context) {
 
 	// 初始化数据库
 	model.ModelInit(
-		"", "", "", "",
-		req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
-
+		req.DBType,
+		req.DBHost,
+		req.DBUser,
+		req.DBPass,
+		req.DBName,
+		req.DBPort)
 	response.SuccessWithMessage(c, "安装成功", gin.H{
 		"success": true,
 	})

@@ -71,17 +71,17 @@ func CacheGet(key string) (string, error) {
 func CacheDelete(key string) error {
 	// 删除键值存储
 	Cache.Delete(key)
-	
+
 	// 删除队列
 	queueMu.Lock()
 	delete(queueStore, key)
 	queueMu.Unlock()
-	
+
 	// 删除排序集合
 	sortedSetMu.Lock()
 	delete(sortedSetStore, key)
 	sortedSetMu.Unlock()
-	
+
 	return nil
 }
 
@@ -152,11 +152,9 @@ func CacheZAdd(key string, member string, score float64) error {
 		}
 		sortedSetStore[key] = sortedSet
 	}
-
 	sortedSet.mu.Lock()
 	sortedSet.members[member] = score
 	sortedSet.mu.Unlock()
-
 	return nil
 }
 

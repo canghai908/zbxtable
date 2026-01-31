@@ -15,8 +15,8 @@ import (
 // InitRouter 初始化 Gin 路由
 func InitRouter() *gin.Engine {
 	// 设置运行模式
-	//gin.SetMode(gin.ReleaseMode)
-	gin.SetMode(gin.DebugMode)
+	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.DebugMode)
 	r := gin.New()
 
 	// 中间件

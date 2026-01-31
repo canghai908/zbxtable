@@ -2,10 +2,8 @@
 
 import (
 	"bufio"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -57,13 +55,10 @@ func GetAssetsHost() string {
 	return AssetsHost
 }
 
-// modelInit  p
-func ModelInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
-	dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
-
-	//GetAssetsHost
+// 接收数据库信息初始化
+func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
+	//GetAssetsHost 获取Assets地址
 	GetAssetsHost()
-
 	// 直接使用 GORM
 	runmode := GetConfKey("runmode")
 	err := InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport, runmode)
@@ -72,110 +67,47 @@ func ModelInit(zabbix_web, zabbix_user, zabbix_pass, zabbix_token,
 		os.Exit(1)
 	}
 	logger.Log.Info("Database connected!")
-
 	// 自动迁移表
 	err = AutoMigrate()
 	if err != nil {
 		logger.Log.Error("Failed to auto migrate: ", err)
 		os.Exit(1)
 	}
-
 	// 基础数据初始化
 	DatabaseInit()
 	// 使用go-cache替代Redis（不再需要Redis连接）
 	InitCache()
+}
 
-	// 安装后首次启动允许不配置 Zabbix：跳过 Zabbix 初始化
-	if strings.TrimSpace(zabbix_web) == "" {
-		logger.Log.Info("Zabbix is not configured, skipping Zabbix initialization")
+func InitWechat() {
+	// 首先检查企业微信开关是否启用
+	wechatEnabled := GetConfigValueByKey("wechat_enabled", "0")
+	if wechatEnabled != "1" {
+		logger.Log.Info("WeChat is disabled in system config, skipping WeChat initialization")
+		return
+	}
+	// 开关已启用，从数据库读取企业微信配置
+	agentIDStr := GetConfigValueByKey("wechat_agentid", "")
+	corpid := GetConfigValueByKey("wechat_corpid", "")
+	secret := GetConfigValueByKey("wechat_secret", "")
+
+	// 验证必填配置项
+	if agentIDStr == "" || corpid == "" || secret == "" {
+		logger.Log.Info("WeChat is enabled but configuration is incomplete (agentid/corpid/secret), WeChat app will not be initialized")
+		return
+	}
+	// 解析 AgentID
+	AgentId, err := strconv.ParseInt(agentIDStr, 10, 64)
+	if err != nil {
+		logger.Log.Error("wechat_agentid parse error:", err)
 		return
 	}
 
-	//TLS SkipVerify
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
-	addURL := zabbix_web + "/api_jsonrpc.php"
-	dClient := http.Client{
-		Transport: transport,
-		Timeout:   3 * time.Second, // 设置超时时间为 3 秒
-	}
-	resp, err := dClient.Get(addURL)
-	if err != nil {
-		logger.Log.Error("Zabbix Web get request failed:", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusPreconditionFailed {
-		logger.Log.Error("Zabbix Web is incorrectly!")
-		os.Exit(1)
-	}
-	//api变量
-	API = zabbix.NewAPI(zabbix_web + "/api_jsonrpc.php")
-	if zabbix_token != "" {
-		API.SetAuth(zabbix_token)
-	} else {
-		_, err = API.Login(zabbix_user, zabbix_pass)
-		if err != nil {
-			logger.Log.Error(err)
-			os.Exit(1)
-		}
-	}
-	//zabbix api data get test
-	OutputPar := []string{"hostid", "host", "name", "error"}
-	type params map[string]interface{}
-	_, err = API.CallWithError("host.get", params{
-		"output":  OutputPar,
-		"hostids": "10084",
-	})
-	if err != nil {
-		logger.Log.Error("connect Zabbix API failed:", err)
-		os.Exit(1)
-	}
-	//Zabbix version
-	ZBX_VER, err = API.Version()
-	if err != nil {
-		logger.Log.Error(err)
-		os.Exit(1)
-	}
-	verArr := strings.Split(ZBX_VER, ".")
-	ZbxMasterVer, _ := strconv.ParseInt(verArr[0], 10, 64)
-	ZbxMiddleVer, _ := strconv.ParseInt(verArr[1], 10, 64)
-	if ZbxMasterVer >= 6 || (ZbxMasterVer == 5 && ZbxMiddleVer == 4) {
-		ZBX_V = true
-	} else {
-		ZBX_V = false
-	}
-	logger.Log.Info("Zabbix API connected！Zabbix version:", ZBX_VER)
-	//	zabbix web login (only if token is not configured)
-	if zabbix_pass != "" {
-		LoginZabbixWeb(zabbix_web, zabbix_user, zabbix_pass)
-	} else {
-		logger.Log.Info("Zabbix pass is not configured, skipping web login")
-	}
-
-	//gen tpl (企业微信配置优先从系统配置表读取，其次回退到 app.conf)
-	agentIDStr := GetConfigValueByKey("wechat_agentid", GetConfKey("wechat_agentid"))
-	if agentIDStr == "" {
-		logger.Log.Info("wechat_agentid is empty, WeChat app will not be initialized")
-	} else {
-		AgentId, err := strconv.ParseInt(agentIDStr, 10, 64)
-		if err != nil {
-			logger.Log.Error("wechat_agentid parse error:", err)
-			os.Exit(1)
-		}
-		corpid := GetConfigValueByKey("wechat_corpid", GetConfKey("wechat_corpid"))
-		secret := GetConfigValueByKey("wechat_secret", GetConfKey("wechat_secret"))
-		if corpid == "" || secret == "" {
-			logger.Log.Info("wechat_corpid or wechat_secret is empty, WeChat app will not be initialized")
-		} else {
-			client := workwx.New(corpid)
-			WeApp = client.WithApp(secret, AgentId)
-			WeApp.SpawnAccessTokenRefresher()
-			logger.Log.Info("WeChat inited!")
-		}
-	}
+	// 初始化企业微信客户端
+	client := workwx.New(corpid)
+	WeApp = client.WithApp(secret, AgentId)
+	WeApp.SpawnAccessTokenRefresher()
+	logger.Log.Info("WeChat inited successfully!")
 }
 
 // DatabaseInit 数据初始化
@@ -265,6 +197,7 @@ func DatabaseInit() {
 		{Name: "SMTP 端口", Key: "email_port", Value: "465", Comment: "SMTP 端口号"},
 		{Name: "SMTP 使用 SSL", Key: "email_isSSl", Value: "true", Comment: "是否启用 SSL：true/false"},
 		// 企业微信配置
+		{Name: "企业微信开关", Key: "wechat_enabled", Value: "0", Comment: "是否启用企业微信：1 启用,0 禁用"},
 		{Name: "企业微信 AgentID", Key: "wechat_agentid", Value: "", Comment: "企业微信应用的 AgentID"},
 		{Name: "企业微信 CorpID", Key: "wechat_corpid", Value: "", Comment: "企业微信企业ID"},
 		{Name: "企业微信 Secret", Key: "wechat_secret", Value: "", Comment: "企业微信应用的 Secret"},
@@ -366,7 +299,6 @@ func GetConfKey(v string) string {
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
 		logger.Log.Error(err)
-		logger.Log.Error("Please run 'zbxtable init' to create app.conf")
 		return ""
 	}
 	p, err := cfg.Section("").GetKey(v)

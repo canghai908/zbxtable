@@ -81,6 +81,7 @@ func checkInstallStatus() bool {
 // runWeb 启动web
 func runWeb(*cli.Context) error {
 	// 日志初始化（使用默认配置，不依赖配置文件）
+	fmt.Println("Web started!")
 	logErr := initLoggerSafe()
 	if logErr != nil {
 		// 如果日志初始化失败，至少输出到标准输出
@@ -125,14 +126,20 @@ func runWeb(*cli.Context) error {
 		logger.Log.Error("Failed to load config file:", err)
 		os.Exit(1)
 	}
+	//打印motd
 	logger.Log.Info(motd)
-	model.ModelInit(InitConfig("zabbix_web"), InitConfig("zabbix_user"), InitConfig("zabbix_pass"),
-		InitConfig("zabbix_token"),
-		InitConfig("dbtype"), InitConfig("dbhost"), InitConfig("dbuser"),
-		InitConfig("dbpass"), InitConfig("dbname"), InitConfig("dbport"),
-	)
-
+	//配置文件已经建立，从配置文件读取数据库配置，并初始化数据库
+	model.ModelInit(
+		GetConfKey("dbtype"),
+		GetConfKey("dbhost"),
+		GetConfKey("dbuser"),
+		GetConfKey("dbpass"),
+		GetConfKey("dbname"),
+		GetConfKey("dbport"))
+	//计划任务
 	model.InitTask()
+	//企业微信
+	model.InitCache()
 	defer model.StopTask()
 	model.InitSenderWorker()
 	go model.ConsumeMail()
@@ -141,7 +148,7 @@ func runWeb(*cli.Context) error {
 
 	// 直接使用 Gin 框架
 	r := v1.InitRouter()
-	httpport := InitConfig("httpport")
+	httpport := GetConfKey("httpport")
 	if httpport == "" {
 		httpport = "8085"
 	}
@@ -309,7 +316,7 @@ func CheckConfExist() {
 }
 
 // init config files
-func InitConfig(v string) string {
+func GetConfKey(v string) string {
 	// 为了与 model.GetConfKey 行为一致，这里也实现：
 	// 1）如果 .env 存在，则所有配置完全由 .env 决定（可以是空字符串），不会再回退到 app.conf
 	// 2）只有当 .env 不存在时，才从 app.conf 读取
