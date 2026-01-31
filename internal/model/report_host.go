@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/assets"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
@@ -233,6 +234,14 @@ func TaskHostReport(m Report) error {
 	}
 	filelist = append(filelist, htmlname)
 
+	// 复制静态资源文件到HTML同目录，并添加到文件列表
+	assetFiles, err := assets.CopyAssetsToDir(DowloadPath)
+	if err != nil {
+		logger.Log.Error("Failed to copy assets:", err)
+	} else {
+		filelist = append(filelist, assetFiles...)
+	}
+
 	// 生成PDF报表
 	pdfname, err := CreateHostReportPDF(m, ChartList, StrStart, StrEnd)
 	if err != nil {
@@ -252,7 +261,8 @@ func TaskHostReport(m Report) error {
 	} else if strings.Contains(m.Cycle, "realtime") {
 		cycleType = "realtime"
 	}
-	dirname := m.Name + "_" + cycleType + "_" + dirdata + "/"
+	// dirname 应该和 zipfilename 保持一致（都包含 _host_）
+	dirname := m.Name + "_host_" + cycleType + "_" + dirdata + "/"
 	Subject := "[主机报表]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"
 	zipfilename := m.Name + "_host_" + cycleType + "_" + dirdata + ".zip"
 
@@ -312,7 +322,8 @@ func CreateHostReportHTML(m Report, data []ChartData) (string, error) {
 	for _, v := range data {
 		page.AddCharts(CreateHostChart(v))
 	}
-	page.Initialization.AssetsHost = AssetsHost
+	// 使用本地相对路径
+	page.Initialization.AssetsHost = assets.GetLocalAssetsHost()
 	date := time.Now().Format("2006-01-02_15_04_05")
 	page.PageTitle = m.Name
 	filename := DowloadPath + m.Name + "_host_" + date + ".html"
@@ -322,6 +333,7 @@ func CreateHostReportHTML(m Report, data []ChartData) (string, error) {
 	}
 	defer f.Close()
 	page.Render(io.MultiWriter(f))
+
 	return filename, nil
 }
 

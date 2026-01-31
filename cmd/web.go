@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 	v1 "zbxtable/api/v1"
+	"zbxtable/pkg/assets"
 	"zbxtable/pkg/logger"
-	"zbxtable/pkg/templates"
 
 	model "zbxtable/internal/model"
 
@@ -99,12 +99,11 @@ func runWeb(*cli.Context) error {
 		}
 	}
 
-	// 释放模板文件到 ./template 目录
-	if err := templates.RestoreTemplates(); err != nil {
+	// 释放模板文件、js文件到assets目录下
+	if err := assets.RestoreAssets(); err != nil {
 		logger.Log.Error("Failed to restore template files:", err)
 		// 不退出程序，继续运行
 	}
-
 	// 检查安装状态
 	installed := checkInstallStatus()
 	if !installed {

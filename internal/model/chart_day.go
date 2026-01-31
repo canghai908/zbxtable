@@ -1,11 +1,13 @@
 ﻿package model
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"zbxtable/pkg/assets"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
@@ -200,6 +202,16 @@ func TaskDayReport(m Report) error {
 		return err
 	}
 	filelist = append(filelist, htmlname)
+
+	// 复制静态资源文件到HTML同目录，并添加到文件列表
+	assetFiles, err := assets.CopyAssetsToDir(DowloadPath)
+	if err != nil {
+		logger.Log.Error("Failed to copy assets:", err)
+	} else {
+		filelist = append(filelist, assetFiles...)
+	}
+
+	fmt.Println(filelist)
 	dirdata := Tend.Format("2006-01-02_15_04_05")
 	dirname := m.Name + "_day_" + dirdata + "/"
 	Subject := "[日报]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"
@@ -397,7 +409,8 @@ func Examples(m Report, data []ChartData) (string, error) {
 			CreateDayChart(v),
 		)
 	}
-	page.Initialization.AssetsHost = AssetsHost
+	// 使用本地相对路径
+	page.Initialization.AssetsHost = assets.GetLocalAssetsHost()
 	date := time.Now().Format("2006-01-02_15_04_05")
 	page.PageTitle = m.Name
 	filename := DowloadPath + m.Name + "_day_" + date + ".html"
@@ -407,5 +420,6 @@ func Examples(m Report, data []ChartData) (string, error) {
 	}
 	defer f.Close()
 	page.Render(io.MultiWriter(f))
+
 	return filename, nil
 }
