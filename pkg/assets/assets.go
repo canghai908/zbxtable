@@ -12,6 +12,7 @@ import (
 var AssetsFS embed.FS
 
 const (
+	//js文件列表
 	EchartsMinJS = "echarts.min.js"
 	ShineJS      = "shine.js"
 )

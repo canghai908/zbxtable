@@ -113,7 +113,7 @@ func TaskHostReport(m Report) error {
 	}
 
 	// 创建下载目录
-	err := utils.Mkdir(DowloadPath)
+	err := utils.Mkdir(DownloadPath)
 	if err != nil {
 		task.EndTime = time.Now()
 		task.Status = Failed
@@ -235,7 +235,7 @@ func TaskHostReport(m Report) error {
 	filelist = append(filelist, htmlname)
 
 	// 复制静态资源文件到HTML同目录，并添加到文件列表
-	assetFiles, err := assets.CopyAssetsToDir(DowloadPath)
+	assetFiles, err := assets.CopyAssetsToDir(DownloadPath)
 	if err != nil {
 		logger.Log.Error("Failed to copy assets:", err)
 	} else {
@@ -266,7 +266,7 @@ func TaskHostReport(m Report) error {
 	Subject := "[主机报表]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"
 	zipfilename := m.Name + "_host_" + cycleType + "_" + dirdata + ".zip"
 
-	err = utils.ZipFiles(DowloadPath+zipfilename, filelist, DowloadPath, dirname)
+	err = utils.ZipFiles(DownloadPath+zipfilename, filelist, DownloadPath, dirname)
 	if err != nil {
 		task.EndTime = time.Now()
 		task.Status = Failed
@@ -326,7 +326,7 @@ func CreateHostReportHTML(m Report, data []ChartData) (string, error) {
 	page.Initialization.AssetsHost = assets.GetLocalAssetsHost()
 	date := time.Now().Format("2006-01-02_15_04_05")
 	page.PageTitle = m.Name
-	filename := DowloadPath + m.Name + "_host_" + date + ".html"
+	filename := DownloadPath + m.Name + "_host_" + date + ".html"
 	f, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -585,7 +585,7 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 
 	// 保存PDF
 	date := time.Now().Format("2006-01-02_15_04_05")
-	filename := DowloadPath + m.Name + "_host_" + date + ".pdf"
+	filename := DownloadPath + m.Name + "_host_" + date + ".pdf"
 	var b bytes.Buffer
 	err = pdf.Write(&b)
 	if err != nil {
@@ -763,7 +763,7 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 
 	// 保存文件
 	StrDate := time.Now().Format("2006-01-02_15_04_05")
-	filename := DowloadPath + reportName + "_host_multi_" + StrDate + ".xlsx"
+	filename := DownloadPath + reportName + "_host_multi_" + StrDate + ".xlsx"
 	if err := xlsx.SaveAs(filename); err != nil {
 		return "", err
 	}

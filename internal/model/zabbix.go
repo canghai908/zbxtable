@@ -222,12 +222,6 @@ func UninstallMSAgentFromZabbixTenant(id int64) error {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
 	}
-
-	const (
-		MSUser   = "ms-agent"
-		MSAction = "MS-Agent"
-	)
-
 	// 删除 Action
 	logger.Log.Info("删除 MS-Agent Action...")
 	actionParams := map[string]interface{}{

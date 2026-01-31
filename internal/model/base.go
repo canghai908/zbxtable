@@ -41,6 +41,23 @@ var (
 	envFileExists bool
 )
 
+const (
+	//ms-agent 常量定义
+	MSName   = "ms-agent"
+	MSUser   = "ms-agent"
+	MSGroup  = "MS-Agent"
+	MSMedia  = "MS-Agent"
+	MSAction = "MS-Agent"
+	//webhook 常量定义
+	WebhookName   = "ZbxTable"
+	WebhookAction = "ZbxTable Webhook"
+	WebhookGroup  = "ZbxTable Webhook"
+	WebhookUser   = "zbxtable-webhook"
+	//down
+	DownloadPath = "./download/"
+	TplPath      = "./assets/templates"
+)
+
 // TableName 表名前缀
 func TableName(str string) string {
 	return fmt.Sprintf("%s%s", "zbxtable_", str)

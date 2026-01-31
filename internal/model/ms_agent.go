@@ -14,15 +14,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// 常量定义
-const (
-	MSName   = "ms-agent"
-	MSUser   = "ms-agent"
-	MSGroup  = "MS-Agent"
-	MSMedia  = "MS-Agent"
-	MSAction = "MS-Agent"
-)
-
 // MSAgentConfig MS-Agent 配置信息
 type MSAgentConfig struct {
 	ZbxTableURL  string `json:"zbxtable_url"`  // ZbxTable 服务地址

@@ -11,13 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	WebhookName   = "ZbxTable"
-	WebhookAction = "ZbxTable Webhook"
-	WebhookGroup  = "ZbxTable Webhook"
-	WebhookUser   = "zbxtable-webhook"
-)
-
 // InstallWebhookToZabbix 在 Zabbix 中安装 Webhook 配置
 func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 	// 常量定义

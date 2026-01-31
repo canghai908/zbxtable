@@ -37,7 +37,7 @@ func Sendmail(To []string, Subject, attach string, temp []byte) error {
 		e.From = from
 	}
 	var err error
-	file, err := os.Open(DowloadPath + attach)
+	file, err := os.Open(DownloadPath + attach)
 	if err != nil {
 		return err
 	}

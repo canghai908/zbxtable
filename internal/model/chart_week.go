@@ -29,7 +29,7 @@ func TaskWeekReport(m Report) error {
 	end := Tend.Unix()
 	StrStart := tstart.Format("2006-01-02 15:04:05")
 	StrEnd := Tend.Format("2006-01-02 15:04:05")
-	err := utils.Mkdir(DowloadPath)
+	err := utils.Mkdir(DownloadPath)
 	if err != nil {
 		task.EndTime = time.Now()
 		task.Status = Failed
@@ -180,21 +180,21 @@ func TaskWeekReport(m Report) error {
 		return err
 	}
 	filelist = append(filelist, htmlname)
-	
+
 	// 复制静态资源文件到HTML同目录，并添加到文件列表
-	assetFiles, err := assets.CopyAssetsToDir(DowloadPath)
+	assetFiles, err := assets.CopyAssetsToDir(DownloadPath)
 	if err != nil {
 		logger.Log.Error("Failed to copy assets:", err)
 	} else {
 		filelist = append(filelist, assetFiles...)
 	}
-	
+
 	dirdata := Tend.Format("2006-01-02_15_04_05")
 	dirname := m.Name + "_week_" + dirdata + "/"
 	Subject := "[周报]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"
 	zipfilename := m.Name + "_week_" + dirdata + ".zip"
 
-	err = utils.ZipFiles(DowloadPath+zipfilename, filelist, DowloadPath, dirname)
+	err = utils.ZipFiles(DownloadPath+zipfilename, filelist, DownloadPath, dirname)
 	if err != nil {
 		//写入日志
 		taskend := time.Now()
@@ -364,13 +364,13 @@ func ChartWeekHtml(m Report, data []ChartData) (string, error) {
 	page.Initialization.AssetsHost = assets.GetLocalAssetsHost()
 	date := time.Now().Format("2006-01-02_15_04_05")
 	page.PageTitle = m.Name
-	filename := DowloadPath + m.Name + "_week_" + date + ".html"
+	filename := DownloadPath + m.Name + "_week_" + date + ".html"
 	f, err := os.Create(filename)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
 	page.Render(io.MultiWriter(f))
-	
+
 	return filename, nil
 }
