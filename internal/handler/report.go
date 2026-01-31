@@ -66,13 +66,15 @@ func CreateReportGin(c *gin.Context) {
 	startTimeStr := gjson.Get(string(body), "start").String()
 	endTimeStr := gjson.Get(string(body), "end").String()
 
-	var startTime, endTime time.Time
+	var startTime, endTime *time.Time
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	if startTimeStr != "" {
-		startTime, _ = time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
+		startTime = &t
 	}
 	if endTimeStr != "" {
-		endTime, _ = time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
+		endTime = &t
 	}
 
 	instanceID, _ := strconv.Atoi(instanceIDStr)
@@ -142,13 +144,15 @@ func UpdateReportGin(c *gin.Context) {
 	startTimeStr := gjson.Get(string(body), "start").String()
 	endTimeStr := gjson.Get(string(body), "end").String()
 
-	var startTime, endTime time.Time
+	var startTime, endTime *time.Time
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	if startTimeStr != "" {
-		startTime, _ = time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
+		startTime = &t
 	}
 	if endTimeStr != "" {
-		endTime, _ = time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
+		endTime = &t
 	}
 
 	id, _ := strconv.Atoi(idStr)

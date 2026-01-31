@@ -16,10 +16,10 @@ type Report struct {
 	Desc          string    `gorm:"column:desc;size:200" json:"desc"`
 	Emails        string    `gorm:"column:emails;size:240" json:"emails"`
 	Status        string    `gorm:"column:status;size:50" json:"status"`
-	ExecStatus    string    `gorm:"column:exec_status;default:0" json:"exec_status"`
-	ReportMode    string    `gorm:"column:report_mode;size:50;default:scheduled" json:"report_mode"`
-	Start         time.Time  `gorm:"column:start;type:datetime" json:"start"`
-	End           time.Time  `gorm:"column:end;type:datetime" json:"end"`
+	ExecStatus    string     `gorm:"column:exec_status;default:0" json:"exec_status"`
+	ReportMode    string     `gorm:"column:report_mode;size:50;default:scheduled" json:"report_mode"`
+	Start         *time.Time `gorm:"column:start;type:datetime" json:"start"`
+	End           *time.Time `gorm:"column:end;type:datetime" json:"end"`
 	StartAt       *time.Time `gorm:"column:start_at;type:datetime" json:"start_at"`
 	EndAt         *time.Time `gorm:"column:end_at;type:datetime" json:"end_at"`
 	CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`

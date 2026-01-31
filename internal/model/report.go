@@ -94,18 +94,18 @@ func UpdateReportByID(m *Report) (err error) {
 	m.Items = utils.VAarToStr(m.Items)
 	m.Cycle = utils.VAarToStr(m.Cycle)
 	err = DB.Model(&Report{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
-		"name":          m.Name,
-		"emails":        m.Emails,
-		"items":         m.Items,
-		"linkbandwidth": m.LinkBandWidth,
-		"host_ids":      m.HostIds,
-		"item_ids":      m.ItemIds,
-		"cycle":         m.Cycle,
-		"status":        m.Status,
-		"desc":          m.Desc,
-		"start":         m.Start,
-		"end":           m.End,
-		"report_mode":   m.ReportMode,
+		"name":            m.Name,
+		"emails":          m.Emails,
+		"items":           m.Items,
+		"link_band_width": m.LinkBandWidth,
+		"host_ids":        m.HostIds,
+		"item_ids":        m.ItemIds,
+		"cycle":           m.Cycle,
+		"status":          m.Status,
+		"desc":            m.Desc,
+		"start":           m.Start,
+		"end":             m.End,
+		"report_mode":     m.ReportMode,
 	}).Error
 	if err != nil {
 		return err

@@ -82,9 +82,9 @@ func TaskHostReport(m Report) error {
 	var StrStart, StrEnd string
 
 	// 如果报表配置了开始和结束时间，使用配置的时间；否则根据周期计算
-	if !m.Start.IsZero() && !m.End.IsZero() {
-		tstart = m.Start
-		tend = m.End
+	if m.Start != nil && m.End != nil {
+		tstart = *m.Start
+		tend = *m.End
 		start = tstart.Unix()
 		end = tend.Unix()
 		StrStart = tstart.Format("2006-01-02 15:04:05")
