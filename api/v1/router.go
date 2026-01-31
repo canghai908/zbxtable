@@ -80,13 +80,11 @@ func InitRouter() *gin.Engine {
 
 	// WebSocket（必须在 NoRoute 之前）
 	r.GET("/ws/:id", handler.WebSocketHandlerGin)
-
 	// 安装引导 API（无需认证，必须在 NoRoute 之前）
 	installGroup := r.Group("/install")
 	{
 		installGroup.GET("/status", handler.GetInstallStatus)
 		installGroup.POST("/check-db", handler.CheckDatabase)
-		//installGroup.POST("/check-redis", handler.CheckRedis)
 		installGroup.POST("/install", handler.DoInstall)
 	}
 

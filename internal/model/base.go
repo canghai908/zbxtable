@@ -294,67 +294,10 @@ func GetConfKey(v string) string {
 		}
 		return ""
 	}
-
 	// 其次从 config/app.conf 读取
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
 		logger.Log.Error(err)
-		return ""
-	}
-	p, err := cfg.Section("").GetKey(v)
-	if err != nil {
-		logger.Log.Error(err)
-		return ""
-	}
-	return p.String()
-}
-
-// GetConfKeyQuiet 静默获取配置项（不记录错误日志，用于遗留配置项）
-func GetConfKeyQuiet(v string) string {
-	// 优先从 .env 中读取
-	envConfigOnce.Do(func() {
-		file, err := os.Open(".env")
-		if err != nil {
-			envFileExists = false
-			return
-		}
-		defer file.Close()
-
-		envFileExists = true
-		envConfig = make(map[string]string)
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
-				continue
-			}
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			key := strings.TrimSpace(parts[0])
-			val := strings.TrimSpace(parts[1])
-			val = strings.Trim(val, `"'`)
-			if key != "" {
-				envConfig[key] = val
-			}
-		}
-	})
-
-	if envFileExists {
-		if envConfig == nil {
-			return ""
-		}
-		if val, ok := envConfig[v]; ok {
-			return val
-		}
-		return ""
-	}
-
-	// 从 config/app.conf 读取（静默模式，不记录错误）
-	cfg, err := ini.Load("./config/app.conf")
-	if err != nil {
 		return ""
 	}
 	p, err := cfg.Section("").GetKey(v)
