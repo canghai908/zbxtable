@@ -40,6 +40,8 @@ func GetAllHost(c *gin.Context) {
 // GetHostByID 获取单个主机信息（多实例支持）
 func GetHostByID(c *gin.Context) {
 	idStr := c.Param("hostid")
+	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
+	
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": err.Error()})
@@ -49,11 +51,21 @@ func GetHostByID(c *gin.Context) {
 		idStr = "10084"
 	}
 
-	// 查找该主机所属的实例
-	instanceID, err := model.FindInstanceByHostID(idStr)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("无法找到主机所属实例: %v", err)})
-		return
+	var instanceID int
+	if instanceIDStr != "" {
+		// 如果提供了实例ID，直接使用
+		instanceID, err = strconv.Atoi(instanceIDStr)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("无效的实例ID: %v", err)})
+			return
+		}
+	} else {
+		// 如果没有提供实例ID，查找该主机所属的实例
+		instanceID, err = model.FindInstanceByHostID(idStr)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": fmt.Sprintf("无法找到主机所属实例: %v", err)})
+			return
+		}
 	}
 
 	// 获取该实例的 API 连接
@@ -72,21 +84,68 @@ func GetHostByID(c *gin.Context) {
 	}
 }
 
-// SearchHost 搜索主机
+// SearchHost 搜索主机（支持实例筛选）
 func SearchHost(c *gin.Context) {
 	name := c.Query("name")
+	tenantID := c.Query("tenant_id")
+	instanceID := c.Query("instance_id")
+	
 	var HostRes model.HostList
-	val, err := model.GetNetHostByName(name)
-	if err != nil {
-		HostRes.Code = 500
-		HostRes.Message = err.Error()
-		HostRes.Data.Items = nil
-		HostRes.Data.Total = 0
+	
+	// 如果提供了实例ID或租户ID，从指定实例查询
+	if instanceID != "" || tenantID != "" {
+		var instID int
+		var err error
+		
+		if instanceID != "" {
+			instID, err = strconv.Atoi(instanceID)
+		} else {
+			instID, err = strconv.Atoi(tenantID)
+		}
+		
+		if err != nil {
+			HostRes.Code = 500
+			HostRes.Message = "无效的实例ID"
+			c.JSON(http.StatusOK, HostRes)
+			return
+		}
+		
+		// 获取该实例的 API 连接
+		inst, err := model.GetAPIByInstanceID(instID)
+		if err != nil {
+			HostRes.Code = 500
+			HostRes.Message = fmt.Sprintf("获取实例连接失败: %v", err)
+			c.JSON(http.StatusOK, HostRes)
+			return
+		}
+		
+		// 从该实例查询主机
+		val, err := model.SearchHostFromInstance(inst, name)
+		if err != nil {
+			HostRes.Code = 500
+			HostRes.Message = err.Error()
+			HostRes.Data.Items = nil
+			HostRes.Data.Total = 0
+		} else {
+			HostRes.Code = 200
+			HostRes.Message = "获取数据成功"
+			HostRes.Data.Items = val
+			HostRes.Data.Total = int64(len(val))
+		}
 	} else {
-		HostRes.Code = 200
-		HostRes.Message = "获取数据成功"
-		HostRes.Data.Items = val
-		HostRes.Data.Total = int64(len(val))
+		// 兼容旧逻辑：从缓存查询
+		val, err := model.GetNetHostByName(name)
+		if err != nil {
+			HostRes.Code = 500
+			HostRes.Message = err.Error()
+			HostRes.Data.Items = nil
+			HostRes.Data.Total = 0
+		} else {
+			HostRes.Code = 200
+			HostRes.Message = "获取数据成功"
+			HostRes.Data.Items = val
+			HostRes.Data.Total = int64(len(val))
+		}
 	}
 	c.JSON(http.StatusOK, HostRes)
 }
@@ -207,15 +266,30 @@ func GetOneInterface(c *gin.Context) {
 // GetMonWinFileSystem 获取windows系统监控指标（多实例支持）
 func GetMonWinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
+	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
 
-	// 查找该主机所属的实例
-	instanceID, err := model.FindInstanceByHostID(hostid)
-	if err != nil {
-		var HostInterfaceRes model.HostInterfaceInfo
-		HostInterfaceRes.Code = 500
-		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
-		c.JSON(http.StatusOK, HostInterfaceRes)
-		return
+	var instanceID int
+	var err error
+	if instanceIDStr != "" {
+		// 如果提供了实例ID，直接使用
+		instanceID, err = strconv.Atoi(instanceIDStr)
+		if err != nil {
+			var HostInterfaceRes model.HostInterfaceInfo
+			HostInterfaceRes.Code = 500
+			HostInterfaceRes.Message = fmt.Sprintf("无效的实例ID: %v", err)
+			c.JSON(http.StatusOK, HostInterfaceRes)
+			return
+		}
+	} else {
+		// 如果没有提供实例ID，查找该主机所属的实例
+		instanceID, err = model.FindInstanceByHostID(hostid)
+		if err != nil {
+			var HostInterfaceRes model.HostInterfaceInfo
+			HostInterfaceRes.Code = 500
+			HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
+			c.JSON(http.StatusOK, HostInterfaceRes)
+			return
+		}
 	}
 
 	// 获取该实例的 API 连接
@@ -246,15 +320,30 @@ func GetMonWinFileSystem(c *gin.Context) {
 // GetMonLinFileSystem 获取文件系统详情（多实例支持）
 func GetMonLinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
+	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
 
-	// 查找该主机所属的实例
-	instanceID, err := model.FindInstanceByHostID(hostid)
-	if err != nil {
-		var HostInterfaceRes model.HostInterfaceInfo
-		HostInterfaceRes.Code = 500
-		HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
-		c.JSON(http.StatusOK, HostInterfaceRes)
-		return
+	var instanceID int
+	var err error
+	if instanceIDStr != "" {
+		// 如果提供了实例ID，直接使用
+		instanceID, err = strconv.Atoi(instanceIDStr)
+		if err != nil {
+			var HostInterfaceRes model.HostInterfaceInfo
+			HostInterfaceRes.Code = 500
+			HostInterfaceRes.Message = fmt.Sprintf("无效的实例ID: %v", err)
+			c.JSON(http.StatusOK, HostInterfaceRes)
+			return
+		}
+	} else {
+		// 如果没有提供实例ID，查找该主机所属的实例
+		instanceID, err = model.FindInstanceByHostID(hostid)
+		if err != nil {
+			var HostInterfaceRes model.HostInterfaceInfo
+			HostInterfaceRes.Code = 500
+			HostInterfaceRes.Message = fmt.Sprintf("无法找到主机所属实例: %v", err)
+			c.JSON(http.StatusOK, HostInterfaceRes)
+			return
+		}
 	}
 
 	// 获取该实例的 API 连接

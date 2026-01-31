@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 	"zbxtable/pkg/logger"
+	
+	zabbix "github.com/canghai908/zabbix-go"
 )
 
 // GetHistoryByItemID
@@ -111,6 +113,26 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 
 // GetInterfaceGraphData 接口流量数据获取
 func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
+	// 如果提供了实例ID，使用指定实例的API
+	if data.InstanceID > 0 {
+		inst, err := GetAPIByInstanceID(data.InstanceID)
+		if err != nil {
+			return TrafficData{}, err
+		}
+		return GetInterfaceGraphDataFromInstance(inst, data)
+	}
+	
+	// 否则使用全局API（兼容旧逻辑）
+	return GetInterfaceGraphDataFromAPI(API, data)
+}
+
+// GetInterfaceGraphDataFromInstance 从指定实例获取接口流量数据
+func GetInterfaceGraphDataFromInstance(inst *APIInstance, data InterfaceData) (series TrafficData, err error) {
+	return GetInterfaceGraphDataFromAPI(inst.API, data)
+}
+
+// GetInterfaceGraphDataFromAPI 使用指定的API对象获取接口流量数据
+func GetInterfaceGraphDataFromAPI(api *zabbix.API, data InterfaceData) (series TrafficData, err error) {
 	var timeFrom, timeTill int64
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	//时间处理
@@ -140,7 +162,7 @@ func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	itemList = append(itemList, data.OutErrorsItemId)
 	//operation
 	itemList = append(itemList, data.OperationalStatusItemId)
-	rep, err := API.Call("history.get",
+	rep, err := api.Call("history.get",
 		Params{"output": "extend",
 			"itemids":   itemList,
 			"history":   data.BitsReceivedValueType,

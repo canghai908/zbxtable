@@ -19,7 +19,7 @@ type System struct {
 	Ping                string    `gorm:"column:ping;size:200" json:"ping"`
 	PingLoss            string    `gorm:"column:ping_loss;size:200" json:"ping_loss"`
 	PingSec             string    `gorm:"column:ping_sec;size:200" json:"ping_sec"`
-	InitedAt            time.Time `gorm:"column:inited_at;type:datetime" json:"inited_at"`
+	InitedAt            *time.Time `gorm:"column:inited_at;type:datetime" json:"inited_at"`
 	CreatedAt           time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt           time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 	Status              int       `gorm:"column:status" json:"status"`

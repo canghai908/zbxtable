@@ -125,6 +125,7 @@ func CreateOrUpdateSystem(m *System) error {
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = existing.CreatedAt
 	return DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.InstanceID).Updates(map[string]interface{}{
+		"instance_id":           m.InstanceID,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -150,9 +151,10 @@ func SystemInit(id int64) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now()
 	err = DB.Model(&System{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"status":    1,
-		"inited_at": time.Now(),
+		"inited_at": &now,
 	}).Error
 	if err != nil {
 		return err
@@ -179,9 +181,10 @@ func SystemInitWithInstance(systemID int64, instanceID int) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now()
 	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", systemID, instanceID).Updates(map[string]interface{}{
 		"status":    1,
-		"inited_at": time.Now(),
+		"inited_at": &now,
 	}).Error
 	if err != nil {
 		return err

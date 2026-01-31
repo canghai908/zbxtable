@@ -366,7 +366,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 
 }
 
-// get net host by name
+// GetNetHostByName get net host by name
 func GetNetHostByName(name string) ([]Hosts, error) {
 	val, err := CacheGet("HW_NET_OVERVIEW")
 	if err != nil || val == "" {
@@ -384,6 +384,68 @@ func GetNetHostByName(name string) ([]Hosts, error) {
 		}
 	}
 	return newlist, nil
+}
+
+// SearchHostFromInstance 从指定实例搜索主机
+func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
+	filterPar := make(map[string]string)
+	filterPar["status"] = "0"
+	
+	// 如果提供了名称，添加搜索条件
+	searchPar := make(map[string]interface{})
+	if name != "" {
+		searchPar["name"] = name
+	}
+	
+	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
+	
+	params := Params{
+		"output":           "extend",
+		"filter":           filterPar,
+		"selectInventory":  "extend",
+		"selectInterfaces": SelectInterfacesPar,
+	}
+	
+	if name != "" {
+		params["search"] = searchPar
+		params["searchWildcardsEnabled"] = true
+	}
+	
+	rep, err := inst.API.CallWithError("host.get", params)
+	if err != nil {
+		return []Hosts{}, err
+	}
+	
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []Hosts{}, err
+	}
+	
+	var hb ListHosts
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []Hosts{}, err
+	}
+	
+	var hosts []Hosts
+	for _, v := range hb {
+		var d Hosts
+		d.HostID = v.Hostid
+		d.Host = v.Host
+		d.Name = v.Name
+		if len(v.Interfaces) != 0 {
+			d.Interfaces = v.Interfaces[0].IP
+			d.Available = v.Interfaces[0].Available
+			d.Error = v.Interfaces[0].Error
+		}
+		d.Status = v.Status
+		d.InstanceID = inst.ID
+		d.InstanceName = inst.Name
+		d.TenantID = inst.TenantID
+		hosts = append(hosts, d)
+	}
+	
+	return hosts, nil
 }
 
 // GetHostFromInstance 从指定实例获取主机详情

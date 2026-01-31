@@ -329,6 +329,7 @@ type InterfaceData struct {
 	Lastclock                  string `json:"lastclock"`
 	Begin                      string `json:"begin"`
 	End                        string `json:"end"`
+	InstanceID                 int    `json:"instance_id"` // 添加实例ID字段
 }
 type WinFilesSystemData struct {
 	ID               int64   `json:"id"`

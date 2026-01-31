@@ -217,11 +217,12 @@ func DatabaseInit() {
 		return
 	}
 	if len(cnt) == 0 {
+		now := time.Now()
 		sys := []System{
-			{Name: "Linux操作系统", Status: 0, InitedAt: time.Now()},
-			{Name: "Windows操作系统", Status: 0, InitedAt: time.Now()},
-			{Name: "网络设备", Status: 0, InitedAt: time.Now()},
-			{Name: "物理服务器", Status: 0, InitedAt: time.Now()},
+			{Name: "Linux操作系统", Status: 0, InitedAt: &now},
+			{Name: "Windows操作系统", Status: 0, InitedAt: &now},
+			{Name: "网络设备", Status: 0, InitedAt: &now},
+			{Name: "物理服务器", Status: 0, InitedAt: &now},
 		}
 		err := DB.Create(&sys).Error
 		if err != nil {
