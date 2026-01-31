@@ -441,3 +441,30 @@ func GetItemByIDS(itemids []string) (item []Item, err error) {
 	}
 	return hb, err
 }
+
+// GetItemByIDFromInstance 从指定实例根据itemid获取监控项
+func GetItemByIDFromInstance(inst *APIInstance, itemid string) (item []Item, err error) {
+	if itemid == "" {
+		return []Item{}, err
+	}
+	output := []string{"itemid", "name", "key_", "value_type", "units", "lastvalue", "lastclock", "hostid"}
+	rep, err := inst.API.Call("item.get", Params{"output": output, "sortfield": "name",
+		"itemids": itemid})
+	if err != nil {
+		logger.Log.Debug(err)
+		return []Item{}, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		logger.Log.Debug(err)
+		return []Item{}, err
+	}
+
+	var hb []Item
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		logger.Log.Debug(err)
+		return []Item{}, err
+	}
+	return hb, err
+}

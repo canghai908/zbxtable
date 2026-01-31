@@ -238,7 +238,6 @@ func InitRouter() *gin.Engine {
 			graphGroup := api.Group("/graph")
 			{
 				graphGroup.POST("", handler.GetGraphByHostID)
-				graphGroup.POST("/exp", handler.ExportGraph)
 			}
 
 			// 图片处理

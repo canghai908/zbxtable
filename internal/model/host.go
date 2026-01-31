@@ -426,43 +426,43 @@ func GetNetHostByName(name string) ([]Hosts, error) {
 func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 	filterPar := make(map[string]string)
 	filterPar["status"] = "0"
-	
+
 	// 如果提供了名称，添加搜索条件
 	searchPar := make(map[string]interface{})
 	if name != "" {
 		searchPar["name"] = name
 	}
-	
+
 	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
-	
+
 	params := Params{
 		"output":           "extend",
 		"filter":           filterPar,
 		"selectInventory":  "extend",
 		"selectInterfaces": SelectInterfacesPar,
 	}
-	
+
 	if name != "" {
 		params["search"] = searchPar
 		params["searchWildcardsEnabled"] = true
 	}
-	
+
 	rep, err := inst.API.CallWithError("host.get", params)
 	if err != nil {
 		return []Hosts{}, err
 	}
-	
+
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
 		return []Hosts{}, err
 	}
-	
+
 	var hb ListHosts
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		return []Hosts{}, err
 	}
-	
+
 	var hosts []Hosts
 	for _, v := range hb {
 		var d Hosts
@@ -480,7 +480,7 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 		d.TenantID = inst.TenantID
 		hosts = append(hosts, d)
 	}
-	
+
 	return hosts, nil
 }
 
@@ -914,111 +914,6 @@ func UpdateHost(Host *Hosts) (MonItemList, error) {
 	return MonItemList{}, nil
 }
 
-// GetHostsList  func
-func GetHostsList(HostType string) ([]Hosts, int64, error) {
-	//获取主机列表
-	//OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
-	//SelectInventoryPar := []string{"model", "chassis", "contact"}
-	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
-	SearchInventoryInventoryPar := make(map[string]string)
-	SearchInventoryInventoryPar["type"] = HostType
-	rep, err := API.CallWithError("host.get", Params{
-		"output":           "extend",
-		"searchInventory":  SearchInventoryInventoryPar,
-		"selectInventory":  "extend",
-		"selectInterfaces": SelectInterfacesPar})
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	hba, err := json.Marshal(rep.Result)
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	var hb ListHosts
-	err = json.Unmarshal(hba, &hb)
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	var dt []Hosts
-	var d Hosts
-	//new version
-	if ZBX_V {
-		for _, v := range hb {
-			d.HostID = v.Hostid
-			d.Host = v.Host
-			d.Name = v.Name
-			if len(v.Interfaces) != 0 {
-				d.Interfaces = v.Interfaces[0].IP
-				d.Available = v.Interfaces[0].Available
-				d.Error = v.Interfaces[0].Error
-			}
-			d.Status = v.Status
-			//物理服务器可用性为ipmi
-			d.Model = v.Inventory.Model
-			d.OS = v.Inventory.Os
-			d.NumberOfCores = v.Inventory.Software
-			d.CPUUtilization = v.Inventory.SoftwareAppA
-			d.MemoryUtilization = v.Inventory.SoftwareAppB
-			d.MemoryUsed = v.Inventory.SoftwareAppD
-			d.MemoryTotal = v.Inventory.SoftwareAppC
-			d.Uptime = v.Inventory.SoftwareAppE
-			d.Ping = v.Inventory.Poc1Name
-			d.PingLoss = v.Inventory.Poc1Email
-			d.PingSec = v.Inventory.Poc1PhoneA
-			if HostType == "HW_NET" || HostType == "HW_SRV" {
-				if len(v.Interfaces) != 0 {
-					d.SerialNo = v.Inventory.SerialnoA
-					d.Location = v.Inventory.Location
-					d.Department = v.Inventory.SiteCity
-				}
-			}
-			dt = append(dt, d)
-		}
-
-	} else {
-		for _, v := range hb {
-			var count int64
-			var err error
-			count, err = GetTriggerHostCount(v.Hostid)
-			if err != nil {
-				logger.Log.Error(err)
-				count = 0
-			}
-			if len(v.Interfaces) != 0 {
-				d.Interfaces = v.Interfaces[0].IP
-				d.Available = v.Interfaces[0].Available
-				d.Error = v.Interfaces[0].Error
-			}
-			d.HostID = v.Hostid
-			d.Host = v.Host
-			d.Name = v.Name
-			d.Status = v.Status
-			//物理服务器可用性为ipmi
-			d.Model = v.Inventory.Model
-			d.OS = v.Inventory.Os
-			d.NumberOfCores = v.Inventory.Software
-			d.CPUUtilization = v.Inventory.SoftwareAppA
-			d.MemoryUtilization = v.Inventory.SoftwareAppB
-			d.MemoryUsed = v.Inventory.SoftwareAppD
-			d.MemoryTotal = v.Inventory.SoftwareAppC
-			d.Uptime = v.Inventory.SoftwareAppE
-			d.Ping = v.Inventory.Poc1Name
-			d.PingLoss = v.Inventory.Poc1Email
-			d.PingSec = v.Inventory.Poc1PhoneA
-			d.Alarm = strconv.FormatInt(count, 10)
-			if HostType == "HW_NET" || HostType == "HW_SRV" {
-				d.Available = v.SnmpAvailable
-				d.Error = v.SnmpError
-				d.SerialNo = v.Inventory.SerialnoA
-				d.Location = v.Inventory.LocationLon
-				d.Department = v.Inventory.SiteCity
-			}
-			dt = append(dt, d)
-		}
-	}
-	return dt, int64(len(dt)), err
-}
-
 // GetLinFilesSystemData linux文件系统数据获取
 func GetLinFilesSystemData(hostid string) ([]LinFilesSystemData, error) {
 	//新版本
@@ -1381,55 +1276,6 @@ func GetGraphDataFromInstance(inst *APIInstance, hostId, start, end string) ([]P
 		pngData = append(pngData, data)
 	}
 
-	return pngData, nil
-}
-
-// GetGraphData 查看主机的图形数据（保留用于兼容）
-func GetGraphData(hostId, start, end string) ([]PNGData, error) {
-	var pngData []PNGData
-	selectItemsPar := []string{"graphid", "name"}
-	//Key2Par := []string{"system.cpu.util", "vm.memory.utilization", "vm.memory.size"}
-	//Search2Par := make(map[string][]string)
-	//Search2Par["key_"] = Key2Par
-	p, err := API.CallWithError("graph.get", Params{
-		"output":      selectItemsPar,
-		"hostids":     hostId,
-		"searchByAny": true,
-		//"search":      Search2Par,
-		"sortfield": "graphid"})
-	if err != nil {
-		return pngData, nil
-	}
-	st, err := json.Marshal(p.Result)
-	if err != nil {
-		return pngData, nil
-	}
-	var hba []GraphData
-	err = json.Unmarshal(st, &hba)
-	if err != nil {
-		return pngData, nil
-
-	}
-	var wg sync.WaitGroup
-	pngDataChan := make(chan PNGData, len(hba))
-	for _, v := range hba {
-		wg.Add(1)
-		go func(v GraphData) {
-			defer wg.Done()
-			png, _ := GetPNGGraph(v.GraphId, start, end)
-			pngDataChan <- PNGData{
-				Name: v.Name,
-				Png:  png,
-			}
-		}(v)
-	}
-	go func() {
-		wg.Wait()
-		close(pngDataChan)
-	}()
-	for data := range pngDataChan {
-		pngData = append(pngData, data)
-	}
 	return pngData, nil
 }
 

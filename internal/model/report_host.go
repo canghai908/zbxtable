@@ -26,15 +26,17 @@ import (
 
 // HostReportConfig 主机报表配置结构
 type HostReportConfig struct {
-	HostID  string   `json:"host_id"`
-	ItemIDs []string `json:"item_ids"`
+	HostID     string   `json:"host_id"`
+	ItemIDs    []string `json:"item_ids"`
+	InstanceID string   `json:"instance_id"`
 }
 
 // ItemData 指标数据结构，用于生成多sheet Excel
 type ItemData struct {
-	HostInfo    Hosts
-	ItemInfo    []Item
-	HistoryData []History
+	HostInfo     Hosts
+	ItemInfo     []Item
+	HistoryData  []History
+	InstanceName string
 }
 
 // TaskHostReport 生成主机报表
@@ -128,8 +130,21 @@ func TaskHostReport(m Report) error {
 
 	// 遍历每个主机配置
 	for _, hostConfig := range hostConfigs {
-		// 获取主机信息
-		hostInfo, err := GetHost(hostConfig.HostID)
+		// 检查实例ID是否存在
+		if hostConfig.InstanceID == "" {
+			logger.Log.Error("主机配置缺少实例ID")
+			continue
+		}
+
+		// 获取该实例的 API 连接（使用 tenant_id 字符串）
+		inst, err := GetZabbixInstanceAPI(hostConfig.InstanceID)
+		if err != nil {
+			logger.Log.Error("获取实例API失败:", err)
+			continue
+		}
+
+		// 获取主机信息（使用该实例的API）
+		hostInfo, err := GetHostFromInstance(inst, hostConfig.HostID)
 		if err != nil {
 			logger.Log.Error("获取主机信息失败:", err)
 			continue
@@ -137,15 +152,15 @@ func TaskHostReport(m Report) error {
 
 		// 遍历每个指标
 		for _, itemID := range hostConfig.ItemIDs {
-			// 获取指标信息
-			itemInfo, err := GetItemByID(itemID)
+			// 获取指标信息（使用该实例的API）
+			itemInfo, err := GetItemByIDFromInstance(inst, itemID)
 			if err != nil || len(itemInfo) == 0 {
 				logger.Log.Error("获取指标信息失败:", err)
 				continue
 			}
 
-			// 获取历史数据
-			historyData, err := GetHistoryByItemIDTTTT(itemInfo[0].Itemid, itemInfo[0].ValueType, start, end)
+			// 获取历史数据（使用该实例的API）
+			historyData, err := GetHistoryByItemIDFromInstance(inst, itemInfo[0].Itemid, itemInfo[0].ValueType, start, end)
 			if err != nil {
 				logger.Log.Error("获取历史数据失败:", err)
 				continue
@@ -153,9 +168,10 @@ func TaskHostReport(m Report) error {
 
 			// 保存数据用于生成多sheet Excel
 			allItemsData = append(allItemsData, ItemData{
-				HostInfo:    hostInfo,
-				ItemInfo:    itemInfo,
-				HistoryData: historyData,
+				HostInfo:     hostInfo,
+				ItemInfo:     itemInfo,
+				HistoryData:  historyData,
+				InstanceName: inst.Name, // 添加实例名称
 			})
 
 			// 准备图表数据
@@ -170,15 +186,17 @@ func TaskHostReport(m Report) error {
 			}
 
 			chartData := ChartData{
-				Host:   hostInfo.Name,
-				IP:     hostInfo.Interfaces,
-				Name:   itemInfo[0].Name,
-				Units:  itemInfo[0].Units,
-				Start:  StrStart,
-				End:    StrEnd,
-				Date:   datelist,
-				Data:   vallist,
-				ItemID: itemInfo[0].Itemid,
+				Host:         hostInfo.Name,
+				IP:           hostInfo.Interfaces,
+				Name:         itemInfo[0].Name,
+				Units:        itemInfo[0].Units,
+				Start:        StrStart,
+				End:          StrEnd,
+				Date:         datelist,
+				Data:         vallist,
+				ItemID:       itemInfo[0].Itemid,
+				InstanceName: inst.Name, // 添加实例名称
+				Instance:     inst,      // 添加实例对象
 			}
 			ChartList = append(ChartList, chartData)
 		}
@@ -310,6 +328,11 @@ func CreateHostReportHTML(m Report, data []ChartData) (string, error) {
 // CreateHostChart 创建主机图表
 func CreateHostChart(data ChartData) *charts.Line {
 	line := charts.NewLine()
+	// 构建标题，包含实例名称
+	titleText := data.Host
+	if data.InstanceName != "" {
+		titleText = "[" + data.InstanceName + "] " + data.Host
+	}
 	line.SetGlobalOptions(
 		charts.WithTooltipOpts(opts.Tooltip{
 			Show:      true,
@@ -341,7 +364,7 @@ func CreateHostChart(data ChartData) *charts.Line {
 		}),
 		charts.WithInitializationOpts(opts.Initialization{Theme: "shine"}),
 		charts.WithTitleOpts(opts.Title{
-			Title:         data.Host,
+			Title:         titleText,
 			Subtitle:      data.Name + "\n" + data.Start + "--" + data.End,
 			Left:          "center",
 			TitleStyle:    &opts.TextStyle{FontSize: 20},
@@ -354,20 +377,34 @@ func CreateHostChart(data ChartData) *charts.Line {
 	return line
 }
 
-// GetItemChartImage 从Zabbix获取item的图表图片
-func GetItemChartImage(itemID, start, end string) (gopdf.ImageHolder, error) {
-	ZabbixWeb := GetConfKey("zabbix_web")
+// GetItemChartImageFromInstance 从指定Zabbix实例获取item的图表图片
+func GetItemChartImageFromInstance(inst *APIInstance, itemID, start, end string) (gopdf.ImageHolder, error) {
+	if inst == nil {
+		return nil, fmt.Errorf("实例参数为空")
+	}
+
+	if inst.WebURL == "" {
+		return nil, fmt.Errorf("实例 %s 未配置 WebURL", inst.Name)
+	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
+	// 使用实例的 JAR（如果有），否则使用全局 JAR
+	jar := inst.JAR
+	if jar == nil {
+		jar = JAR
+	}
+
 	client1 := &http.Client{
 		Transport: tr,
-		Jar:       JAR,
+		Jar:       jar,
 		Timeout:   99999999999992,
 	}
 
-	// 使用 historygraph.php API 获取 item 的图表
-	imgurl := ZabbixWeb + "/chart.php?"
+	// 使用实例的 WebURL 获取 item 的图表
+	imgurl := inst.WebURL + "/chart.php?"
 	data := url.Values{}
 	URL, err := url.Parse(imgurl)
 	if err != nil {
@@ -475,20 +512,8 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 	pdf.Cell(nil, "报表周期: "+start+" -- "+end)
 	pdf.Line(10, 45, 585, 45)
 
-	// 如果未配置 Zabbix 密码，提前在报告中给出提示
-	passwordConfigured := IsPasswordConfigured()
-	if !passwordConfigured {
-		pdf.SetX(10)
-		pdf.SetY(50)
-		pdf.Cell(nil, "提示: 配置文件中未设置 zabbix_pass，无法模拟登录 Zabbix，因此图表图片可能无法展示。")
-	}
-
 	// 添加图表图片
 	yPos := 60.0
-	if !passwordConfigured {
-		// 如果已经输出了提示信息，适当下移首个图表位置
-		yPos = 80.0
-	}
 	for i, chartData := range data {
 		// 每页最多显示2个图表，如果超过则添加新页面
 		if i > 0 && i%2 == 0 {
@@ -507,11 +532,16 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 		// 添加图表标题
 		pdf.SetX(10)
 		pdf.SetY(yPos)
-		pdf.Cell(nil, fmt.Sprintf("主机: %s | 指标: %s (%s)", chartData.Host, chartData.Name, chartData.Units))
+		// 构建标题，包含实例名称
+		titleText := fmt.Sprintf("主机: %s | 指标: %s (%s)", chartData.Host, chartData.Name, chartData.Units)
+		if chartData.InstanceName != "" {
+			titleText = fmt.Sprintf("实例: %s | 主机: %s | 指标: %s (%s)", chartData.InstanceName, chartData.Host, chartData.Name, chartData.Units)
+		}
+		pdf.Cell(nil, titleText)
 
 		// 获取图表图片
-		if chartData.ItemID != "" {
-			imgHolder, imgErr := GetItemChartImage(chartData.ItemID, start, end)
+		if chartData.ItemID != "" && chartData.Instance != nil {
+			imgHolder, imgErr := GetItemChartImageFromInstance(chartData.Instance, chartData.ItemID, start, end)
 			if imgErr == nil && imgHolder != nil {
 				// 在标题下方添加图表图片
 				imageY := yPos + 20
@@ -522,21 +552,21 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 				yPos = imageY + estimatedImageHeight + 20
 			} else {
 				// 如果获取图表失败，在 PDF 中输出提示信息
-				logger.Log.Warn(fmt.Sprintf("获取图表图片失败 (ItemID: %s): %v", chartData.ItemID, imgErr))
+				logger.Log.Warn(fmt.Sprintf("获取图表图片失败 (ItemID: %s, Instance: %s): %v", chartData.ItemID, chartData.InstanceName, imgErr))
 				pdf.SetX(10)
 				pdf.SetY(yPos + 20)
-				if !passwordConfigured {
-					pdf.Cell(nil, "提示: 由于未配置 zabbix_pass，无法从 Zabbix 获取该指标的图表图片。")
-				} else {
-					pdf.Cell(nil, "提示: 无法获取该指标的图表图片，请检查 Zabbix 配置或网络连接。")
-				}
+				pdf.Cell(nil, fmt.Sprintf("提示: 无法从实例 %s 获取该指标的图表图片。", chartData.InstanceName))
 				yPos += 60
 			}
 		} else {
-			// 没有有效的 ItemID，同样给出提示
+			// 没有有效的 ItemID 或实例，给出提示
 			pdf.SetX(10)
 			pdf.SetY(yPos + 20)
-			pdf.Cell(nil, "提示: 该指标缺少 ItemID，无法获取图表图片。")
+			if chartData.Instance == nil {
+				pdf.Cell(nil, "提示: 该指标缺少实例信息，无法获取图表图片。")
+			} else {
+				pdf.Cell(nil, "提示: 该指标缺少 ItemID，无法获取图表图片。")
+			}
 			yPos += 60
 		}
 	}
@@ -565,10 +595,11 @@ func CreateHostMailTable(m Report, data []ChartData, start, end string) ([]byte,
 		Start      string
 		End        string
 		TableInfo  []struct {
-			Host     string
-			IP       string
-			ItemName string
-			Units    string
+			InstanceName string
+			Host         string
+			IP           string
+			ItemName     string
+			Units        string
 		}
 	}
 
@@ -580,15 +611,17 @@ func CreateHostMailTable(m Report, data []ChartData, start, end string) ([]byte,
 
 	for _, v := range data {
 		mailData.TableInfo = append(mailData.TableInfo, struct {
-			Host     string
-			IP       string
-			ItemName string
-			Units    string
+			InstanceName string
+			Host         string
+			IP           string
+			ItemName     string
+			Units        string
 		}{
-			Host:     v.Host,
-			IP:       v.IP,
-			ItemName: v.Name,
-			Units:    v.Units,
+			InstanceName: v.InstanceName,
+			Host:         v.Host,
+			IP:           v.IP,
+			ItemName:     v.Name,
+			Units:        v.Units,
 		})
 	}
 
@@ -668,18 +701,20 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		xlsx.SetColWidth(sheetName, "B", "B", 30)
 
 		// 写入表头信息
-		xlsx.SetCellValue(sheetName, "A1", "主机名称")
-		xlsx.SetCellValue(sheetName, "B1", hostInfo.Name)
-		xlsx.SetCellValue(sheetName, "A2", "指标名称")
-		xlsx.SetCellValue(sheetName, "B2", itemInfo.Name)
-		xlsx.SetCellValue(sheetName, "A3", "指标ID")
-		xlsx.SetCellValue(sheetName, "B3", itemInfo.Itemid)
-		xlsx.SetCellValue(sheetName, "A4", "指标Key")
-		xlsx.SetCellValue(sheetName, "B4", itemInfo.Key)
-		xlsx.SetCellValue(sheetName, "A5", "开始时间")
-		xlsx.SetCellValue(sheetName, "B5", start)
-		xlsx.SetCellValue(sheetName, "A6", "结束时间")
-		xlsx.SetCellValue(sheetName, "B6", end)
+		xlsx.SetCellValue(sheetName, "A1", "实例名称")
+		xlsx.SetCellValue(sheetName, "B1", itemData.InstanceName)
+		xlsx.SetCellValue(sheetName, "A2", "主机名称")
+		xlsx.SetCellValue(sheetName, "B2", hostInfo.Name)
+		xlsx.SetCellValue(sheetName, "A3", "指标名称")
+		xlsx.SetCellValue(sheetName, "B3", itemInfo.Name)
+		xlsx.SetCellValue(sheetName, "A4", "指标ID")
+		xlsx.SetCellValue(sheetName, "B4", itemInfo.Itemid)
+		xlsx.SetCellValue(sheetName, "A5", "指标Key")
+		xlsx.SetCellValue(sheetName, "B5", itemInfo.Key)
+		xlsx.SetCellValue(sheetName, "A6", "开始时间")
+		xlsx.SetCellValue(sheetName, "B6", start)
+		xlsx.SetCellValue(sheetName, "A7", "结束时间")
+		xlsx.SetCellValue(sheetName, "B7", end)
 
 		// 数据样式设置
 		stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
@@ -690,13 +725,13 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		lea := len(itemData.HistoryData)
 		// 设置单元格对齐方式
 		if lea > 0 {
-			xlsx.SetCellStyle(sheetName, "A8", "A"+strconv.Itoa(lea+9), stylecenter)
-			xlsx.SetCellStyle(sheetName, "B8", "B"+strconv.Itoa(lea+9), stylecenter)
+			xlsx.SetCellStyle(sheetName, "A9", "A"+strconv.Itoa(lea+10), stylecenter)
+			xlsx.SetCellStyle(sheetName, "B9", "B"+strconv.Itoa(lea+10), stylecenter)
 		}
 
 		// 写入数据表头
-		xlsx.SetCellValue(sheetName, "A8", "时间")
-		xlsx.SetCellValue(sheetName, "B8", "数值("+itemInfo.Units+")")
+		xlsx.SetCellValue(sheetName, "A9", "时间")
+		xlsx.SetCellValue(sheetName, "B9", "数值("+itemInfo.Units+")")
 
 		// 写入历史数据
 		for k, v := range itemData.HistoryData {
@@ -704,8 +739,8 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 			timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
 			TimeUnix := time.Unix(timeint64, 0).In(loc)
 			StrTime := TimeUnix.Format("2006-01-02 15:04:05")
-			xlsx.SetCellValue(sheetName, "A"+strconv.Itoa(k+9), StrTime)
-			xlsx.SetCellValue(sheetName, "B"+strconv.Itoa(k+9), v.Value)
+			xlsx.SetCellValue(sheetName, "A"+strconv.Itoa(k+10), StrTime)
+			xlsx.SetCellValue(sheetName, "B"+strconv.Itoa(k+10), v.Value)
 		}
 
 		// 如果是第一个sheet，设置为活动sheet
@@ -750,6 +785,7 @@ var htmlHostReport = `<div>
                         <table border="1" style="width: 100%; border-collapse: collapse;">
                             <caption style="font-weight: bold; padding: 10px;">主机监控指标报表</caption>
                             <tr>
+                                <th>实例名称</th>
                                 <th>主机名称</th>
                                 <th>IP地址</th>
                                 <th>指标名称</th>
@@ -757,6 +793,7 @@ var htmlHostReport = `<div>
                             </tr>
                             {{range .TableInfo}}
                             <tr>
+                                <td>{{.InstanceName}}</td>
                                 <td>{{.Host}}</td>
                                 <td>{{.IP}}</td>
                                 <td>{{.ItemName}}</td>

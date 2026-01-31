@@ -377,3 +377,28 @@ func GetFloat64ArrayData(data []float64) (avg, max, min, perc95Avg, perc95Val st
 	perc95Val = strconv.FormatFloat(data1[int(float64(len(data1))*0.95)], 'f', 2, 64)
 	return avg, max, min, perc95Avg, perc95Val
 }
+
+// GetHistoryByItemIDFromInstance 从指定实例获取历史数据
+func GetHistoryByItemIDFromInstance(inst *APIInstance, itemid, history string, time_from, time_till int64) ([]History, error) {
+	rep, err := inst.API.CallWithError("history.get",
+		Params{"output": "extend",
+			"itemids":   itemid,
+			"history":   history,
+			"sortfield": "clock",
+			"sortorder": "ASC",
+			"time_from": time_from,
+			"time_till": time_till})
+	if err != nil {
+		return []History{}, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return []History{}, err
+	}
+	var hb []History
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return []History{}, err
+	}
+	return hb, err
+}

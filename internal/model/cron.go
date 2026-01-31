@@ -1,13 +1,11 @@
 ﻿package model
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"zbxtable/pkg/logger"
-	"zbxtable/pkg/utils"
 
 	"github.com/robfig/cron/v3"
 )
@@ -23,12 +21,9 @@ func InitTask() {
 
 	// 添加任务
 	// 注意：cron 表达式格式为 "秒 分 时 日 月 周"
-	// toolbox 的 "0/30 * * * * *" 表示每30秒执行一次
 	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = TOP() })
 	cronScheduler.AddFunc("0 55 23 * * *", func() { _ = CreateDayReport() })  // 每天23:55执行
 	cronScheduler.AddFunc("0 55 17 * * 5", func() { _ = CreateWeekReport() }) // 每周五17:55执行
-	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = GetTypeHostList() })  // 每5分钟执行
-	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = EgressCache() })     // 每30秒执行
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
 
 	// 新增：自动指标映射任务（每小时检查一次）
@@ -444,109 +439,6 @@ func UpdateEdgeDataById(id int) error {
 	err = UpdateTopologyEdgesByID(&Topo)
 	if err != nil {
 		logger.Log.Debug(err)
-		return err
-	}
-	return nil
-}
-
-// GetTypeHostList 机器列表缓存
-func GetTypeHostList() error {
-	//func GetHostByType(htype string) ([]TreeChildren, int, error) {
-	var list = []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
-	for _, v := range list {
-		p, _, err := GetHostsList(v)
-		if err != nil {
-			logger.Log.Error(err)
-			continue
-		}
-		//hosts info to cache
-		hostsdata, err := json.Marshal(p)
-		if err != nil {
-			logger.Log.Error(err)
-		}
-		err = CacheSet(v+"_OVERVIEW", string(hostsdata), 3600*time.Second)
-		if err != nil {
-			logger.Log.Error(err)
-			continue
-		}
-		//inventor info to cache
-		var t TreeChildren
-		var tt []TreeChildren
-		for _, vv := range p {
-			var tid int64
-			var err error
-			tid, err = strconv.ParseInt(vv.HostID, 10, 64)
-			if err != nil {
-				tid = 0
-				logger.Log.Error(err)
-			}
-			t.ID = tid
-			t.Name = vv.Name
-			tt = append(tt, t)
-		}
-		data, err := json.Marshal(tt)
-		if err != nil {
-			logger.Log.Error(err)
-		}
-		err = CacheSet(v+"_INVENTORY", string(data), 3600*time.Second)
-		if err != nil {
-			logger.Log.Error(err)
-			continue
-		}
-	}
-	return nil
-}
-
-// EgressCache 出口带宽流量获取并写入缓存
-func EgressCache() error {
-	var v Egress
-	err := DB.First(&v, 1).Error
-	if err != nil {
-		logger.Log.Error(err)
-		return err
-	}
-	var itemList []string
-	//空返回
-	if v.InOne == "" && v.OutOne == "" && v.InTwo == "" && v.OutTwo == "" {
-		var dList EgressList
-		dList.NameOne = v.NameOne
-		dList.InOne = "0Kb/s"
-		dList.OutOne = "0Kb/s"
-		dList.NameTwo = v.NameTwo
-		dList.InTwo = "0Kb/s"
-		dList.OutTwo = "0Kb/s"
-		dList.Date = time.Now().Format(utils.TimeFormat)
-		p1, _ := json.Marshal(&dList)
-		// 使用0表示永不过期
-		err = CacheSet("Egress", string(p1), 0)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	itemList = append(itemList, v.InOne, v.OutOne, v.InTwo, v.OutTwo)
-	list, err := GetItemByIDS(itemList)
-	if err != nil {
-		logger.Log.Error("出口Item数据获取异常", err)
-		return errors.New("出口Item数据获取异常")
-	}
-	//数据异常返回
-	if len(list) != 4 {
-		logger.Log.Error("出口Item数据结果异常", len(list))
-		return errors.New("出口Item数据结果异常")
-	}
-	var dList EgressList
-	dList.NameOne = v.NameOne
-	dList.InOne = utils.FormatTraffic(list[0].Lastvalue)
-	dList.OutOne = utils.FormatTraffic(list[1].Lastvalue)
-	dList.NameTwo = v.NameTwo
-	dList.InTwo = utils.FormatTraffic(list[2].Lastvalue)
-	dList.OutTwo = utils.FormatTraffic(list[3].Lastvalue)
-	dList.Date = utils.UnixTimeFormater(list[0].Lastclock)
-	p1, _ := json.Marshal(&dList)
-	// 使用0表示永不过期
-	err = CacheSet("Egress", string(p1), 0)
-	if err != nil {
 		return err
 	}
 	return nil
