@@ -69,7 +69,6 @@ func CreateOrUpdateMetricMapping(c *gin.Context) {
 
 	mapping.InstanceID, _ = strconv.Atoi(gjson.Get(string(body), "instance_id").String())
 	mapping.SystemType = gjson.Get(string(body), "system_type").String()
-	mapping.MappingName = gjson.Get(string(body), "mapping_name").String()
 	mapping.HostGroupIDs = gjson.Get(string(body), "host_group_ids").String()
 	mapping.MetricConfig = gjson.Get(string(body), "metric_config").String()
 
@@ -96,10 +95,6 @@ func CreateOrUpdateMetricMapping(c *gin.Context) {
 	}
 	if mapping.SystemType == "" {
 		response.ValidationError(c, "请选择系统类型")
-		return
-	}
-	if mapping.MappingName == "" {
-		response.ValidationError(c, "请输入映射名称")
 		return
 	}
 

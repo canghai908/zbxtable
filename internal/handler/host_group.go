@@ -12,13 +12,11 @@ func GetAllHostGroup(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	groups := c.Query("groups")
-
 	hs, cnt, err := model.GetAllHostGroups(page, limit, groups)
 	if err != nil {
 		response.DatabaseError(c, "获取主机组列表失败: "+err.Error())
 		return
 	}
-	
 	response.SuccessWithPage(c, hs, cnt)
 }
 
@@ -29,20 +27,18 @@ func GetAllHostGroupsList(c *gin.Context) {
 		response.DatabaseError(c, "获取主机组列表失败: "+err.Error())
 		return
 	}
-	
 	response.SuccessWithPage(c, hs, cnt)
 }
 
 // GetAllGroupsList 获取所有组列表
 func GetAllGroupsList(c *gin.Context) {
 	instanceID := c.Query("instance_id")
-	
+
 	hs, cnt, err := model.GetAllGroupsListFromInstance(instanceID)
 	if err != nil {
 		response.DatabaseError(c, "获取组列表失败: "+err.Error())
 		return
 	}
-	
 	response.SuccessWithPage(c, hs, cnt)
 }
 
@@ -54,7 +50,6 @@ func GetHostsByGroupID(c *gin.Context) {
 		response.DatabaseError(c, "获取主机列表失败: "+err.Error())
 		return
 	}
-	
 	response.Success(c, map[string]interface{}{
 		"items": hs,
 	})

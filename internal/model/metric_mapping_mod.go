@@ -7,7 +7,6 @@ type MetricMapping struct {
 	ID              int64      `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	InstanceID      int        `gorm:"column:instance_id;not null" json:"instance_id"`
 	SystemType      string     `gorm:"column:system_type;size:50;not null" json:"system_type"`
-	MappingName     string     `gorm:"column:mapping_name;size:255;not null" json:"mapping_name"`
 	HostGroupIDs    string     `gorm:"column:host_group_ids;type:text" json:"host_group_ids"`
 	MetricConfig    string     `gorm:"column:metric_config;type:json" json:"metric_config"`
 	

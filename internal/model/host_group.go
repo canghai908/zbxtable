@@ -1,10 +1,13 @@
 package model
 
 import (
-	"log"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
+	"zbxtable/pkg/logger"
+
+	zabbix "github.com/canghai908/zabbix-go"
 )
 
 // GetAllHostGroups func
@@ -108,7 +111,7 @@ func GetAllHostGroupsList() ([]HostTree, int64, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Println(err)
+		logger.Errorf(err.Error())
 		return []HostTree{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -128,7 +131,7 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Println(err)
+		logger.Errorf(err.Error())
 		return []HostTree{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -141,13 +144,44 @@ func GetAllGroupsListFromInstance(instanceID string) ([]HostTree, int64, error) 
 		return GetAllGroupsList()
 	}
 
-	// 获取指定实例的API
-	apiInstance, err := GetZabbixInstanceAPI(instanceID)
-	if err != nil {
-		return []HostTree{}, 0, err
+	var tenant *ZabbixTenant
+	var err error
+
+	// 尝试将 instanceID 转换为 int64（数据库ID）
+	id, err := strconv.ParseInt(instanceID, 10, 64)
+	if err == nil {
+		// 如果转换成功，按 ID 查询
+		tenant, err = GetZabbixTenantByID(id)
+	} else {
+		// 如果转换失败，可能是 tenant_id（字符串），按 tenant_id 查询
+		tenant, err = GetZabbixTenantByTenantID(instanceID)
 	}
 
-	rep, err := apiInstance.API.Call("hostgroup.get", Params{"output": "extend"})
+	if err != nil {
+		return []HostTree{}, 0, fmt.Errorf("未找到启用的实例 (tenant_id=%s): %w", instanceID, err)
+	}
+
+	// 检查实例是否启用
+	if !tenant.Enabled {
+		return []HostTree{}, 0, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", tenant.ID, tenant.TenantID)
+	}
+
+	// 创建 Zabbix API 实例
+	apiURL := tenant.WebURL + "/api_jsonrpc.php"
+	api := zabbix.NewAPI(apiURL)
+
+	// 设置认证
+	if tenant.Token != "" {
+		api.Auth = tenant.Token
+	} else {
+		_, err := api.Login(tenant.User, tenant.Pass)
+		if err != nil {
+			return []HostTree{}, 0, fmt.Errorf("登录 Zabbix 失败: %w", err)
+		}
+	}
+
+	// 调用 Zabbix API 获取主机组
+	rep, err := api.Call("hostgroup.get", Params{"output": "extend"})
 	if err != nil {
 		return []HostTree{}, 0, err
 	}
@@ -159,7 +193,7 @@ func GetAllGroupsListFromInstance(instanceID string) ([]HostTree, int64, error) 
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Println(err)
+		logger.Errorf(err.Error())
 		return []HostTree{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -175,18 +209,18 @@ func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 		"selectInterfaces": selectInterfaces})
 
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	var hb []HostGroupBYGroupID
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	return hb, err
@@ -200,12 +234,12 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 		"groupids": GroupID, "selectHosts": selectHosts})
 
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 
@@ -213,7 +247,7 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Errorf(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	return hb, err
@@ -225,9 +259,6 @@ func GetHostsByGroupIDList(GroupID string) ([]Hosts, error) {
 	selectHosts := []string{"hostid", "name", "status"}
 	rep, err := API.Call("hostgroup.get", Params{"output": output,
 		"groupids": GroupID, "selectHosts": selectHosts})
-	if err != nil {
-		return []Hosts{}, err
-	}
 	if err != nil {
 		return []Hosts{}, err
 	}
