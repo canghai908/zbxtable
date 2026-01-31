@@ -126,7 +126,7 @@ func CheckNowByID(m *Report) (err error) {
 		start := time.Now()
 		// 设置执行状态为处理中
 		v.ExecStatus = strconv.Itoa(Running)
-		v.StartAt = start
+		v.StartAt = &start
 		if err := UpdateReportExecStatusByID(&v); err != nil {
 			logger.Log.Error(err)
 			return err
@@ -141,13 +141,15 @@ func CheckNowByID(m *Report) (err error) {
 		if taskErr != nil {
 			logger.Log.Error(taskErr)
 			v.ExecStatus = strconv.Itoa(Failed)
-			v.EndAt = time.Now()
+			end := time.Now()
+			v.EndAt = &end
 			UpdateReportExecStatusByID(&v)
 			return taskErr
 		}
 		// 更新 report 状态
 		v.ExecStatus = strconv.Itoa(Success)
-		v.EndAt = time.Now()
+		end := time.Now()
+		v.EndAt = &end
 		if err := UpdateReportExecStatusByID(&v); err != nil {
 			logger.Log.Error(err)
 			return err
@@ -184,8 +186,9 @@ func CheckNowByID(m *Report) (err error) {
 			}
 			// 更新 report 状态
 			v.ExecStatus = strconv.Itoa(Success)
-			v.StartAt = start
-			v.EndAt = time.Now()
+			v.StartAt = &start
+			end := time.Now()
+			v.EndAt = &end
 			if err := UpdateReportExecStatusByID(&v); err != nil {
 				logger.Log.Error(err)
 				return err
@@ -210,8 +213,9 @@ func CheckNowByID(m *Report) (err error) {
 			}
 			// 更新 report 状态
 			v.ExecStatus = strconv.Itoa(Success)
-			v.StartAt = start
-			v.EndAt = time.Now()
+			v.StartAt = &start
+			end := time.Now()
+			v.EndAt = &end
 			if err := UpdateReportExecStatusByID(&v); err != nil {
 				logger.Log.Error(err)
 				return err

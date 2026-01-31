@@ -93,7 +93,8 @@ func CreateReportGin(c *gin.Context) {
 		if err == nil {
 			// 设置执行状态为处理中
 			report.ExecStatus = "1" // 处理中
-			report.StartAt = time.Now()
+			now := time.Now()
+			report.StartAt = &now
 			model.UpdateReportExecStatusByID(report)
 
 			// 异步生成报表
@@ -105,7 +106,8 @@ func CreateReportGin(c *gin.Context) {
 				} else {
 					report.ExecStatus = "2" // 成功
 				}
-				report.EndAt = time.Now()
+				endNow := time.Now()
+				report.EndAt = &endNow
 				model.UpdateReportExecStatusByID(report)
 			}()
 		}

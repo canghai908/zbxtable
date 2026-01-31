@@ -30,10 +30,10 @@ func InitTask() {
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = GetTypeHostList() })  // 每5分钟执行
 	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = EgressCache() })     // 每30秒执行
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
-	
+
 	// 新增：自动指标映射任务（每小时检查一次）
 	cronScheduler.AddFunc("0 0 * * * *", func() { _ = AutoMetricMapping() })
-	
+
 	// 新增：失败重试任务（每30分钟检查一次）
 	cronScheduler.AddFunc("0 */30 * * * *", func() { _ = RetryFailedMappings() })
 
@@ -84,8 +84,9 @@ func CreateWeekReport() error {
 						logger.Log.Error(err)
 						///update status failed
 						v.ExecStatus = strconv.Itoa(Failed)
-						v.StartAt = start
-						v.EndAt = time.Now()
+						v.StartAt = &start
+						now := time.Now()
+						v.EndAt = &now
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logger.Log.Error(err)
@@ -94,8 +95,9 @@ func CreateWeekReport() error {
 					}
 					//update status success
 					v.ExecStatus = strconv.Itoa(Success)
-					v.StartAt = start
-					v.EndAt = time.Now()
+					v.StartAt = &start
+					now := time.Now()
+					v.EndAt = &now
 					err = UpdateReportExecStatusByID(&v)
 					if err != nil {
 						logger.Log.Error(err)
@@ -115,14 +117,14 @@ func AutoMetricMapping() error {
 		logger.Log.Errorf("获取自动初始化配置失败: %v", err)
 		return err
 	}
-	
+
 	if len(mappings) == 0 {
 		logger.Log.Debug("没有启用自动初始化的映射配置")
 		return nil
 	}
-	
+
 	logger.Log.Infof("开始自动指标映射任务，共 %d 个配置", len(mappings))
-	
+
 	for _, mapping := range mappings {
 		// 检查是否需要执行（距离上次成功执行超过24小时）
 		if shouldExecuteMapping(&mapping) {
@@ -135,7 +137,7 @@ func AutoMetricMapping() error {
 			}(mapping)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -146,13 +148,13 @@ func RetryFailedMappings() error {
 		logger.Log.Errorf("获取失败映射配置失败: %v", err)
 		return err
 	}
-	
+
 	if len(mappings) == 0 {
 		return nil
 	}
-	
+
 	logger.Log.Infof("开始重试失败的指标映射，共 %d 个配置", len(mappings))
-	
+
 	for _, mapping := range mappings {
 		// 检查是否需要重试（距离上次失败超过1小时）
 		if mapping.LastInitAt != nil && time.Since(*mapping.LastInitAt) > time.Hour {
@@ -165,7 +167,7 @@ func RetryFailedMappings() error {
 			}(mapping)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -175,7 +177,7 @@ func shouldExecuteMapping(mapping *MetricMapping) bool {
 	if mapping.LastSuccessAt == nil {
 		return true
 	}
-	
+
 	// 如果距离上次成功执行超过24小时，执行
 	return time.Since(*mapping.LastSuccessAt) > 24*time.Hour
 }
@@ -212,8 +214,9 @@ func CreateDayReport() error {
 						logger.Log.Error(err)
 						//更新report状态
 						v.ExecStatus = strconv.Itoa(Failed)
-						v.StartAt = start
-						v.EndAt = time.Now()
+						v.StartAt = &start
+						now := time.Now()
+						v.EndAt = &now
 						err = UpdateReportExecStatusByID(&v)
 						if err != nil {
 							logger.Log.Error(err)
@@ -222,8 +225,9 @@ func CreateDayReport() error {
 					}
 					//更新report状态
 					v.ExecStatus = strconv.Itoa(Success)
-					v.StartAt = start
-					v.EndAt = time.Now()
+					v.StartAt = &start
+					now := time.Now()
+					v.EndAt = &now
 					err = UpdateReportExecStatusByID(&v)
 					if err != nil {
 						logger.Log.Error(err)
@@ -563,14 +567,14 @@ func SyncInventory() error {
 	if data[0].Value != "1" {
 		return nil
 	}
-	
+
 	// 获取所有启用的实例
 	instances, err := GetAllEnabledAPIInstances()
 	if err != nil {
 		logger.Log.Errorf("获取启用的实例失败: %v", err)
 		return err
 	}
-	
+
 	// 遍历每个实例，执行同步
 	for _, inst := range instances {
 		// 查询该实例的系统配置
@@ -584,7 +588,7 @@ func SyncInventory() error {
 			logger.Log.Infof("实例 %s 没有已初始化的系统配置，跳过同步", inst.Name)
 			continue
 		}
-		
+
 		// 对该实例的每个系统配置执行同步
 		for _, v := range list {
 			gList := strings.Split(v.GroupID, ",")
@@ -596,6 +600,6 @@ func SyncInventory() error {
 			logger.Log.Infof("实例 %s 同步系统配置 %d 成功", inst.Name, v.ID)
 		}
 	}
-	
+
 	return nil
 }
