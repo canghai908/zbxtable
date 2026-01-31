@@ -30,6 +30,12 @@ func InitTask() {
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = GetTypeHostList() })  // 每5分钟执行
 	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = EgressCache() })     // 每30秒执行
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
+	
+	// 新增：自动指标映射任务（每小时检查一次）
+	cronScheduler.AddFunc("0 0 * * * *", func() { _ = AutoMetricMapping() })
+	
+	// 新增：失败重试任务（每30分钟检查一次）
+	cronScheduler.AddFunc("0 */30 * * * *", func() { _ = RetryFailedMappings() })
 
 	// 启动调度器
 	cronScheduler.Start()
@@ -100,6 +106,78 @@ func CreateWeekReport() error {
 		}
 	}
 	return nil
+}
+
+// AutoMetricMapping 自动执行指标映射
+func AutoMetricMapping() error {
+	mappings, err := GetAutoInitMappings()
+	if err != nil {
+		logger.Log.Errorf("获取自动初始化配置失败: %v", err)
+		return err
+	}
+	
+	if len(mappings) == 0 {
+		logger.Log.Debug("没有启用自动初始化的映射配置")
+		return nil
+	}
+	
+	logger.Log.Infof("开始自动指标映射任务，共 %d 个配置", len(mappings))
+	
+	for _, mapping := range mappings {
+		// 检查是否需要执行（距离上次成功执行超过24小时）
+		if shouldExecuteMapping(&mapping) {
+			go func(m MetricMapping) {
+				logger.Log.Infof("自动执行指标映射 [ID=%d, Instance=%d, Type=%s]", m.ID, m.InstanceID, m.SystemType)
+				err := ExecuteMetricMapping(&m, "auto")
+				if err != nil {
+					logger.Log.Errorf("自动执行指标映射失败 [ID=%d]: %v", m.ID, err)
+				}
+			}(mapping)
+		}
+	}
+	
+	return nil
+}
+
+// RetryFailedMappings 重试失败的映射
+func RetryFailedMappings() error {
+	mappings, err := GetFailedMappingsForRetry()
+	if err != nil {
+		logger.Log.Errorf("获取失败映射配置失败: %v", err)
+		return err
+	}
+	
+	if len(mappings) == 0 {
+		return nil
+	}
+	
+	logger.Log.Infof("开始重试失败的指标映射，共 %d 个配置", len(mappings))
+	
+	for _, mapping := range mappings {
+		// 检查是否需要重试（距离上次失败超过1小时）
+		if mapping.LastInitAt != nil && time.Since(*mapping.LastInitAt) > time.Hour {
+			go func(m MetricMapping) {
+				logger.Log.Infof("重试指标映射 [ID=%d, Retry=%d/%d]", m.ID, m.RetryCount+1, m.MaxRetry)
+				err := ExecuteMetricMapping(&m, "retry")
+				if err != nil {
+					logger.Log.Errorf("重试指标映射失败 [ID=%d]: %v", m.ID, err)
+				}
+			}(mapping)
+		}
+	}
+	
+	return nil
+}
+
+// shouldExecuteMapping 判断是否需要执行映射
+func shouldExecuteMapping(mapping *MetricMapping) bool {
+	// 如果从未执行过，立即执行
+	if mapping.LastSuccessAt == nil {
+		return true
+	}
+	
+	// 如果距离上次成功执行超过24小时，执行
+	return time.Since(*mapping.LastSuccessAt) > 24*time.Hour
 }
 func CreateDayReport() error {
 	_, list, err := GetALlReport()

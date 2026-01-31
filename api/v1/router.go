@@ -278,6 +278,18 @@ func InitRouter() *gin.Engine {
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 			}
 
+			// 指标映射配置
+			metricMappingGroup := api.Group("/metric_mapping")
+			{
+				metricMappingGroup.GET("", handler.GetMetricMappings)
+				metricMappingGroup.GET("/:id", handler.GetMetricMappingByID)
+				metricMappingGroup.POST("", handler.CreateOrUpdateMetricMapping)
+				metricMappingGroup.PUT("/:id", handler.CreateOrUpdateMetricMapping)
+				metricMappingGroup.DELETE("/:id", handler.DeleteMetricMapping)
+				metricMappingGroup.POST("/:id/execute", handler.ExecuteMetricMappingManual)
+				metricMappingGroup.GET("/history", handler.GetMappingHistory)
+			}
+
 			// 报表管理
 			reportGroup := api.Group("/report")
 			{
