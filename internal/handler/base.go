@@ -230,8 +230,6 @@ func ReceiveGin(c *gin.Context) {
 		response.Success(c, res)
 		return
 	}
-	fmt.Println(string(body))
-
 	id, err := model.MsAdd(tenantid, zabbixInstanceID, body)
 	if err != nil {
 		res.ID = 0

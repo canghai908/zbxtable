@@ -219,7 +219,7 @@
 															</td>
 															<td style="width: 358px; text-align: left; border-color: #000000; height: 142px;">
 																<p style="text-align: left;">
-																	<span style="font-size: 10pt; font-family: Arial;">{{.TenantID}}</span>
+																	<span style="font-size: 10pt; font-family: Arial;">{{if .TenantName}}{{.TenantName}}{{else}}{{.TenantID}}{{end}}</span>
 																</p>
 																<p style="text-align: left;">
 																	<span style="font-size: 10pt; font-family: Arial;">{{.Hostname}}</span>
