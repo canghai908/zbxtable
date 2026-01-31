@@ -139,7 +139,7 @@ func runWeb(*cli.Context) error {
 	//计划任务
 	model.InitTask()
 	//企业微信
-	model.InitCache()
+	model.InitWechat()
 	defer model.StopTask()
 	model.InitSenderWorker()
 	go model.ConsumeMail()
