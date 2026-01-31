@@ -300,8 +300,6 @@ func InitRouter() *gin.Engine {
 				reportGroup.DELETE("/:id", handler.DeleteReportGin)
 				reportGroup.POST("/checknow", handler.CheckNowGin)
 				reportGroup.POST("/status", handler.UpdateReportStatusGin)
-				reportGroup.GET("/hosts", handler.GetReportHostsGin)
-				reportGroup.GET("/items", handler.GetReportItemsGin)
 			}
 
 			// 任务日志

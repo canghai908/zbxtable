@@ -7,6 +7,7 @@ type Report struct {
 	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Name          string    `gorm:"column:name;size:255" json:"name"`
 	ReportType    string    `gorm:"column:report_type;size:255" json:"report_type"`
+	InstanceID    int       `gorm:"column:instance_id;default:0" json:"instance_id"`
 	Items         string    `gorm:"column:items;size:200" json:"items"`
 	LinkBandWidth string    `gorm:"column:link_band_width;size:200" json:"linkbandwidth"`
 	HostIds       string    `gorm:"column:host_ids;type:text" json:"host_ids"`

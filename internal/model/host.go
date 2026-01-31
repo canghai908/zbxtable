@@ -366,6 +366,42 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 
 }
 
+// HostsListFromInstance 从指定实例获取主机列表
+func HostsListFromInstance(instanceID, HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
+	// 获取实例API
+	inst, err := GetZabbixInstanceAPI(instanceID)
+	if err != nil {
+		return []Hosts{}, 0, fmt.Errorf("获取实例API失败: %v", err)
+	}
+
+	// 查询该实例的主机列表
+	allHosts, err := queryHostsFromInstance(inst, HostType)
+	if err != nil {
+		return []Hosts{}, 0, fmt.Errorf("查询实例主机失败: %v", err)
+	}
+
+	// 过滤数据
+	var filteredHosts []Hosts
+	for _, h := range allHosts {
+		if hosts != "" && !strings.Contains(h.Name, hosts) {
+			continue
+		}
+		if model != "" && !strings.Contains(h.Model, model) {
+			continue
+		}
+		if ip != "" && !strings.Contains(h.Interfaces, ip) {
+			continue
+		}
+		if available != "" && !strings.Contains(h.Available, available) {
+			continue
+		}
+		filteredHosts = append(filteredHosts, h)
+	}
+
+	// 分页处理
+	return paginateHosts(filteredHosts, page, limit)
+}
+
 // GetNetHostByName get net host by name
 func GetNetHostByName(name string) ([]Hosts, error) {
 	val, err := CacheGet("HW_NET_OVERVIEW")

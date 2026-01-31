@@ -21,9 +21,20 @@ func GetAllHost(c *gin.Context) {
 	mode := c.Query("model")
 	ip := c.Query("ip")
 	available := c.Query("available")
+	instanceID := c.Query("instance_id")
 
-	// 使用多实例查询
-	hs, count, err := model.HostsListMultiInstance(HostType, page, limit, hosts, mode, ip, available)
+	var hs []model.Hosts
+	var count int64
+	var err error
+
+	// 如果指定了实例ID，从指定实例获取主机
+	if instanceID != "" {
+		hs, count, err = model.HostsListFromInstance(instanceID, HostType, page, limit, hosts, mode, ip, available)
+	} else {
+		// 否则使用多实例查询（查询所有实例）
+		hs, count, err = model.HostsListMultiInstance(HostType, page, limit, hosts, mode, ip, available)
+	}
+
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

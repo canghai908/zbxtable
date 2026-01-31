@@ -49,6 +49,7 @@ func CreateReportGin(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
+	instanceIDStr := gjson.Get(string(body), "instance_id").String()
 	items := gjson.Get(string(body), "items").String()
 	linkbandwidth := gjson.Get(string(body), "linkbandwidth").String()
 	host_ids := gjson.Get(string(body), "host_ids").String()
@@ -74,8 +75,9 @@ func CreateReportGin(c *gin.Context) {
 		endTime, _ = time.ParseInLocation("2006-01-02 15:04:05", endTimeStr, loc)
 	}
 
+	instanceID, _ := strconv.Atoi(instanceIDStr)
 	v := model.Report{Name: name, Items: items, LinkBandWidth: linkbandwidth,
-		HostIds: host_ids, ItemIds: item_ids,
+		HostIds: host_ids, ItemIds: item_ids, InstanceID: instanceID,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
 	id, err := model.AddReport(&v)
@@ -83,7 +85,7 @@ func CreateReportGin(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
-	
+
 	// 如果是实时报表，立即生成
 	if report_mode == "realtime" && report_type == "host" {
 		// 重新读取完整的报表数据
@@ -121,6 +123,7 @@ func UpdateReportGin(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
+	instanceIDStr := gjson.Get(string(body), "instance_id").String()
 	items := gjson.Get(string(body), "items").String()
 	emails := gjson.Get(string(body), "emails").String()
 	linkbandwidth := gjson.Get(string(body), "linkbandwidth").String()
@@ -147,8 +150,9 @@ func UpdateReportGin(c *gin.Context) {
 	}
 
 	id, _ := strconv.Atoi(idStr)
+	instanceID, _ := strconv.Atoi(instanceIDStr)
 	v := model.Report{ID: id, Name: name, Items: items, LinkBandWidth: linkbandwidth,
-		HostIds: host_ids, ItemIds: item_ids,
+		HostIds: host_ids, ItemIds: item_ids, InstanceID: instanceID,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
 	if err := model.UpdateReportByID(&v); err != nil {
@@ -208,43 +212,4 @@ func UpdateReportStatusGin(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
-}
-
-// GetReportHostsGin 获取主机列表
-func GetReportHostsGin(c *gin.Context) {
-	hostType := c.Query("host_type")
-	if hostType == "" {
-		hostType = "VM_LIN"
-	}
-	page := c.Query("page")
-	limit := c.Query("limit")
-	if page == "" {
-		page = "1"
-	}
-	if limit == "" {
-		limit = "1000"
-	}
-
-	hosts, count, err := model.HostsList(hostType, page, limit, "", "", "", "")
-	if err != nil {
-		response.InternalError(c, err.Error())
-		return
-	}
-	response.SuccessWithPage(c, hosts, count)
-}
-
-// GetReportItemsGin 获取指标列表
-func GetReportItemsGin(c *gin.Context) {
-	hostID := c.Query("host_id")
-	if hostID == "" {
-		response.BadRequest(c, "host_id参数不能为空")
-		return
-	}
-
-	items, count, err := model.GetAllItemByHostID(hostID)
-	if err != nil {
-		response.InternalError(c, err.Error())
-		return
-	}
-	response.SuccessWithPage(c, items, count)
 }
