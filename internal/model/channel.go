@@ -141,7 +141,6 @@ func GenAlert(alarm *Alarm) {
 		sendEvent(event)
 		return
 	}
-	return
 }
 
 // GetEventUser 查找事件用户信息
@@ -256,7 +255,6 @@ func IsMuted(event *Event) bool {
 	// 查询匹配当前实例的屏蔽规则（m_type = 3）
 	var rules []Rule
 	var err error
-
 	if event.ZID > 0 {
 		// 使用 FIND_IN_SET 或 LIKE 来匹配实例ID
 		query := DB.Model(&Rule{}).
