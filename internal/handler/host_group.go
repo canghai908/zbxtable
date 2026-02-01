@@ -32,9 +32,9 @@ func GetAllHostGroupsList(c *gin.Context) {
 
 // GetAllGroupsList 获取所有组列表
 func GetAllGroupsList(c *gin.Context) {
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 
-	hs, cnt, err := model.GetAllGroupsListFromInstance(instanceID)
+	hs, cnt, err := model.GetAllGroupsListFromInstance(zidStr)
 	if err != nil {
 		response.DatabaseError(c, "获取组列表失败: "+err.Error())
 		return

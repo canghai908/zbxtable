@@ -105,11 +105,11 @@ func AutoMigrate() error {
 		&EventLog{},
 		&Config{},
 		&Menu{},
-		&ZabbixTenant{},
+		&ZabbixInstance{},
 		&MetricMapping{},
 		&MetricMappingHistory{},
 	//&ZabbixInstance{},
-	//&ZabbixTenantBinding{},
+	//&ZabbixInstanceBinding{},
 	)
 }
 

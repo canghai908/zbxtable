@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -55,21 +55,14 @@ func UpdateSystem(c *gin.Context) {
 
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	
+
 	// 获取实例ID
-	instanceIDStr := gjson.Get(string(body), "instance_id").String()
-	if instanceIDStr == "" {
+	zidStr := gjson.Get(string(body), "zid").String()
+	if zidStr == "" {
 		response.BadRequest(c, "请选择 Zabbix 实例")
 		return
 	}
-	
-	// 查找实例获取数字ID
-	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
-	if err != nil {
-		response.InternalError(c, "实例不存在")
-		return
-	}
-	
+	zid, _ := strconv.ParseInt(zidStr, 10, 64)
 	cpuCore := gjson.Get(string(body), "cpu_core").String()
 	uptimeId := gjson.Get(string(body), "uptime_id").String()
 	cpuUtilizationId := gjson.Get(string(body), "cpu_utilization_id").String()
@@ -83,7 +76,7 @@ func UpdateSystem(c *gin.Context) {
 	var SystemRes model.SystemList
 	v := model.System{
 		ID:                  int64(id),
-		InstanceID:          tenant.ID,
+		ZID:                 int(zid),
 		CPUCore:             cpuCore,
 		CPUUtilizationID:    cpuUtilizationId,
 		GroupID:             groupId,
@@ -109,29 +102,23 @@ func UpdateSystem(c *gin.Context) {
 func SystemInit(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	
+
 	// 读取请求体获取实例ID
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		response.InternalError(c, "请求体读取失败")
 		return
 	}
-	
-	instanceIDStr := gjson.Get(string(body), "instance_id").String()
-	if instanceIDStr == "" {
+
+	zidStr := gjson.Get(string(body), "zid").String()
+	if zidStr == "" {
 		response.BadRequest(c, "请选择 Zabbix 实例")
 		return
 	}
-	
-	// 查找实例获取数字ID
-	tenant, err := model.GetZabbixTenantByTenantID(instanceIDStr)
-	if err != nil {
-		response.InternalError(c, "实例不存在")
-		return
-	}
-	
+	zid, _ := strconv.Atoi(zidStr)
+
 	var SystemRes model.SystemList
-	err = model.SystemInitWithInstance(int64(id), tenant.ID)
+	err = model.SystemInitWithInstance(int64(id), int(zid))
 	if err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
@@ -285,13 +272,13 @@ func AddEgressConfig(c *gin.Context) {
 	}
 
 	config := &model.EgressConfig{
-		Name:      name,
-		TenantID:  tenantID,
-		HostID:    hostID,
-		InItemID:  inItemID,
-		OutItemID: outItemID,
-		Status:    1,
-		SortOrder: sortOrder,
+		Name:       name,
+		InstanceID: tenantID,
+		HostID:     hostID,
+		InItemID:   inItemID,
+		OutItemID:  outItemID,
+		Status:     1,
+		SortOrder:  sortOrder,
 	}
 
 	err = model.AddEgressConfig(config)
@@ -331,14 +318,14 @@ func UpdateEgressConfigHandler(c *gin.Context) {
 	}
 
 	config := &model.EgressConfig{
-		ID:        id,
-		Name:      name,
-		TenantID:  tenantID,
-		HostID:    hostID,
-		InItemID:  inItemID,
-		OutItemID: outItemID,
-		Status:    status,
-		SortOrder: sortOrder,
+		ID:         id,
+		Name:       name,
+		InstanceID: tenantID,
+		HostID:     hostID,
+		InItemID:   inItemID,
+		OutItemID:  outItemID,
+		Status:     status,
+		SortOrder:  sortOrder,
 	}
 
 	err = model.UpdateEgressConfig(config)

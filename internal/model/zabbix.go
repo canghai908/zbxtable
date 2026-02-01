@@ -13,11 +13,11 @@ import (
 	zabbix "github.com/canghai908/zabbix-go"
 )
 
-// TestZabbixTenantConfig 测试 Zabbix 配置能否连通
-func TestZabbixTenantConfig(webURL, user, pass, token string) (string, error) {
+// TestZabbixInstanceConfig 测试 Zabbix 配置能否连通
+func TestZabbixInstanceConfig(webURL, user, pass, token string) (string, error) {
 	web := strings.TrimRight(strings.TrimSpace(webURL), "/")
 	if web == "" {
-		return "", errors.New("web_url is empty")
+		return "", errors.New("url is empty")
 	}
 	apiURL := web + "/api_jsonrpc.php"
 
@@ -53,84 +53,84 @@ func TestZabbixTenantConfig(webURL, user, pass, token string) (string, error) {
 	return ver, nil
 }
 
-// ListZabbixTenants 列出所有 Zabbix 租户
-func ListZabbixTenants() ([]ZabbixTenant, error) {
-	var list []ZabbixTenant
-	err := DB.Order("id desc").Find(&list).Error
+// ListZabbixInstances 列出所有 Zabbix 实例
+func ListZabbixInstance() ([]ZabbixInstance, error) {
+	var list []ZabbixInstance
+	err := DB.Order("id asc").Find(&list).Error
 	return list, err
 }
 
-// GetZabbixTenantByID 根据ID获取
-func GetZabbixTenantByID(id int64) (*ZabbixTenant, error) {
-	var tenant ZabbixTenant
-	err := DB.First(&tenant, id).Error
+// GetZabbixInstanceByZID 根据ZID获取实例
+func GetZabbixInstanceByZID(zid int) (*ZabbixInstance, error) {
+	var instance ZabbixInstance
+	err := DB.First(&instance, zid).Error
 	if err != nil {
 		return nil, err
 	}
-	return &tenant, nil
+	return &instance, nil
 }
 
-// GetZabbixTenantByTenantID 根据 tenant_id 获取
-func GetZabbixTenantByTenantID(tenantID string) (*ZabbixTenant, error) {
-	tid := strings.TrimSpace(tenantID)
-	if tid == "" {
-		return nil, errors.New("tenant_id is empty")
+// GetZabbixInstanceByInstanceID 根据 instance_id 获取实例
+func GetZabbixInstanceByInstanceID(instanceID string) (*ZabbixInstance, error) {
+	iid := strings.TrimSpace(instanceID)
+	if iid == "" {
+		return nil, errors.New("instance_id is empty")
 	}
-	var tenant ZabbixTenant
-	err := DB.Where("tenant_id = ?", tid).First(&tenant).Error
+	var instance ZabbixInstance
+	err := DB.Where("instance_id = ?", iid).First(&instance).Error
 	if err != nil {
 		return nil, err
 	}
-	return &tenant, nil
+	return &instance, nil
 }
 
-// CreateZabbixTenant 创建 Zabbix 租户
-func CreateZabbixTenant(m *ZabbixTenant) error {
-	m.WebURL = strings.TrimRight(strings.TrimSpace(m.WebURL), "/")
-	m.TenantID = strings.TrimSpace(m.TenantID)
+// CreateZabbixInstance 创建 Zabbix 实例
+func CreateZabbixInstance(m *ZabbixInstance) error {
+	m.URL = strings.TrimRight(strings.TrimSpace(m.URL), "/")
+	m.InstanceID = strings.TrimSpace(m.InstanceID)
 	m.Name = strings.TrimSpace(m.Name)
-
-	if m.TenantID == "" {
-		return errors.New("tenant_id is required")
+	fmt.Println(m.InstanceID)
+	if m.InstanceID == "" {
+		return errors.New("instance_id is required")
 	}
 	if m.Name == "" {
 		return errors.New("name is required")
 	}
-	if m.WebURL == "" {
-		return errors.New("web_url is required")
+	if m.URL == "" {
+		return errors.New("URL is required")
 	}
 
 	m.UpdatedAt = time.Now()
 	return DB.Create(m).Error
 }
 
-// UpdateZabbixTenant 更新 Zabbix 租户
-func UpdateZabbixTenant(id int64, patch *ZabbixTenant) (*ZabbixTenant, error) {
-	var tenant ZabbixTenant
-	if err := DB.First(&tenant, id).Error; err != nil {
+// UpdateZabbixInstance 更新 Zabbix 实例
+func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, error) {
+	var instance ZabbixInstance
+	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, err
 	}
 
-	newWeb := strings.TrimRight(strings.TrimSpace(patch.WebURL), "/")
+	newWeb := strings.TrimRight(strings.TrimSpace(patch.URL), "/")
 	changedConn := false
-	if newWeb != "" && newWeb != strings.TrimRight(strings.TrimSpace(tenant.WebURL), "/") {
+	if newWeb != "" && newWeb != strings.TrimRight(strings.TrimSpace(instance.URL), "/") {
 		changedConn = true
 	}
-	if strings.TrimSpace(patch.User) != strings.TrimSpace(tenant.User) ||
-		strings.TrimSpace(patch.Pass) != strings.TrimSpace(tenant.Pass) ||
-		strings.TrimSpace(patch.Token) != strings.TrimSpace(tenant.Token) {
+	if strings.TrimSpace(patch.User) != strings.TrimSpace(instance.User) ||
+		strings.TrimSpace(patch.Pass) != strings.TrimSpace(instance.Pass) ||
+		strings.TrimSpace(patch.Token) != strings.TrimSpace(instance.Token) {
 		changedConn = true
 	}
 
 	updates := map[string]interface{}{}
-	if strings.TrimSpace(patch.TenantID) != "" {
-		updates["tenant_id"] = strings.TrimSpace(patch.TenantID)
+	if strings.TrimSpace(patch.InstanceID) != "" {
+		updates["instance_id"] = strings.TrimSpace(patch.InstanceID)
 	}
 	if strings.TrimSpace(patch.Name) != "" {
 		updates["name"] = strings.TrimSpace(patch.Name)
 	}
 	if newWeb != "" {
-		updates["web_url"] = newWeb
+		updates["url"] = newWeb
 	}
 	updates["user"] = patch.User
 	updates["pass"] = patch.Pass
@@ -146,78 +146,78 @@ func UpdateZabbixTenant(id int64, patch *ZabbixTenant) (*ZabbixTenant, error) {
 		updates["version"] = ""
 	}
 
-	if err := DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+	if err := DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
-	if err := DB.First(&tenant, id).Error; err != nil {
+	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, err
 	}
-	return &tenant, nil
+	return &instance, nil
 }
 
-// DeleteZabbixTenant 删除租户
-func DeleteZabbixTenant(id int64) error {
-	return DB.Delete(&ZabbixTenant{}, id).Error
+// DeleteZabbixInstance 删除实例
+func DeleteZabbixInstance(zid int) error {
+	return DB.Delete(&ZabbixInstance{}, zid).Error
 }
 
-// SetZabbixTenantEnabled 启用/禁用
-func SetZabbixTenantEnabled(id int64, enabled bool) (*ZabbixTenant, error) {
-	var tenant ZabbixTenant
-	if err := DB.First(&tenant, id).Error; err != nil {
+// SetZabbixInstanceEnabled 启用/禁用实例
+func SetZabbixInstanceEnabled(zid int, enabled bool) (*ZabbixInstance, error) {
+	var instance ZabbixInstance
+	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, err
 	}
-	if err := DB.Model(&ZabbixTenant{}).Where("id = ?", id).Update("enabled", enabled).Error; err != nil {
+	if err := DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Update("enabled", enabled).Error; err != nil {
 		return nil, err
 	}
-	tenant.Enabled = enabled
-	return &tenant, nil
+	instance.Enabled = enabled
+	return &instance, nil
 }
 
-// TestAndUpdateZabbixTenant 测试并更新
-func TestAndUpdateZabbixTenant(id int64) (*ZabbixTenant, string, error) {
-	var tenant ZabbixTenant
-	if err := DB.First(&tenant, id).Error; err != nil {
+// TestAndUpdateZabbixInstance 测试并更新实例
+func TestAndUpdateZabbixInstance(zid int) (*ZabbixInstance, string, error) {
+	var instance ZabbixInstance
+	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, "", err
 	}
 	now := time.Now()
-	ver, err := TestZabbixTenantConfig(tenant.WebURL, tenant.User, tenant.Pass, tenant.Token)
+	ver, err := TestZabbixInstanceConfig(instance.URL, instance.User, instance.Pass, instance.Token)
 	if err != nil {
-		_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(map[string]interface{}{
+		_ = DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Updates(map[string]interface{}{
 			"last_test_ok":      false,
 			"last_test_message": err.Error(),
 			"last_test_at":      &now,
 		}).Error
-		tenant.LastTestOk = false
-		tenant.LastTestMessage = err.Error()
-		tenant.LastTestAt = &now
-		return &tenant, "", err
+		instance.LastTestOk = false
+		instance.LastTestMessage = err.Error()
+		instance.LastTestAt = &now
+		return &instance, "", err
 	}
-	_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(map[string]interface{}{
+	_ = DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Updates(map[string]interface{}{
 		"last_test_ok":      true,
 		"last_test_message": "连接成功",
 		"last_test_at":      &now,
 		"version":           ver,
 	}).Error
-	tenant.LastTestOk = true
-	tenant.LastTestMessage = "连接成功"
-	tenant.LastTestAt = &now
-	tenant.Version = ver
-	return &tenant, ver, nil
+	instance.LastTestOk = true
+	instance.LastTestMessage = "连接成功"
+	instance.LastTestAt = &now
+	instance.Version = ver
+	return &instance, ver, nil
 }
 
-// UninstallMSAgentFromZabbixTenant 从 Zabbix 中卸载 MS-Agent 配置
-func UninstallMSAgentFromZabbixTenant(id int64) error {
-	tenant, err := GetZabbixTenantByID(id)
+// UninstallMSAgentFromZabbixInstance 从 Zabbix 实例中卸载 MS-Agent 配置
+func UninstallMSAgentFromZabbixInstance(zid int) error {
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
-		return fmt.Errorf("获取租户失败: %w", err)
+		return fmt.Errorf("获取实例失败: %w", err)
 	}
 
-	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -276,7 +276,7 @@ func UninstallMSAgentFromZabbixTenant(id int64) error {
 		logger.Log.Info("Media Type 删除成功")
 	}
 
-	_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(map[string]interface{}{
+	_ = DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Updates(map[string]interface{}{
 		"ms_agent_installed": false,
 		"ms_agent_version":   "",
 	}).Error

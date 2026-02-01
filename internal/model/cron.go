@@ -301,7 +301,7 @@ func TOPFromInstance(inst *APIInstance) error {
 			continue
 		}
 		// 使用 "实例名_主机名" 作为唯一标识，避免不同实例的主机名冲突
-		hostKey := inst.TenantID + "_" + v.Host
+		hostKey := inst.InstanceID + "_" + v.Host
 		switch v.Inventory.Type {
 		case "VM_WIN":
 			var float64CPU float64
@@ -474,7 +474,7 @@ func SyncInventory() error {
 	for _, inst := range instances {
 		// 查询该实例的系统配置
 		var list []System
-		err = GetDB().Where("instance_id = ? AND status = ?", inst.ID, 1).Find(&list).Error
+		err = GetDB().Where("instance_id = ? AND status = ?", inst.ZID, 1).Find(&list).Error
 		if err != nil {
 			logger.Log.Errorf("查询实例 %s 的系统配置失败: %v", inst.Name, err)
 			continue

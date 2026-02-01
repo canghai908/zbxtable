@@ -109,24 +109,24 @@ func InitRouter() *gin.Engine {
 			zabbixGroup := api.Group("/zabbix")
 			{
 				// 租户管理
-				zabbixGroup.GET("/tenants", handler.ListZabbixTenantsGin)
-				zabbixGroup.GET("/tenants/:id", handler.GetZabbixTenantGin)
-				zabbixGroup.POST("/tenants", handler.CreateZabbixTenantGin)
-				zabbixGroup.POST("/tenants/test", handler.TestZabbixTenantConfigGin)
-				zabbixGroup.POST("/tenants/:id/test", handler.TestZabbixTenantGin)
-				zabbixGroup.PUT("/tenants/:id", handler.UpdateZabbixTenantGin)
-				zabbixGroup.DELETE("/tenants/:id", handler.DeleteZabbixTenantGin)
-				zabbixGroup.PUT("/tenants/:id/enabled", handler.EnableZabbixTenantGin)
+				zabbixGroup.GET("/instance", handler.ListZabbixInstanceGin)
+				zabbixGroup.GET("/instance/:id", handler.GetZabbixInstanceGin)
+				zabbixGroup.POST("/instance", handler.CreateZabbixInstanceGin)
+				zabbixGroup.POST("/instance/test", handler.TestZabbixInstanceConfigGin)
+				zabbixGroup.POST("/instance/:id/test", handler.TestZabbixInstanceGin)
+				zabbixGroup.PUT("/instance/:id", handler.UpdateZabbixInstanceGin)
+				zabbixGroup.DELETE("/instance/:id", handler.DeleteZabbixInstanceGin)
+				zabbixGroup.PUT("/instance/:id/enabled", handler.EnableZabbixInstanceGin)
 
 				// MS-Agent 安装相关
-				zabbixGroup.POST("/tenants/:id/install-msagent", handler.InstallMSAgentGin)
-				zabbixGroup.GET("/tenants/:id/msagent-script", handler.GenerateMSAgentInstallScriptGin)
-				zabbixGroup.DELETE("/tenants/:id/uninstall-msagent", handler.UninstallMSAgentGin)
+				zabbixGroup.POST("/instance/:id/install-msagent", handler.InstallMSAgentGin)
+				zabbixGroup.GET("/instance/:id/msagent-script", handler.GenerateMSAgentInstallScriptGin)
+				zabbixGroup.DELETE("/instance/:id/uninstall-msagent", handler.UninstallMSAgentGin)
 
 				// Webhook 安装相关
-				zabbixGroup.POST("/tenants/:id/install-webhook", handler.InstallWebhookGin)
-				zabbixGroup.GET("/tenants/:id/webhook-info", handler.GetWebhookInfoGin)
-				zabbixGroup.DELETE("/tenants/:id/uninstall-webhook", handler.UninstallWebhookGin)
+				zabbixGroup.POST("/instance/:id/install-webhook", handler.InstallWebhookGin)
+				zabbixGroup.GET("/instance/:id/webhook-info", handler.GetWebhookInfoGin)
+				zabbixGroup.DELETE("/instance/:id/uninstall-webhook", handler.UninstallWebhookGin)
 			}
 
 			// 首页/仪表板

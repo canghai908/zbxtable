@@ -14,7 +14,7 @@ const (
 // AddRule one
 func AddRule(m *Rule) (id int64, err error) {
 	m.Sweek = utils.VAarToStr(m.Sweek)
-	m.TenantID = utils.VAarToStr(m.TenantID)
+	m.ZID = utils.VAarToStr(m.ZID)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
@@ -35,7 +35,7 @@ func GetRuleByID(id int) (v *Rule, err error) {
 	return v, nil
 }
 
-func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, userlist []Rule, err error) {
+func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist []Rule, err error) {
 	var rules []Rule
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
@@ -51,8 +51,8 @@ func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, us
 	if name != "" {
 		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
-	if tenant_id != "" {
-		query = query.Where("tenant_id = ?", tenant_id)
+	if zid != "" {
+		query = query.Where("zid = ?", zid)
 	}
 	if m_type == "" {
 		query = query.Where("m_type IN ?", []string{"1", "2"})
@@ -71,7 +71,7 @@ func GetRule(page, limit, name, tenant_id, m_type, status string) (cnt int64, us
 
 	// 获取分页数据
 	offset := (pages - 1) * limits
-	err = query.Select("id", "name", "conditions", "tenant_id", "note",
+	err = query.Select("id", "name", "conditions", "zid", "note",
 		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 		Limit(limits).Offset(offset).Find(&rules).Error
 	if err != nil {
@@ -113,25 +113,25 @@ func UpdateRule(m *Rule, tuser string) error {
 		return errors.New("no permission")
 	}
 	//vue array to str
-	m.TenantID = utils.VAarToStr(m.TenantID)
+	m.ZID = utils.VAarToStr(m.ZID)
 	m.Sweek = utils.VAarToStr(m.Sweek)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
 	//判断是不是修改默认规则，如果是修改默认规则，则默认规则类型不变,表达式，条件配置
-	var mType, mConditions, mTenantID string
+	var mType, mConditions, mInstanceID string
 	if m.MType == "2" {
 		mType = "2"
 		mConditions = ""
-		mTenantID = "*"
+		mInstanceID = "*"
 	} else {
 		mType = m.MType
 		mConditions = m.Conditions
-		mTenantID = m.TenantID
+		mInstanceID = m.ZID
 	}
 	err = DB.Model(&Rule{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"name":       m.Name,
-		"tenant_id":  mTenantID,
+		"zid":        mInstanceID,
 		"conditions": mConditions,
 		"s_week":     m.Sweek,
 		"m_type":     mType,

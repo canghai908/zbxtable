@@ -10,29 +10,28 @@ const (
 
 // Alarm struct
 type Alarm struct {
-	ID               int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	ZabbixInstanceID int       `gorm:"column:zabbix_instance_id;index" json:"zabbix_instance_id"`
-	TenantID         string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
-	TenantName       string    `gorm:"column:tenant_name;size:255" json:"tenant_name"`
-	InstanceName     string    `gorm:"-" json:"instance_name"` // 实例名称（动态填充，不存数据库）
-	HostID           string    `gorm:"column:host_id;size:255" json:"host_id"`
-	Hostname         string    `gorm:"column:hostname;size:255" json:"hostname"`
-	Host             string    `gorm:"column:host;size:200" json:"host"`
-	HostsIP          string    `gorm:"column:host_ip;size:200" json:"host_ip"`
-	TriggerID        int64     `gorm:"column:trigger_id" json:"trigger_id"`
-	ItemID           int64     `gorm:"column:item_id" json:"item_id"`
-	ItemName         string    `gorm:"column:item_name;type:text" json:"item_name"`
-	ItemValue        string    `gorm:"column:item_value;type:text" json:"item_value"`
-	Hgroup           string    `gorm:"column:hgroup;size:200" json:"hgroup"`
-	OccurTime        time.Time `gorm:"column:occurtime;type:datetime" json:"occur_time"`
-	Level            string    `gorm:"column:level;size:200" json:"level"`
-	Message          string    `gorm:"column:message;type:text" json:"message"`
-	Hkey             string    `gorm:"column:hkey;size:3000" json:"hkey"`
-	Detail           string    `gorm:"column:detail;type:text" json:"detail"`
-	EventID          int64     `gorm:"column:event_id" json:"eventid"`
-	EventDuration    string    `gorm:"column:event_duration;size:50" json:"event_duration"`
-	Status           string    `gorm:"column:status;size:200" json:"status"`
-	NotifyStatus     string    `gorm:"column:notify_status;size:10" json:"notify_status"`
+	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ZID           int       `gorm:"column:zid;index" json:"zid"`
+	InstanceID    string    `gorm:"column:instance_id;size:255" json:"instance_id"`
+	InstanceName  string    `gorm:"-" json:"instance_name"` // 实例名称（动态填充，不存数据库）
+	HostID        string    `gorm:"column:host_id;size:255" json:"host_id"`
+	Hostname      string    `gorm:"column:hostname;size:255" json:"hostname"`
+	Host          string    `gorm:"column:host;size:200" json:"host"`
+	HostsIP       string    `gorm:"column:host_ip;size:200" json:"host_ip"`
+	TriggerID     int64     `gorm:"column:trigger_id" json:"trigger_id"`
+	ItemID        int64     `gorm:"column:item_id" json:"item_id"`
+	ItemName      string    `gorm:"column:item_name;type:text" json:"item_name"`
+	ItemValue     string    `gorm:"column:item_value;type:text" json:"item_value"`
+	Hgroup        string    `gorm:"column:hgroup;size:200" json:"hgroup"`
+	OccurTime     time.Time `gorm:"column:occurtime;type:datetime" json:"occur_time"`
+	Level         string    `gorm:"column:level;size:200" json:"level"`
+	Message       string    `gorm:"column:message;type:text" json:"message"`
+	Hkey          string    `gorm:"column:hkey;size:3000" json:"hkey"`
+	Detail        string    `gorm:"column:detail;type:text" json:"detail"`
+	EventID       int64     `gorm:"column:event_id" json:"eventid"`
+	EventDuration string    `gorm:"column:event_duration;size:50" json:"event_duration"`
+	Status        string    `gorm:"column:status;size:200" json:"status"`
+	NotifyStatus  string    `gorm:"column:notify_status;size:10" json:"notify_status"`
 }
 
 // ListQueryAlarm query
@@ -46,8 +45,7 @@ type ListExportAlarm struct {
 	Begin      string `json:"begin"`
 	End        string `json:"end"`
 	Hosts      string `json:"hosts"`
-	TenantID   string `json:"tenant_id"`   // 兼容旧字段
-	InstanceID string `json:"instance_id"` // 新字段
+	InstanceID string `json:"instance_id"`
 	Status     string `json:"status"`
 	Level      string `json:"level"`
 	HostIP     string `json:"host_ip"`
@@ -57,8 +55,7 @@ type ListExportAlarm struct {
 type ListAnalysisAlarm struct {
 	Begin      string `json:"begin"`
 	End        string `json:"end"`
-	TenantID   string `json:"tenant_id"`   // 兼容旧字段
-	InstanceID string `json:"instance_id"` // 新字段
+	InstanceID string `json:"instance_id"`
 }
 
 // Pie struct

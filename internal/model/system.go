@@ -84,13 +84,13 @@ func GetSystemsByInstanceID(instanceID int) ([]System, error) {
 // UpdateSystem 更新系统分类及指标
 func UpdateSystem(m *System) (err error) {
 	var v System
-	err = DB.Where("id = ? AND instance_id = ?", m.ID, m.InstanceID).First(&v).Error
+	err = DB.Where("id = ? AND instance_id = ?", m.ID, m.ZID).First(&v).Error
 	if err != nil {
 		return err
 	}
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
-	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.InstanceID).Updates(map[string]interface{}{
+	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.ZID).Updates(map[string]interface{}{
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -112,20 +112,20 @@ func UpdateSystem(m *System) (err error) {
 // CreateOrUpdateSystem 创建或更新系统配置（支持多实例）
 func CreateOrUpdateSystem(m *System) error {
 	var existing System
-	err := DB.Where("id = ? AND instance_id = ?", m.ID, m.InstanceID).First(&existing).Error
-	
+	err := DB.Where("id = ? AND instance_id = ?", m.ID, m.ZID).First(&existing).Error
+
 	if err != nil {
 		// 不存在，创建新记录
 		m.CreatedAt = time.Now()
 		m.UpdatedAt = time.Now()
 		return DB.Create(m).Error
 	}
-	
+
 	// 存在，更新记录
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = existing.CreatedAt
-	return DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.InstanceID).Updates(map[string]interface{}{
-		"instance_id":           m.InstanceID,
+	return DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.ZID).Updates(map[string]interface{}{
+		"zid":                   m.ZID,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -163,26 +163,26 @@ func SystemInit(id int64) error {
 }
 
 // SystemInitWithInstance 初始化指标（支持多实例）
-func SystemInitWithInstance(systemID int64, instanceID int) error {
+func SystemInitWithInstance(systemID int64, zid int) error {
 	var v System
-	err := DB.Where("id = ? AND instance_id = ?", systemID, instanceID).First(&v).Error
+	err := DB.Where("id = ? AND zid = ?", systemID, zid).First(&v).Error
 	if err != nil {
 		return err
 	}
-	
+
 	// 获取指定实例的API
-	apiInstance, err := GetAPIByInstanceID(instanceID)
+	apiInstance, err := GetAPIByZID(zid)
 	if err != nil {
 		return fmt.Errorf("获取实例API失败: %w", err)
 	}
-	
+
 	list := strings.Split(v.GroupID, ",")
 	err = HostTypeSetWithInstance(&v, list, apiInstance)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", systemID, instanceID).Updates(map[string]interface{}{
+	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", systemID, zid).Updates(map[string]interface{}{
 		"status":    1,
 		"inited_at": &now,
 	}).Error

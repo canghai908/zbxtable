@@ -34,9 +34,9 @@ func GetAllTemplateAll(c *gin.Context) {
 
 // GetAllTemplateList 获取所有模板列表
 func GetAllTemplateList(c *gin.Context) {
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 
-	list, err := model.TemplateListGetFromInstance(instanceID)
+	list, err := model.TemplateListGetFromInstance(zidStr)
 	if err != nil {
 		response.InternalError(c, "获取模版错误")
 		return
@@ -47,9 +47,9 @@ func GetAllTemplateList(c *gin.Context) {
 // GetItemByTemplateID 根据模板ID获取监控项
 func GetItemByTemplateID(c *gin.Context) {
 	templateid := c.Param("templateid")
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 
-	list, err := model.TemplateByItemFromInstance(templateid, instanceID)
+	list, err := model.TemplateByItemFromInstance(templateid, zidStr)
 	if err != nil {
 		fmt.Println(list)
 		response.InternalError(c, "获取模版错误")

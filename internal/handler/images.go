@@ -33,7 +33,7 @@ func GetImage(c *gin.Context) {
 	GraphID := idStr
 
 	// 可选：从查询参数中获取 instance_id（如果前端传递）
-	instanceIDStr := c.Query("instance_id")
+	instanceIDStr := c.Query("zid")
 
 	c.Header("Content-Type", "image/png")
 	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
@@ -48,10 +48,10 @@ func GetImage(c *gin.Context) {
 		var instanceID int
 		_, err := fmt.Sscanf(instanceIDStr, "%d", &instanceID)
 		if err == nil {
-			if tenant, err := model.GetZabbixTenantByID(int64(instanceID)); err == nil && tenant != nil {
-				ZabbixWeb = tenant.WebURL
+			if instance, err := model.GetZabbixInstanceByZID(instanceID); err == nil && instance != nil {
+				ZabbixWeb = instance.URL
 				// 获取该实例的 Cookie Jar
-				if inst, err := model.GetAPIByInstanceID(instanceID); err == nil {
+				if inst, err := model.GetAPIByZID(instanceID); err == nil {
 					jarToUse = inst.JAR
 				}
 			}
@@ -61,19 +61,19 @@ func GetImage(c *gin.Context) {
 	// 如果没有提供 instance_id 或获取失败，尝试从所有启用的实例中查找
 	if ZabbixWeb == "" {
 		// 获取所有启用的实例
-		tenants, err := model.ListZabbixTenants()
-		if err != nil || len(tenants) == 0 {
+		instances, err := model.ListZabbixInstance()
+		if err != nil || len(instances) == 0 {
 			logger.Log.Error("No Zabbix instances configured")
 			response.InternalError(c, "No Zabbix instances configured")
 			return
 		}
 
 		// 使用第一个启用的实例（多实例环境下，建议前端传递 instance_id）
-		for _, tenant := range tenants {
-			if tenant.Enabled {
-				ZabbixWeb = tenant.WebURL
+		for _, instance := range instances {
+			if instance.Enabled {
+				ZabbixWeb = instance.URL
 				// 获取该实例的 Cookie Jar
-				if inst, err := model.GetAPIByInstanceID(tenant.ID); err == nil {
+				if inst, err := model.GetAPIByZID(instance.ID); err == nil {
 					jarToUse = inst.JAR
 				}
 				break

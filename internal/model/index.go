@@ -46,7 +46,7 @@ func GetCountHost() (IndexInfo, error) {
 	}
 
 	d := IndexInfo{}
-	
+
 	// 聚合所有实例的数据
 	for _, inst := range instances {
 		linCount, err := getCountByTypeFromInstance(inst, "VM_LIN")
@@ -118,23 +118,23 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 		fullKey := fmt.Sprintf("%v", z.Member)
 		hostname := fullKey
 		instanceName := ""
-		
+
 		// 尝试分离实例ID和主机名
 		parts := strings.SplitN(fullKey, "_", 2)
 		if len(parts) == 2 {
 			tenantID := parts[0]
 			hostname = parts[1] // 使用主机名部分
-			
+
 			// 根据 tenant_id 查询实例名称
-			var tenant ZabbixTenant
-			err := DB.Where("tenant_id = ?", tenantID).First(&tenant).Error
+			var tenant ZabbixInstance
+			err := DB.Where("instance_id = ?", tenantID).First(&tenant).Error
 			if err == nil {
 				instanceName = tenant.Name
 			} else {
 				logger.Log.Errorf("查询租户失败 (tenant_id=%s): %v", tenantID, err)
 			}
 		}
-		
+
 		p1 := TopList{
 			Hostname:     hostname,
 			Score:        z.Score,

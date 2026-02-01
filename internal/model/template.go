@@ -159,43 +159,38 @@ func TemplateListGet() ([]TemplateByItemList, error) {
 }
 
 // TemplateListGetFromInstance 从指定实例获取模板列表
-func TemplateListGetFromInstance(instanceID string) ([]TemplateByItemList, error) {
+func TemplateListGetFromInstance(id string) ([]TemplateByItemList, error) {
 	// 如果没有指定实例ID，使用全局API
-	if instanceID == "" {
+	if id == "" {
 		return TemplateListGet()
 	}
-
-	var tenant *ZabbixTenant
+	var instance *ZabbixInstance
 	var err error
 
-	// 尝试将 instanceID 转换为 int64（数据库ID）
-	id, err := strconv.ParseInt(instanceID, 10, 64)
+	idInt, _ := strconv.Atoi(id)
 	if err == nil {
 		// 如果转换成功，按 ID 查询
-		tenant, err = GetZabbixTenantByID(id)
-	} else {
-		// 如果转换失败，可能是 tenant_id（字符串），按 tenant_id 查询
-		tenant, err = GetZabbixTenantByTenantID(instanceID)
+		instance, err = GetZabbixInstanceByZID(idInt)
 	}
 
 	if err != nil {
-		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instanceID, err)
+		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", id, err)
 	}
 
 	// 检查实例是否启用
-	if !tenant.Enabled {
-		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", tenant.ID, tenant.TenantID)
+	if !instance.Enabled {
+		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (zid=%d, instance_id=%s)", instance.ID, instance.InstanceID)
 	}
 
 	// 创建 Zabbix API 实例
-	apiURL := tenant.WebURL + "/api_jsonrpc.php"
+	apiURL := instance.URL + "/api_jsonrpc.php"
 	api := zabbix.NewAPI(apiURL)
 
 	// 设置认证
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return []TemplateByItemList{}, fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -243,43 +238,33 @@ func TemplateByItem(templateid string) ([]TemplateByItemList, error) {
 }
 
 // TemplateByItemFromInstance 从指定实例根据模板ID获取监控项
-func TemplateByItemFromInstance(templateid string, instanceID string) ([]TemplateByItemList, error) {
+func TemplateByItemFromInstance(templateid string, zid string) ([]TemplateByItemList, error) {
 	// 如果没有指定实例ID，使用全局API
-	if instanceID == "" {
+	if zid == "" {
 		return TemplateByItem(templateid)
 	}
-
-	var tenant *ZabbixTenant
+	var instance *ZabbixInstance
 	var err error
 
 	// 尝试将 instanceID 转换为 int64（数据库ID）
-	id, err := strconv.ParseInt(instanceID, 10, 64)
-	if err == nil {
-		// 如果转换成功，按 ID 查询
-		tenant, err = GetZabbixTenantByID(id)
-	} else {
-		// 如果转换失败，可能是 tenant_id（字符串），按 tenant_id 查询
-		tenant, err = GetZabbixTenantByTenantID(instanceID)
-	}
-
+	id, _ := strconv.Atoi(zid)
+	instance, err = GetZabbixInstanceByZID(id)
 	if err != nil {
-		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instanceID, err)
+		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instance.ID, err)
 	}
-
 	// 检查实例是否启用
-	if !tenant.Enabled {
-		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", tenant.ID, tenant.TenantID)
+	if !instance.Enabled {
+		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", instance.ID, instance.InstanceID)
 	}
-
 	// 创建 Zabbix API 实例
-	apiURL := tenant.WebURL + "/api_jsonrpc.php"
+	apiURL := instance.URL + "/api_jsonrpc.php"
 	api := zabbix.NewAPI(apiURL)
 
 	// 设置认证
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return []TemplateByItemList{}, fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}

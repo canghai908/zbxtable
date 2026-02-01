@@ -15,16 +15,16 @@ func GetAllRule(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	name := c.Query("name")
-	tenant_id := c.Query("tenant_id")
+	zid := c.Query("zid")
 	m_type := c.Query("m_type")
 	status := c.Query("status")
 
-	cnt, al, err := model.GetRule(page, limit, name, tenant_id, m_type, status)
+	cnt, al, err := model.GetRule(page, limit, name, zid, m_type, status)
 	if err != nil {
 		response.DatabaseError(c, "获取规则列表失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithPage(c, al, cnt)
 }
 
@@ -32,13 +32,13 @@ func GetAllRule(c *gin.Context) {
 func GetRuleByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-	
+
 	v, err := model.GetRuleByID(id)
 	if err != nil {
 		response.NotFound(c, "规则不存在")
 		return
 	}
-	
+
 	response.Success(c, v)
 }
 
@@ -51,7 +51,7 @@ func CreateRule(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	tenant_id := gjson.Get(string(body), "tenant_id").String()
+	zid := gjson.Get(string(body), "zid").String()
 	conditions := gjson.Get(string(body), "conditions").String()
 	sweek := gjson.Get(string(body), "s_week").String()
 	stime := gjson.Get(string(body), "s_time").String()
@@ -62,7 +62,7 @@ func CreateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
-	
+
 	if name == "" {
 		response.ValidationError(c, "规则名称不能为空")
 		return
@@ -70,13 +70,13 @@ func CreateRule(c *gin.Context) {
 
 	v := model.Rule{Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZID: zid, Status: status, Note: note}
 	_, err = model.AddRule(&v)
 	if err != nil {
 		response.DatabaseError(c, "创建规则失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "创建成功", nil)
 }
 
@@ -91,7 +91,7 @@ func UpdateRule(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	tenant_id := gjson.Get(string(body), "tenant_id").String()
+	zid := gjson.Get(string(body), "zid").String()
 	conditions := gjson.Get(string(body), "conditions").String()
 	sweek := gjson.Get(string(body), "s_week").String()
 	stime := gjson.Get(string(body), "s_time").String()
@@ -111,13 +111,13 @@ func UpdateRule(c *gin.Context) {
 
 	v := model.Rule{ID: id, Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, TenantID: tenant_id, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZID: zid, Status: status, Note: note}
 	err = model.UpdateRule(&v, tuserStr)
 	if err != nil {
 		response.DatabaseError(c, "更新规则失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
@@ -144,7 +144,7 @@ func UpdateRuleStatus(c *gin.Context) {
 		response.DatabaseError(c, "更新规则状态失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "更新成功", nil)
 }
 
@@ -163,6 +163,6 @@ func DeleteRule(c *gin.Context) {
 		response.DatabaseError(c, "删除规则失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "删除成功", nil)
 }

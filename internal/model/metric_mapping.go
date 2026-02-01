@@ -100,7 +100,7 @@ func ExecuteMetricMapping(mapping *MetricMapping, execType string) error {
 	DB.Create(history)
 
 	// 获取实例API
-	apiInstance, err := GetAPIByInstanceID(mapping.InstanceID)
+	apiInstance, err := GetAPIByZID(mapping.InstanceID)
 	if err != nil {
 		return updateMappingError(mapping, history, fmt.Errorf("获取实例API失败: %w", err))
 	}

@@ -138,48 +138,38 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 }
 
 // GetAllGroupsListFromInstance 从指定实例获取所有组列表
-func GetAllGroupsListFromInstance(instanceID string) ([]HostTree, int64, error) {
+func GetAllGroupsListFromInstance(zid string) ([]HostTree, int64, error) {
 	// 如果没有指定实例ID，使用全局API
-	if instanceID == "" {
+	if zid == "" {
 		return GetAllGroupsList()
 	}
-
-	var tenant *ZabbixTenant
+	var instance *ZabbixInstance
 	var err error
-
 	// 尝试将 instanceID 转换为 int64（数据库ID）
-	id, err := strconv.ParseInt(instanceID, 10, 64)
-	if err == nil {
-		// 如果转换成功，按 ID 查询
-		tenant, err = GetZabbixTenantByID(id)
-	} else {
-		// 如果转换失败，可能是 tenant_id（字符串），按 tenant_id 查询
-		tenant, err = GetZabbixTenantByTenantID(instanceID)
+	id, err := strconv.Atoi(zid)
+	if err == nil { // 如果转换成功，按 ID 查询
+		instance, err = GetZabbixInstanceByZID(id)
 	}
-
 	if err != nil {
-		return []HostTree{}, 0, fmt.Errorf("未找到启用的实例 (tenant_id=%s): %w", instanceID, err)
+		return []HostTree{}, 0, fmt.Errorf("未找到启用的实例 (tenant_id=%s): %w", zid, err)
 	}
-
 	// 检查实例是否启用
-	if !tenant.Enabled {
-		return []HostTree{}, 0, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", tenant.ID, tenant.TenantID)
+	if !instance.Enabled {
+		return []HostTree{}, 0, fmt.Errorf("实例未启用 (zid=%d, instance_id=%s)", instance.ID, instance.InstanceID)
 	}
-
 	// 创建 Zabbix API 实例
-	apiURL := tenant.WebURL + "/api_jsonrpc.php"
+	apiURL := instance.URL + "/api_jsonrpc.php"
 	api := zabbix.NewAPI(apiURL)
 
 	// 设置认证
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return []HostTree{}, 0, fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
 	}
-
 	// 调用 Zabbix API 获取主机组
 	rep, err := api.Call("hostgroup.get", Params{"output": "extend"})
 	if err != nil {

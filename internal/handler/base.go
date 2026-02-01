@@ -176,48 +176,45 @@ func LogoutGin(c *gin.Context) {
 	response.SuccessWithMessage(c, "用户注销成功", nil)
 }
 
-// ReceiveGin 接收消息（Gin版本）
+// ReceiveGin 接收消息告警消息
 func ReceiveGin(c *gin.Context) {
 	type Re struct {
 		ID  int64  `json:"id"`
 		Msg string `json:"msg"`
 	}
 	var res Re
-
 	if c.Request.Method != "POST" {
 		res.ID = 0
 		res.Msg = "method is not allowed for the requested url."
-		response.Success(c, res)
+		response.BadRequest(c, res.Msg)
 		return
 	}
-
-	tenantid := c.GetHeader("ZBX-TenantID")
+	//老系统使用的是ZBX-TenantID
+	TenantID := c.GetHeader("ZBX-TenantID")
+	//新系统使用的是ZBX-InstanceID
 	token := c.GetHeader("Token")
-	fmt.Println(c.Request.Header)
-	// 多租户 token 校验：优先使用租户绑定表；未配置绑定时回退到全局 token（兼容旧逻辑）
-	zabbixInstanceID := 0
-	fmt.Println(tenantid)
-	if binding, err := model.GetZabbixTenantByTenantID(tenantid); err == nil && binding != nil {
-		fmt.Println("aaaa")
-		if !binding.Enabled {
-			res.ID = 0
-			res.Msg = "Tenant Disabled!"
-			logger.Log.Error("Tenant Disabled!")
-			response.Success(c, res)
-			return
-		}
-		if binding.Token != "" && token != binding.Token {
-			res.ID = 0
-			res.Msg = "Token Error!"
-			response.Success(c, res)
-			return
-		}
-		zabbixInstanceID = binding.ID
+	var InstanceID string
+	if TenantID == "" {
+		InstanceID = c.GetHeader("ZBX-InstanceID")
 	} else {
-		if token != model.GetConfKey("token") {
+		InstanceID = TenantID
+	}
+	fmt.Println(c.Request.Header)
+	// instance的token校验
+	//查询instanceid和token,可以一起查询，无需多次查询
+	var instance *model.ZabbixInstance
+	var err error
+	if instance, err = model.GetZabbixInstanceByInstanceID(InstanceID); err == nil && instance != nil {
+		fmt.Println("aaaa")
+		if !instance.Enabled {
+			res.ID = 0
+			res.Msg = "Instance Disabled!"
+			response.Success(c, res)
+			return
+		}
+		if instance.Token != "" && token != instance.Token {
 			res.ID = 0
 			res.Msg = "Token Error!"
-			logger.Log.Error("Token Error!")
 			response.Success(c, res)
 			return
 		}
@@ -230,7 +227,7 @@ func ReceiveGin(c *gin.Context) {
 		response.Success(c, res)
 		return
 	}
-	id, err := model.MsAdd(tenantid, zabbixInstanceID, body)
+	id, err := model.MsAdd(instance.ID, instance.InstanceID, instance.Name, body)
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()

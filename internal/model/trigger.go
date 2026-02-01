@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strconv"
 	"zbxtable/pkg/logger"
 )
@@ -14,6 +15,7 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		return []EndTrigger{}, 0, err
 	}
 
+	fmt.Println(instances)
 	var allTriggers []EndTrigger
 	for _, inst := range instances {
 		triggers, _, err := GetTriggersFromInstance(inst)
@@ -68,9 +70,8 @@ func GetTriggersFromInstance(inst *APIInstance) ([]EndTrigger, int64, error) {
 		bs.Eventid = v.LastEvent.Eventid
 		bs.Objectid = v.LastEvent.Objectid
 		// 添加实例信息
-		bs.InstanceID = inst.ID
+		bs.InstanceID = inst.ZID
 		bs.InstanceName = inst.Name
-		bs.TenantID = inst.TenantID
 		ma = append(ma, bs)
 	}
 	return ma, int64(len(ma)), nil

@@ -138,9 +138,8 @@ type Hosts struct {
 	PingSec           string `json:"ping_sec"`           //ping时延
 	Alarm             string `json:"alarm"`              //告警总数
 	// 多实例支持字段
-	InstanceID   int    `json:"instance_id"`   //所属实例ID
+	InstanceID   int    `json:"instance_id"`   //所属实例ZID
 	InstanceName string `json:"instance_name"` //所属实例名称
-	TenantID     string `json:"tenant_id"`     //租户ID
 }
 
 // Host struct

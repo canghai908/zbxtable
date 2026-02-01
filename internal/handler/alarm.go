@@ -35,7 +35,7 @@ func GetAllAlarm(c *gin.Context) {
 	limit := c.Query("limit")
 	hosts := c.Query("hosts")
 	ip := c.Query("host_ip")
-	tenant_id := c.Query("tenant_id")
+	tenant_id := c.Query("zid")
 	status := c.Query("status")
 	level := c.Query("level")
 
@@ -100,7 +100,7 @@ func AnalysisAlarm(c *gin.Context) {
 	// 支持 instance_id 参数
 	instanceID := v.InstanceID
 	if instanceID == "" {
-		instanceID = v.TenantID // 兼容旧的 tenant_id 字段
+		instanceID = v.InstanceID // 兼容旧的 tenant_id 字段
 	}
 	
 	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, instanceID)
@@ -145,7 +145,7 @@ func ExportAlarm(c *gin.Context) {
 	// 支持 instance_id 参数
 	instanceID := v.InstanceID
 	if instanceID == "" {
-		instanceID = v.TenantID // 兼容旧的 tenant_id 字段
+		instanceID = v.InstanceID // 兼容旧的 tenant_id 字段
 	}
 	
 	cnt, err := model.ExportAlarm(Start, End, v.Hosts, instanceID, v.Status, v.Level, v.HostIP)

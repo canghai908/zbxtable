@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"zbxtable/pkg/response"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -21,15 +21,15 @@ func GetAllHost(c *gin.Context) {
 	mode := c.Query("model")
 	ip := c.Query("ip")
 	available := c.Query("available")
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 
 	var hs []model.Hosts
 	var count int64
 	var err error
 
 	// 如果指定了实例ID，从指定实例获取主机
-	if instanceID != "" {
-		hs, count, err = model.HostsListFromInstance(instanceID, HostType, page, limit, hosts, mode, ip, available)
+	if zidStr != "" {
+		hs, count, err = model.HostsListFromInstance(zidStr, HostType, page, limit, hosts, mode, ip, available)
 	} else {
 		// 否则使用多实例查询（查询所有实例）
 		hs, count, err = model.HostsListMultiInstance(HostType, page, limit, hosts, mode, ip, available)
@@ -45,8 +45,8 @@ func GetAllHost(c *gin.Context) {
 // GetHostByID 获取单个主机信息（多实例支持）
 func GetHostByID(c *gin.Context) {
 	idStr := c.Param("hostid")
-	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
-	
+	instanceIDStr := c.Query("zid") // 从查询参数获取实例ID
+
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		response.InternalError(c, err.Error())
@@ -74,7 +74,7 @@ func GetHostByID(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
@@ -92,32 +92,22 @@ func GetHostByID(c *gin.Context) {
 // SearchHost 搜索主机（支持实例筛选）
 func SearchHost(c *gin.Context) {
 	name := c.Query("name")
-	tenantID := c.Query("tenant_id")
-	instanceID := c.Query("instance_id")
-	
-	// 如果提供了实例ID或租户ID，从指定实例查询
-	if instanceID != "" || tenantID != "" {
-		var inst *model.APIInstance
-		var err error
-		
-		if instanceID != "" {
-			// 如果提供了数字 instance_id，直接使用
-			instID, err := strconv.Atoi(instanceID)
-			if err != nil {
-				response.InternalError(c, "无效的实例ID")
-				return
-			}
-			inst, err = model.GetAPIByInstanceID(instID)
-		} else {
-			// 如果提供了 tenant_id 字符串，使用 GetZabbixInstanceAPI
-			inst, err = model.GetZabbixInstanceAPI(tenantID)
+	zidStr := c.Query("zid")
+
+	// 如果提供了 zid，从指定实例查询
+	if zidStr != "" {
+		zid, err := strconv.Atoi(zidStr)
+		if err != nil {
+			response.InternalError(c, "无效的实例ID")
+			return
 		}
-		
+
+		inst, err := model.GetAPIByZID(zid)
 		if err != nil {
 			response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 			return
 		}
-		
+
 		// 从该实例查询主机
 		val, err := model.SearchHostFromInstance(inst, name)
 		if err != nil {
@@ -149,12 +139,12 @@ func UpdateHost(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
-	
+
 	if _, err := model.UpdateHost(&v); err != nil {
 		response.InternalError(c, err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "保存成功", v)
 }
 
@@ -170,7 +160,7 @@ func GetMonItem(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
@@ -197,7 +187,7 @@ func GetMonInterface(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
@@ -225,7 +215,7 @@ func GetOneInterface(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
-	
+
 	b, err := model.GetInterfaceGraphData(v)
 	if err != nil {
 		response.InternalError(c, err.Error())
@@ -237,7 +227,7 @@ func GetOneInterface(c *gin.Context) {
 // GetMonWinFileSystem 获取windows系统监控指标（多实例支持）
 func GetMonWinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
+	instanceIDStr := c.Query("zid") // 从查询参数获取实例ID
 
 	var instanceID int
 	var err error
@@ -258,7 +248,7 @@ func GetMonWinFileSystem(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
@@ -276,7 +266,7 @@ func GetMonWinFileSystem(c *gin.Context) {
 // GetMonLinFileSystem 获取文件系统详情（多实例支持）
 func GetMonLinFileSystem(c *gin.Context) {
 	hostid := c.Param("hostid")
-	instanceIDStr := c.Query("instance_id") // 从查询参数获取实例ID
+	instanceIDStr := c.Query("zid") // 从查询参数获取实例ID
 
 	var instanceID int
 	var err error
@@ -297,7 +287,7 @@ func GetMonLinFileSystem(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
@@ -337,14 +327,14 @@ func GetHostGraph(c *gin.Context) {
 	}
 
 	// 获取该实例的 API 连接
-	inst, err := model.GetAPIByInstanceID(instanceID)
+	inst, err := model.GetAPIByZID(instanceID)
 	if err != nil {
 		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 		return
 	}
 
 	// 检查是否配置了用户名和密码（查看图形需要）
-	tenant, _ := model.GetZabbixTenantByID(int64(instanceID))
+	tenant, _ := model.GetZabbixInstanceByZID(instanceID)
 	if tenant == nil || tenant.User == "" || tenant.Pass == "" {
 		response.Forbidden(c, fmt.Sprintf("实例 %s 未配置用户名和密码，无法查看图形。请在【系统设置 > Zabbix 实例管理】中配置用户名和密码（注意：使用 Token 方式无法查看图形）", inst.Name))
 		return

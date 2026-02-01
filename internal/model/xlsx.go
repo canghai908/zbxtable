@@ -416,7 +416,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	xlsx.SetCellValue("Sheet1", "I5", "告警类型")
 	xlsx.SetCellValue("Sheet1", "J5", "事件ID")
 	for k, v := range Filedata {
-		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.TenantID)
+		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.InstanceID)
 		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+6), v.Host)
 		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+6), v.Hgroup)
 		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.OccurTime.Format("2006-01-02 15:04:05"))

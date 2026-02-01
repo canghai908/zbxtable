@@ -17,7 +17,7 @@ import (
 // MSAgentConfig MS-Agent 配置信息
 type MSAgentConfig struct {
 	ZbxTableURL  string `json:"zbxtable_url"`  // ZbxTable 服务地址
-	TenantID     string `json:"tenant_id"`     // 租户 ID
+	InstanceID   string `json:"instance_id"`   // 实例 ID
 	WebhookToken string `json:"webhook_token"` // Webhook 认证 Token
 }
 
@@ -128,7 +128,7 @@ log_level: info
 
 # Log File Path
 log_path: /var/log/ms-agent/ms-agent.log
-`, config.ZbxTableURL, config.TenantID, config.WebhookToken)
+`, config.ZbxTableURL, config.InstanceID, config.WebhookToken)
 
 	// 生成 curl 下载和安装命令
 	curlCommand := `curl -fsSL https://raw.githubusercontent.com/canghai908/ms-agent/main/install.sh | bash`
@@ -172,19 +172,19 @@ echo "查看日志: tail -f /var/log/ms-agent/ms-agent.log"
 }
 
 // InstallMSAgentToZabbix 在 Zabbix 中安装 MS-Agent 配置
-func InstallMSAgentToZabbix(tenantID string) error {
+func InstallMSAgentToZabbix(zid int) error {
 	// 获取租户信息
-	tenant, err := GetZabbixTenantByTenantID(tenantID)
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
 		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
 	// 初始化 Zabbix API
-	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -401,10 +401,10 @@ func InstallMSAgentToZabbix(tenantID string) error {
 	logger.Log.Info("生成 MS-Agent WebhookToken:", webhookToken)
 
 	// 更新租户信息
-	tenant.WebhookToken = webhookToken
-	tenant.MSAgentInstalled = true
+	instance.WebhookToken = webhookToken
+	instance.MSAgentInstalled = true
 
-	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
+	err = DB.Model(&ZabbixInstance{}).Where("id = ?", instance.ID).Updates(map[string]interface{}{
 		"webhook_token":      webhookToken,
 		"ms_agent_installed": true,
 	}).Error

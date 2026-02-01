@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 	"zbxtable/pkg/logger"
-	
+
 	zabbix "github.com/canghai908/zabbix-go"
 )
 
@@ -115,13 +115,13 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	// 如果提供了实例ID，使用指定实例的API
 	if data.InstanceID > 0 {
-		inst, err := GetAPIByInstanceID(data.InstanceID)
+		inst, err := GetAPIByZID(data.InstanceID)
 		if err != nil {
 			return TrafficData{}, err
 		}
 		return GetInterfaceGraphDataFromInstance(inst, data)
 	}
-	
+
 	// 否则使用全局API（兼容旧逻辑）
 	return GetInterfaceGraphDataFromAPI(API, data)
 }

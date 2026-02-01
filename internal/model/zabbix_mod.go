@@ -2,17 +2,17 @@ package model
 
 import "time"
 
-// ZabbixTenant 合并后的 Zabbix 租户表（原 ZabbixInstance + ZabbixTenantBinding）
-// 一个租户对应一个 Zabbix 实例
-type ZabbixTenant struct {
-	ID           int    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	TenantID     string `gorm:"column:tenant_id;size:255;uniqueIndex;not null" json:"tenant_id"` // 租户ID（唯一）
-	Name         string `gorm:"column:name;size:255;not null" json:"name"`                       // Zabbix 名称
-	WebURL       string `gorm:"column:web_url;size:512;not null" json:"web_url"`                 // Zabbix Web URL
-	User         string `gorm:"column:user;size:255" json:"user"`                                // Zabbix 用户名
-	Pass         string `gorm:"column:pass;size:255" json:"pass"`                                // Zabbix 密码
-	Token        string `gorm:"column:token;size:2048" json:"token"`                             // Zabbix API Token（优先）
-	WebhookToken string `gorm:"column:webhook_token;size:2048" json:"webhook_token"`             // Webhook 认证 Token（用于 MS-Agent/Webhook）
+// ZabbixInstance Zabbix 实例表
+// 每个实例对应一个独立的 Zabbix 系统
+type ZabbixInstance struct {
+	ID           int    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`                        // 实例主键ID
+	InstanceID   string `gorm:"column:instance_id;size:255;uniqueIndex;not null" json:"instance_id"` // 实例标识（唯一，可以是中英文数字混合）
+	Name         string `gorm:"column:name;size:255;not null" json:"name"`                           // Zabbix 名称
+	URL          string `gorm:"column:url;size:512;not null" json:"url"`                             // Zabbix URL
+	User         string `gorm:"column:user;size:255" json:"user"`                                    // Zabbix 用户名
+	Pass         string `gorm:"column:pass;size:255" json:"pass"`                                    // Zabbix 密码
+	Token        string `gorm:"column:token;size:2048" json:"token"`                                 // Zabbix API Token（优先）
+	WebhookToken string `gorm:"column:webhook_token;size:2048" json:"webhook_token"`                 // Webhook 认证 Token（用于 MS-Agent/Webhook）
 
 	// 状态字段
 	Enabled bool `gorm:"column:enabled;default:true" json:"enabled"` // 是否启用
@@ -34,6 +34,6 @@ type ZabbixTenant struct {
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
-func (t *ZabbixTenant) TableName() string {
+func (t *ZabbixInstance) TableName() string {
 	return TableName("zabbix")
 }

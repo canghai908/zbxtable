@@ -20,13 +20,13 @@ import (
 // APIPool API 连接池，管理多个 Zabbix 实例的 API 连接
 type APIPool struct {
 	mu    sync.RWMutex
-	pools map[int]*APIInstance // key: ZabbixTenant.ID
+	pools map[int]*APIInstance // key: ZabbixInstance.ZID
 }
 
 // APIInstance 单个 Zabbix 实例的 API 连接信息
 type APIInstance struct {
-	ID           int
-	TenantID     string
+	ZID          int
+	InstanceID   string
 	Name         string
 	WebURL       string
 	API          *zabbix.API
@@ -52,9 +52,9 @@ func GetAPIPool() *APIPool {
 }
 
 // GetOrCreateAPI 获取或创建指定实例的 API 连接
-func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
+func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 	p.mu.RLock()
-	if inst, ok := p.pools[instanceID]; ok {
+	if inst, ok := p.pools[zid]; ok {
 		// 如果连接存在且未过期（30分钟），直接返回
 		if time.Since(inst.LastUpdate) < 30*time.Minute {
 			p.mu.RUnlock()
@@ -68,24 +68,24 @@ func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
 	defer p.mu.Unlock()
 
 	// 双重检查
-	if inst, ok := p.pools[instanceID]; ok {
+	if inst, ok := p.pools[zid]; ok {
 		if time.Since(inst.LastUpdate) < 30*time.Minute {
 			return inst, nil
 		}
 	}
 
 	// 从数据库加载实例配置
-	tenant, err := GetZabbixTenantByID(int64(instanceID))
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
 		return nil, fmt.Errorf("获取实例配置失败: %w", err)
 	}
 
-	if !tenant.Enabled {
+	if !instance.Enabled {
 		return nil, errors.New("实例已禁用")
 	}
 
 	// 创建 API 连接
-	webURL := strings.TrimRight(strings.TrimSpace(tenant.WebURL), "/")
+	webURL := strings.TrimRight(strings.TrimSpace(instance.URL), "/")
 	apiURL := webURL + "/api_jsonrpc.php"
 
 	// 测试连接
@@ -105,10 +105,10 @@ func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
 
 	// 创建 API 对象
 	api := zabbix.NewAPI(apiURL)
-	if strings.TrimSpace(tenant.Token) != "" {
-		api.SetAuth(strings.TrimSpace(tenant.Token))
-	} else if strings.TrimSpace(tenant.User) != "" && strings.TrimSpace(tenant.Pass) != "" {
-		_, err := api.Login(strings.TrimSpace(tenant.User), strings.TrimSpace(tenant.Pass))
+	if strings.TrimSpace(instance.Token) != "" {
+		api.SetAuth(strings.TrimSpace(instance.Token))
+	} else if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(instance.Pass) != "" {
+		_, err := api.Login(strings.TrimSpace(instance.User), strings.TrimSpace(instance.Pass))
 		if err != nil {
 			return nil, fmt.Errorf("登录失败: %w", err)
 		}
@@ -135,24 +135,24 @@ func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
 
 	// 创建 Web 登录 JAR（用于图形查看）
 	jar := new(Jar)
-	if strings.TrimSpace(tenant.User) != "" && strings.TrimSpace(tenant.Pass) != "" {
+	if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(instance.Pass) != "" {
 		// 执行 Web 登录
-		logger.Log.Infof("尝试登录 Zabbix Web 界面: %s (实例: %s)", webURL, tenant.Name)
-		err := loginToZabbixWeb(webURL, tenant.User, tenant.Pass, jar)
+		logger.Log.Infof("尝试登录 Zabbix Web 界面: %s (实例: %s)", webURL, instance.Name)
+		err := loginToZabbixWeb(webURL, instance.User, instance.Pass, jar)
 		if err != nil {
 			// Web 登录失败不影响 API 连接的创建，仅记录警告日志
-			logger.Log.Warnf("Zabbix Web 登录失败 (实例: %s, URL: %s): %v，API 连接仍可正常使用，但图形查看功能可能受限", tenant.Name, webURL, err)
+			logger.Log.Warnf("Zabbix Web 登录失败 (实例: %s, URL: %s): %v，API 连接仍可正常使用，但图形查看功能可能受限", instance.Name, webURL, err)
 		} else {
-			logger.Log.Infof("Zabbix Web 登录成功: %s (实例: %s)", webURL, tenant.Name)
+			logger.Log.Infof("Zabbix Web 登录成功: %s (实例: %s)", webURL, instance.Name)
 		}
 	} else {
-		logger.Log.Debugf("实例 %s 未配置用户名/密码，跳过 Web 登录", tenant.Name)
+		logger.Log.Debugf("实例 %s 未配置用户名/密码，跳过 Web 登录", instance.Name)
 	}
 
 	inst := &APIInstance{
-		ID:           instanceID,
-		TenantID:     tenant.TenantID,
-		Name:         tenant.Name,
+		ZID:          zid,
+		InstanceID:   instance.InstanceID,
+		Name:         instance.Name,
 		WebURL:       webURL,
 		API:          api,
 		JAR:          jar,
@@ -161,50 +161,50 @@ func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
 		LastUpdate:   time.Now(),
 	}
 
-	p.pools[instanceID] = inst
-	logger.Log.Infof("创建 API 连接成功: %s (ID=%d, Version=%s)", tenant.Name, instanceID, version)
+	p.pools[zid] = inst
+	logger.Log.Infof("创建 API 连接成功: %s (ZID=%d, Version=%s)", instance.Name, zid, version)
 	return inst, nil
 }
 
 // GetAllEnabledAPIs 获取所有启用实例的 API 连接
 func (p *APIPool) GetAllEnabledAPIs() ([]*APIInstance, error) {
 	// 查询所有启用的实例
-	var tenants []ZabbixTenant
-	err := DB.Where("enabled = ?", true).Find(&tenants).Error
+	var instances []ZabbixInstance
+	err := DB.Where("enabled = ?", true).Find(&instances).Error
 	if err != nil {
 		return nil, err
 	}
 
-	if len(tenants) == 0 {
+	if len(instances) == 0 {
 		return nil, errors.New("没有启用的 Zabbix 实例")
 	}
 
-	var instances []*APIInstance
+	var apiInstances []*APIInstance
 	var errs []string
 
-	for _, tenant := range tenants {
-		inst, err := p.GetOrCreateAPI(tenant.ID)
+	for _, instance := range instances {
+		inst, err := p.GetOrCreateAPI(instance.ID)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", tenant.Name, err))
-			logger.Log.Errorf("获取实例 %s 的 API 连接失败: %v", tenant.Name, err)
+			errs = append(errs, fmt.Sprintf("%s: %v", instance.Name, err))
+			logger.Log.Errorf("获取实例 %s 的 API 连接失败: %v", instance.Name, err)
 			continue
 		}
-		instances = append(instances, inst)
+		apiInstances = append(apiInstances, inst)
 	}
 
-	if len(instances) == 0 {
+	if len(apiInstances) == 0 {
 		return nil, fmt.Errorf("所有实例连接失败: %s", strings.Join(errs, "; "))
 	}
 
-	return instances, nil
+	return apiInstances, nil
 }
 
 // RemoveAPI 移除指定实例的 API 连接（用于实例删除或禁用时）
-func (p *APIPool) RemoveAPI(instanceID int) {
+func (p *APIPool) RemoveAPI(zid int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	delete(p.pools, instanceID)
-	logger.Log.Infof("移除 API 连接: ID=%d", instanceID)
+	delete(p.pools, zid)
+	logger.Log.Infof("移除 API 连接: ZID=%d", zid)
 }
 
 // ClearAll 清空所有连接（用于重启或重新加载配置）
@@ -279,9 +279,9 @@ func loginToZabbixWeb(webURL, user, pass string, jar *Jar) error {
 	return nil
 }
 
-// GetAPIByInstanceID 便捷函数：根据实例 ID 获取 API 连接
-func GetAPIByInstanceID(instanceID int) (*APIInstance, error) {
-	return GetAPIPool().GetOrCreateAPI(instanceID)
+// GetAPIByZID 便捷函数：根据实例 ZID 获取 API 连接
+func GetAPIByZID(zid int) (*APIInstance, error) {
+	return GetAPIPool().GetOrCreateAPI(zid)
 }
 
 // GetAllEnabledAPIInstances 便捷函数：获取所有启用的 API 实例
@@ -289,19 +289,27 @@ func GetAllEnabledAPIInstances() ([]*APIInstance, error) {
 	return GetAPIPool().GetAllEnabledAPIs()
 }
 
-// GetZabbixInstanceAPI 根据 tenant_id 字符串获取 API 实例
-func GetZabbixInstanceAPI(tenantID string) (*APIInstance, error) {
-	if tenantID == "" {
-		return nil, errors.New("tenant_id 不能为空")
+// GetZabbixInstanceAPI 根据 instance_id 字符串获取 API 实例
+func GetZabbixInstanceAPI(instanceID string) (*APIInstance, error) {
+	if instanceID == "" {
+		return nil, errors.New("instance_id 不能为空")
 	}
 
-	// 根据 tenant_id 查询实例
-	var tenant ZabbixTenant
-	err := DB.Where("tenant_id = ? AND enabled = ?", tenantID, true).First(&tenant).Error
+	// 根据 instance_id 查询实例
+	instance, err := GetZabbixInstanceByInstanceID(instanceID)
 	if err != nil {
-		return nil, fmt.Errorf("未找到启用的实例 (tenant_id=%s): %w", tenantID, err)
+		return nil, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instanceID, err)
+	}
+
+	if !instance.Enabled {
+		return nil, fmt.Errorf("实例已禁用 (instance_id=%s)", instanceID)
 	}
 
 	// 获取或创建 API 连接
-	return GetAPIPool().GetOrCreateAPI(tenant.ID)
+	return GetAPIPool().GetOrCreateAPI(instance.ID)
+}
+
+// GetZabbixInstanceAPIByZID 根据 ZID 获取 API 实例（新增便捷函数）
+func GetZabbixInstanceAPIByZID(zid int) (*APIInstance, error) {
+	return GetAPIByZID(zid)
 }

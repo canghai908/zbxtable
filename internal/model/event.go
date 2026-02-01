@@ -60,8 +60,8 @@ type EventTpl struct {
 
 type Event struct {
 	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	TenantID      string    `gorm:"column:tenant_id;size:255" json:"tenant_id"`
-	TenantName    string    `gorm:"column:tenant_name;size:255" json:"tenant_name"`
+	InstanceID    string    `gorm:"column:instance_id;size:255" json:"instance_id"`
+	InstanceName  string    `gorm:"column:instance_name;size:255" json:"instance_name"`
 	HostID        string    `gorm:"column:host_id;size:255" json:"host_id"`
 	Hostname      string    `gorm:"column:hostname;size:255" json:"hostname"`
 	Host          string    `gorm:"column:host;size:200" json:"host"`

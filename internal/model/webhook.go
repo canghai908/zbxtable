@@ -12,21 +12,21 @@ import (
 )
 
 // InstallWebhookToZabbix 在 Zabbix 中安装 Webhook 配置
-func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
+func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
 	// 常量定义
 
 	// 获取租户信息
-	tenant, err := GetZabbixTenantByTenantID(tenantID)
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
 		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
 	// 初始化 Zabbix API
-	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
+	if instance.Token != "" {
+		api.Auth = instance.Token
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -65,7 +65,7 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
     var params = JSON.parse(value);
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
-    req.addHeader('ZBX-TenantID: ' + params.tenant_id);
+    req.addHeader('ZBX-InstanceID: ' + params.instance_id);
     req.addHeader('WebhookToken: ' + params.webhook_token);
     
     // 直接使用 {ALERT.MESSAGE} 作为消息体
@@ -91,7 +91,7 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 	// Webhook 参数 - 只保留 webhook_url、tenant_id、webhook_token 和 message
 	parameters := []map[string]interface{}{
 		{"name": "webhook_url", "value": webhookURL},
-		{"name": "tenant_id", "value": tenantID},
+		{"name": "instance_id", "value": instance.InstanceID},
 		{"name": "webhook_token", "value": webhookToken},
 		{"name": "message", "value": "{ALERT.MESSAGE}"},
 	}
@@ -327,12 +327,12 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 	logger.Log.Info("Webhook Action 创建成功")
 
 	// 更新租户信息
-	tenant.WebhookToken = webhookToken
-	tenant.NotifyMethod = "webhook"
-	tenant.WebhookInstalled = true
-	tenant.WebhookURL = webhookURL
+	instance.WebhookToken = webhookToken
+	instance.NotifyMethod = "webhook"
+	instance.WebhookInstalled = true
+	instance.WebhookURL = webhookURL
 
-	err = DB.Model(&ZabbixTenant{}).Where("id = ?", tenant.ID).Updates(map[string]interface{}{
+	err = DB.Model(&ZabbixInstance{}).Where("id = ?", instance.ID).Updates(map[string]interface{}{
 		"webhook_token":     webhookToken,
 		"notify_method":     "webhook",
 		"webhook_installed": true,
@@ -347,13 +347,13 @@ func InstallWebhookToZabbix(tenantID string, zbxtableURL string) error {
 }
 
 // GetWebhookInfo 获取 Webhook 配置信息
-func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, error) {
-	tenant, err := GetZabbixTenantByTenantID(tenantID)
+func GetWebhookInfo(zid int, zbxtableURL string) (map[string]string, error) {
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
 		return nil, fmt.Errorf("获取租户失败: %w", err)
 	}
 
-	if !tenant.WebhookInstalled {
+	if !instance.WebhookInstalled {
 		return nil, errors.New("webhook 未安装")
 	}
 
@@ -361,24 +361,24 @@ func GetWebhookInfo(tenantID string, zbxtableURL string) (map[string]string, err
 
 	info := map[string]string{
 		"webhook_url":   webhookURL,
-		"tenant_id":     tenantID,
-		"webhook_token": tenant.WebhookToken,
+		"instance_id":   instance.InstanceID,
+		"webhook_token": instance.WebhookToken,
 		"method":        "POST",
 		"content_type":  "application/json",
-		"headers":       fmt.Sprintf("ZBX-TenantID: %s\nWebhookToken: %s", tenantID, tenant.WebhookToken),
+		"headers":       fmt.Sprintf("ZBX-InstanceID: %s\nWebhookToken: %s", instance.InstanceID, instance.WebhookToken),
 	}
 
 	return info, nil
 }
 
-// UninstallWebhookFromZabbixTenant 从 Zabbix 中卸载 Webhook 配置
-func UninstallWebhookFromZabbixTenant(id int64) error {
-	tenant, err := GetZabbixTenantByID(id)
+// UninstallWebhookFromZabbixInstance 从 Zabbix 中卸载 Webhook 配置
+func UninstallWebhookFromZabbixInstance(id int) error {
+	tenant, err := GetZabbixInstanceByZID(int(id))
 	if err != nil {
 		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
-	api := zabbix.NewAPI(tenant.WebURL + "/api_jsonrpc.php")
+	api := zabbix.NewAPI(tenant.URL + "/api_jsonrpc.php")
 	if tenant.Token != "" {
 		api.Auth = tenant.Token
 	} else {
@@ -493,7 +493,7 @@ func UninstallWebhookFromZabbixTenant(id int64) error {
 		logger.Log.Warn("未找到 Media Type ID，跳过删除")
 	}
 
-	_ = DB.Model(&ZabbixTenant{}).Where("id = ?", id).Updates(map[string]interface{}{
+	_ = DB.Model(&ZabbixInstance{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"webhook_installed": false,
 		"webhook_url":       "",
 	}).Error

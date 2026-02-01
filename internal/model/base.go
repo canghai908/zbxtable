@@ -227,22 +227,25 @@ func DatabaseInit() {
 	//检查并添加缺失的菜单项（用于版本升级）
 	CheckAndAddMenus()
 	//告警默认规则初始化 default rule
-	var cRule []Rule
-	err = DB.Where("m_type = ?", "2").Find(&cRule).Error
+	var rule []Rule
+	err = DB.Where("m_type = ?", "2").Find(&rule).Error
 	if err != nil {
 		logger.Log.Info(err)
 		return
 	}
-	if len(cRule) == 0 {
+	if len(rule) == 0 {
 		// 使用 "*" 作为全局默认规则，匹配所有租户
 		defaultRule := []Rule{
 			{
-				Name:     "全局默认规则",
-				TenantID: "*",
-				MType:    "2",
-				Channel:  "wechat_robot",
-				UserIds:  "1",
-				Status:   "0"},
+				Name:    "全局默认规则",
+				ZID:     "*",
+				MType:   "2",
+				Channel: "wechat_robot",
+				UserIds: "1",
+				Sweek:   "0,1,2,3,4,5,6",
+				Stime:   "00:00",
+				Etime:   "23.59",
+				Status:  "0"},
 		}
 		err := DB.Create(&defaultRule).Error
 		if err != nil {
@@ -317,7 +320,7 @@ func GetConfKey(v string) string {
 // 注意：查看图形需要用户名和密码，Token 方式无法用于 Web 登录
 func IsPasswordConfigured() bool {
 	// 1. 优先检查数据库中是否有激活的 Zabbix 实例
-	var activeInstance ZabbixTenant
+	var activeInstance ZabbixInstance
 	err := DB.Where("is_active = ?", true).First(&activeInstance).Error
 	if err == nil {
 		// 找到激活的实例，检查是否配置了用户名和密码（查看图形必须用密码，Token 无法用于 Web 登录）
@@ -327,7 +330,7 @@ func IsPasswordConfigured() bool {
 	}
 
 	// 2. 如果数据库中没有激活实例，检查是否有任何可用的实例配置了密码
-	var anyInstance ZabbixTenant
+	var anyInstance ZabbixInstance
 	err = DB.Where("enabled = ?", true).First(&anyInstance).Error
 	if err == nil {
 		// 找到可用的实例，检查是否配置了用户名和密码

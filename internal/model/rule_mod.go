@@ -6,8 +6,8 @@ import (
 
 type Rule struct {
 	ID         int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ZID        string    `gorm:"column:zid;size:100" json:"zid"`
 	Name       string    `gorm:"column:name;size:200" json:"name"`
-	TenantID   string    `gorm:"column:tenant_id;size:100" json:"tenant_id"`
 	Conditions string    `gorm:"column:conditions;type:text" json:"conditions"`
 	Sweek      string    `gorm:"column:s_week;size:200" json:"s_week"`
 	Stime      string    `gorm:"column:s_time;size:200" json:"s_time"`

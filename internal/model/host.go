@@ -40,9 +40,8 @@ func HostsListMultiInstance(HostType, page, limit, hosts, model, ip, available s
 			// 为每个主机添加实例信息
 			mu.Lock()
 			for i := range hosts {
-				hosts[i].InstanceID = instance.ID
+				hosts[i].InstanceID = instance.ZID
 				hosts[i].InstanceName = instance.Name
-				hosts[i].TenantID = instance.TenantID
 			}
 			allHosts = append(allHosts, hosts...)
 			mu.Unlock()
@@ -475,9 +474,8 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 			d.Error = v.Interfaces[0].Error
 		}
 		d.Status = v.Status
-		d.InstanceID = inst.ID
+		d.InstanceID = inst.ZID
 		d.InstanceName = inst.Name
-		d.TenantID = inst.TenantID
 		hosts = append(hosts, d)
 	}
 
@@ -540,9 +538,8 @@ func GetHostFromInstance(inst *APIInstance, hostid string) (Hosts, error) {
 	d.PingLoss = hb[0].Inventory.Poc1Email
 	d.PingSec = hb[0].Inventory.Poc1PhoneA
 	// 添加实例信息
-	d.InstanceID = inst.ID
+	d.InstanceID = inst.ZID
 	d.InstanceName = inst.Name
-	d.TenantID = inst.TenantID
 	return d, nil
 }
 
@@ -1219,7 +1216,7 @@ func FindInstanceByHostID(hostID string) (int, error) {
 
 		// 如果找到了主机，返回该实例ID
 		if len(hosts) > 0 {
-			return inst.ID, nil
+			return inst.ZID, nil
 		}
 	}
 

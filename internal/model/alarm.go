@@ -52,19 +52,18 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 	if pages == 0 {
 		pages = 1
 	}
-
 	query := DB.Model(&Alarm{}).Where("occurtime >= ? AND occurtime <= ?", begin, end)
 	// 多实例场景：显示所有实例的告警，不再过滤实例
 	// 注释掉原来的实例过滤逻辑，让用户可以看到所有实例的告警
-	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
 	// }
 
 	if hosts != "" {
 		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
 	if tenant_id != "" {
-		query = query.Where("tenant_id = ?", tenant_id)
+		query = query.Where("instance_id = ?", tenant_id)
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -98,26 +97,26 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 // get alarm tenant list
 func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	type TenantResult struct {
-		TenantID string `gorm:"column:tenant_id"`
+		InstanceID string `gorm:"column:instance_id"`
 	}
 	var results []TenantResult
 	query := DB.Model(&Alarm{})
 	// 多实例场景：显示所有实例的租户
 	// 注释掉原来的实例过滤逻辑
-	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
 	// }
 	err = query.Select("DISTINCT tenant_id").Find(&results).Error
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
 	type list struct {
-		ID       int    `json:"id"`
-		TenantID string `json:"tenant_id"`
+		ID         int    `json:"id"`
+		InstanceID string `json:"instance_id"`
 	}
 	var ss []list
 	for i, result := range results {
-		ss = append(ss, list{ID: i, TenantID: result.TenantID})
+		ss = append(ss, list{ID: i, InstanceID: result.InstanceID})
 	}
 	return int64(len(ss)), ss, nil
 }
@@ -135,7 +134,7 @@ func ExportAlarm(begin, end time.Time,
 		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
 	if tenant_id != "" {
-		query = query.Where("tenant_id = ?", tenant_id)
+		query = query.Where("instance_id = ?", tenant_id)
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -151,10 +150,10 @@ func ExportAlarm(begin, end time.Time,
 	if err != nil {
 		return []byte{}, err
 	}
-	
+
 	// 填充实例名称
 	fillAlarmInstanceNames(&alarms)
-	
+
 	cnt := int64(len(alarms))
 	pbye, err := CreateAlarmXlsx(alarms, cnt, intbegin, intend)
 	if err != nil {
@@ -184,12 +183,12 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 
 	// 多实例场景：显示所有实例的告警分析
 	// 注释掉原来的实例过滤逻辑
-	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ID)
+	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
+	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
 	// }
 
 	if tenant_id != "" {
-		query = query.Where("tenant_id = ?", tenant_id)
+		query = query.Where("instance_id = ?", tenant_id)
 	}
 
 	err = query.Group("level").Order("level_count DESC").Find(&levelCounts).Error
@@ -215,12 +214,12 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 
 	// 多实例场景：显示所有实例的主机统计
 	// 注释掉原来的实例过滤逻辑
-	// if inst, _ := GetActiveZabbixTenant(); inst != nil && inst.ID != 0 {
-	// 	hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ID)
+	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
+	// 	hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ZID)
 	// }
 
 	if tenant_id != "" {
-		hostQuery = hostQuery.Where("tenant_id = ?", tenant_id)
+		hostQuery = hostQuery.Where("instance_id = ?", tenant_id)
 	}
 
 	err = hostQuery.Group("hostname, zabbix_instance_id").Order("host_count DESC").Limit(10).Find(&hostCounts).Error
@@ -236,12 +235,12 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 			}
 		}
 		for id := range instanceIDs {
-			tenant, err := GetZabbixTenantByID(int64(id))
+			tenant, err := GetZabbixInstanceByZID(id)
 			if err == nil && tenant != nil {
 				instanceMap[id] = tenant.Name
 			}
 		}
-		
+
 		// 组合主机名和实例名
 		for _, hc := range hostCounts {
 			hostName := hc.Hostname
@@ -265,15 +264,15 @@ func fillAlarmInstanceNames(alarms *[]Alarm) {
 	// 收集所有唯一的实例ID
 	instanceIDs := make(map[int]bool)
 	for _, alarm := range *alarms {
-		if alarm.ZabbixInstanceID > 0 {
-			instanceIDs[alarm.ZabbixInstanceID] = true
+		if alarm.ZID > 0 {
+			instanceIDs[alarm.ZID] = true
 		}
 	}
 
 	// 批量查询实例信息
 	instanceMap := make(map[int]string)
 	for id := range instanceIDs {
-		tenant, err := GetZabbixTenantByID(int64(id))
+		tenant, err := GetZabbixInstanceByZID(id)
 		if err == nil && tenant != nil {
 			instanceMap[id] = tenant.Name
 		}
@@ -281,8 +280,8 @@ func fillAlarmInstanceNames(alarms *[]Alarm) {
 
 	// 填充实例名称
 	for i := range *alarms {
-		if (*alarms)[i].ZabbixInstanceID > 0 {
-			if name, ok := instanceMap[(*alarms)[i].ZabbixInstanceID]; ok {
+		if (*alarms)[i].ZID > 0 {
+			if name, ok := instanceMap[(*alarms)[i].ZID]; ok {
 				(*alarms)[i].InstanceName = name
 			}
 		}

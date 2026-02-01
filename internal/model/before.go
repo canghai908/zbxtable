@@ -7,7 +7,7 @@ import (
 	"zbxtable/pkg/utils"
 )
 
-func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error) {
+func MsAdd(zid int, instance_id, instance_name string, message []byte) (int64, error) {
 	//replace " \
 	p0 := strings.Replace(string(message), `\`, `\\`, -1)
 	//替换"
@@ -26,34 +26,28 @@ func MsAdd(tenantid string, zabbixInstanceID int, message []byte) (int64, error)
 		logger.Log.Error(err)
 		return 0, err
 	}
-	
-	// 获取实例名称
-	tenantName := ""
-	if tenant, err := GetZabbixTenantByTenantID(tenantid); err == nil && tenant != nil {
-		tenantName = tenant.Name
-	}
-	
+
 	var meal = Alarm{
-		ZabbixInstanceID: zabbixInstanceID,
-		TenantID:         tenantid,
-		TenantName:       tenantName,
-		HostID:           mes.HostsID,
-		Hostname:         mes.Hostname,
-		Host:             mes.HostHost,
-		HostsIP:          mes.HostsIP,
-		TriggerID:        mes.TriggerID,
-		ItemID:           mes.ItemID,
-		ItemName:         mes.ItemName,
-		ItemValue:        mes.ItemValue,
-		Hgroup:           mes.HostGroup,
-		OccurTime:        occurTime,
-		Level:            mes.Severity,
-		Message:          mes.TriggerName,
-		Hkey:             mes.TriggerKey,
-		Detail:           mes.ItemName + ":" + mes.ItemValue,
-		Status:           mes.TriggerValue,
-		EventID:          mes.EventID,
-		EventDuration:    mes.EventDuration,
+		ZID:           zid,
+		InstanceID:    instance_id,
+		InstanceName:  instance_name,
+		HostID:        mes.HostsID,
+		Hostname:      mes.Hostname,
+		Host:          mes.HostHost,
+		HostsIP:       mes.HostsIP,
+		TriggerID:     mes.TriggerID,
+		ItemID:        mes.ItemID,
+		ItemName:      mes.ItemName,
+		ItemValue:     mes.ItemValue,
+		Hgroup:        mes.HostGroup,
+		OccurTime:     occurTime,
+		Level:         mes.Severity,
+		Message:       mes.TriggerName,
+		Hkey:          mes.TriggerKey,
+		Detail:        mes.ItemName + ":" + mes.ItemValue,
+		Status:        mes.TriggerValue,
+		EventID:       mes.EventID,
+		EventDuration: mes.EventDuration,
 	}
 	id, err := AddAlarm(&meal)
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 
 // GetMetricMappings 获取指标映射列表
 func GetMetricMappings(c *gin.Context) {
-	instanceIDStr := c.Query("instance_id")
+	instanceIDStr := c.Query("zid")
 
 	var mappings []model.MetricMapping
 	var err error

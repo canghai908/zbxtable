@@ -22,15 +22,15 @@ func GetItemByKey(c *gin.Context) {
 // GetAllItemByHostID 根据hostid获取主机所有item
 func GetAllItemByHostID(c *gin.Context) {
 	HostID := c.Query("hostid")
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 	
 	var v interface{}
 	var count int64
 	var err error
 	
 	// 如果指定了实例ID，从指定实例获取监控项
-	if instanceID != "" {
-		v, count, err = model.GetAllItemByHostIDFromInstance(instanceID, HostID)
+	if zidStr != "" {
+		v, count, err = model.GetAllItemByHostIDFromInstance(zidStr, HostID)
 	} else {
 		// 否则使用全局API
 		v, count, err = model.GetAllItemByHostID(HostID)
@@ -46,15 +46,15 @@ func GetAllItemByHostID(c *gin.Context) {
 // GetAllTrafficItem 获取设备所有流量指标
 func GetAllTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	instanceID := c.Query("instance_id")
+	zidStr := c.Query("zid")
 	
 	var v interface{}
 	var count int64
 	var err error
 	
 	// 如果指定了实例ID，从指定实例获取流量监控项
-	if instanceID != "" {
-		v, count, err = model.GetAllTrafficItemByHostIDFromInstance(instanceID, HostID)
+	if zidStr != "" {
+		v, count, err = model.GetAllTrafficItemByHostIDFromInstance(zidStr, HostID)
 	} else {
 		// 否则使用全局API
 		v, count, err = model.GetAllTrafficItemByHostID(HostID)

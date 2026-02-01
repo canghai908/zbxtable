@@ -11,11 +11,11 @@ import (
 	"github.com/Knetic/govaluate"
 )
 
-// alert gen by rules
+// 根据规则生成告警
 func GenAlert(alarm *Alarm) bool {
 	var rules []Rule
 	query := DB.Model(&Rule{}).
-		Where("tenant_id LIKE ?", "%"+alarm.TenantID+"%").
+		Where("instance_id LIKE ?", "%"+alarm.InstanceID+"%").
 		Where("m_type = ?", "1").
 		Where("status = ?", "0")
 	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
@@ -43,8 +43,8 @@ func GenAlert(alarm *Alarm) bool {
 		//event
 		event := &Event{
 			ID:            alarm.ID,
-			TenantID:      alarm.TenantID,
-			TenantName:    alarm.TenantName,
+			InstanceID:    alarm.InstanceID,
+			InstanceName:  alarm.InstanceName,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,
@@ -83,9 +83,9 @@ func GenAlert(alarm *Alarm) bool {
 		//select default rule
 		// 优先查找匹配当前租户的默认规则
 		var rules []Rule
-		fmt.Println("CCC", alarm.TenantID)
+		fmt.Println("CCC", alarm.InstanceID)
 		query := DB.Model(&Rule{}).
-			Where("tenant_id LIKE ?", "%"+alarm.TenantID+"%").
+			Where("instance_id LIKE ?", "%"+alarm.InstanceID+"%").
 			Where("m_type = ?", "1").
 			Where("status = ?", "0").Debug()
 		err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
@@ -101,7 +101,7 @@ func GenAlert(alarm *Alarm) bool {
 			query = DB.Model(&Rule{}).
 				Where("m_type = ?", "2").
 				Where("status = ?", "0").
-				Where("(tenant_id = ? OR tenant_id = ? OR tenant_id IS NULL)", "", "*")
+				Where("(instance_id = ? OR instance_id = ? OR tenant_id IS NULL)", "", "*")
 			err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
 				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 				Find(&rules).Error
@@ -113,14 +113,14 @@ func GenAlert(alarm *Alarm) bool {
 
 		//default rule disable
 		if len(rules) == 0 {
-			logger.Log.Errorf("default rule is null for tenant: %s", alarm.TenantID)
+			logger.Log.Errorf("default rule is null for tenant: %s", alarm.InstanceID)
 			return false
 		}
 		//event
 		event := &Event{
 			ID:            alarm.ID,
-			TenantID:      alarm.TenantID,
-			TenantName:    alarm.TenantName,
+			InstanceID:    alarm.InstanceID,
+			InstanceName:  alarm.InstanceName,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,
@@ -252,7 +252,7 @@ func sendEvent(event *Event) {
 func IsMuted(event *Event) bool {
 	var rules []Rule
 	query := DB.Model(&Rule{}).
-		Where("tenant_id LIKE ?", "%"+event.TenantID+"%").
+		Where("instance_id LIKE ?", "%"+event.InstanceID+"%").
 		Where("m_type = ?", "3").
 		Where("status = ?", "0")
 	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",

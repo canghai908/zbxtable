@@ -13,7 +13,7 @@ import (
 // GetPNGGraphFromInstance 从指定实例获取图形（使用该实例的 JAR）
 func GetPNGGraphFromInstance(inst *APIInstance, GraphID, start, end string) (png string, err error) {
 	// 获取实例配置
-	tenant, err := GetZabbixTenantByID(int64(inst.ID))
+	tenant, err := GetZabbixInstanceByZID(inst.ZID)
 	if err != nil {
 		return "", err
 	}

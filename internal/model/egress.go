@@ -26,7 +26,7 @@ type Egress struct {
 type EgressConfig struct {
 	ID         int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Name       string    `gorm:"column:name;size:255;not null" json:"name"`                    // 出口名称
-	TenantID   string    `gorm:"column:tenant_id;size:100;not null" json:"tenant_id"`          // 实例ID
+	InstanceID   string    `gorm:"column:instance_id;size:100;not null" json:"instance_id"`          // 实例ID
 	HostID     string    `gorm:"column:host_id;size:100;not null" json:"host_id"`              // 主机ID
 	InItemID   string    `gorm:"column:in_item_id;size:100;not null" json:"in_item_id"`        // 入流量指标ID
 	OutItemID  string    `gorm:"column:out_item_id;size:100;not null" json:"out_item_id"`      // 出流量指标ID
@@ -69,7 +69,7 @@ func AddEgressConfig(config *EgressConfig) error {
 func UpdateEgressConfig(config *EgressConfig) error {
 	return DB.Model(&EgressConfig{}).Where("id = ?", config.ID).Updates(map[string]interface{}{
 		"name":        config.Name,
-		"tenant_id":   config.TenantID,
+		"instance_id": config.InstanceID,
 		"host_id":     config.HostID,
 		"in_item_id":  config.InItemID,
 		"out_item_id": config.OutItemID,
@@ -131,9 +131,9 @@ func CollectEgressData() error {
 
 	for _, config := range configs {
 		// 获取实例
-		inst, err := GetZabbixInstanceAPI(config.TenantID)
+		inst, err := GetZabbixInstanceAPI(config.InstanceID)
 		if err != nil {
-			logger.Log.Errorf("获取实例失败 (tenant_id=%s): %v", config.TenantID, err)
+			logger.Log.Errorf("获取实例失败 (instance_id=%s): %v", config.InstanceID, err)
 			continue
 		}
 
@@ -154,7 +154,7 @@ func CollectEgressData() error {
 		egressData := map[string]interface{}{
 			"id":          config.ID,
 			"name":        config.Name,
-			"tenant_id":   config.TenantID,
+			"instance_id": config.InstanceID,
 			"in_value":    inHistory.Value,
 			"out_value":   outHistory.Value,
 			"in_item_id":  config.InItemID,
