@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 )
 
@@ -47,6 +48,12 @@ func UpdateConfig(m *Config) (err error) {
 	if err != nil {
 		return err
 	}
+	
+	// 禁止修改加密密钥
+	if v.Key == "encryption_key" {
+		return errors.New("加密密钥不允许修改，如需更换请联系系统管理员")
+	}
+	
 	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("value", m.Value).Error
 	if err != nil {
 		return err

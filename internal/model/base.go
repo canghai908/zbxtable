@@ -197,6 +197,25 @@ func DatabaseInit() {
 		}
 		logger.Log.Info("Init default rule successfully!")
 	}
+	// 初始化加密密钥（如果不存在）
+	var encryptionKeyConfig Config
+	err = DB.Where("`key` = ?", "encryption_key").First(&encryptionKeyConfig).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 生成随机加密密钥
+		randomKey := utils.GenerateRandomKey()
+		encryptionKeyConfig = Config{
+			Name:    "加密密钥",
+			Key:     "encryption_key",
+			Value:   randomKey,
+			Comment: "用于加密存储敏感信息（如Zabbix密码和Token）的密钥，系统自动生成，不可修改",
+		}
+		if insertErr := DB.Create(&encryptionKeyConfig).Error; insertErr != nil {
+			logger.Log.Error("Init encryption_key error:", insertErr)
+		} else {
+			logger.Log.Info("Init encryption_key successfully! Key length:", len(randomKey))
+		}
+	}
+
 	defaultConfigs := []Config{
 		// Dashboard 相关
 		{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
@@ -325,4 +344,24 @@ func IsPasswordConfigured() bool {
 	pass := GetConfKey("zabbix_pass")
 	user := GetConfKey("zabbix_user")
 	return pass != "" && user != ""
+}
+
+// GetEncryptionKey 获取加密密钥
+// 优先从数据库读取，如果数据库中没有则从环境变量读取，最后使用默认密钥
+func GetEncryptionKey() string {
+	// 1. 优先从数据库读取
+	key := GetConfigValueByKey("encryption_key", "")
+	if key != "" {
+		return key
+	}
+
+	// 2. 从环境变量或配置文件读取
+	key = GetConfKey("encryption_key")
+	if key != "" {
+		return key
+	}
+
+	// 3. 使用默认密钥（不应该到这里，因为 DatabaseInit 会生成）
+	logger.Log.Warn("使用默认加密密钥，建议在数据库中配置 encryption_key")
+	return "zbxtable-default-encryption-key-2024"
 }

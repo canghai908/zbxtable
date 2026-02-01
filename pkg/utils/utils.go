@@ -2,9 +2,14 @@ package utils
 
 import (
 	"archive/zip"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
+	mathrand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -368,4 +373,107 @@ func AlertType(v string) string {
 		return "故障"
 	}
 	return "恢复"
+}
+
+// EncryptString 加密字符串（使用AES-256-GCM）
+func EncryptString(plaintext, key string) (string, error) {
+	if plaintext == "" {
+		return "", nil
+	}
+
+	// 使用固定的密钥派生
+	keyBytes := []byte(key)
+	if len(keyBytes) < 32 {
+		// 如果密钥不足32字节，使用MD5扩展
+		hash := md5.Sum(keyBytes)
+		keyBytes = append(keyBytes, hash[:]...)
+		if len(keyBytes) < 32 {
+			keyBytes = append(keyBytes, hash[:]...)
+		}
+	}
+	keyBytes = keyBytes[:32] // 取前32字节作为AES-256密钥
+
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// DecryptString 解密字符串（使用AES-256-GCM）
+func DecryptString(ciphertext, key string) (string, error) {
+	if ciphertext == "" {
+		return "", nil
+	}
+
+	// 使用固定的密钥派生
+	keyBytes := []byte(key)
+	if len(keyBytes) < 32 {
+		hash := md5.Sum(keyBytes)
+		keyBytes = append(keyBytes, hash[:]...)
+		if len(keyBytes) < 32 {
+			keyBytes = append(keyBytes, hash[:]...)
+		}
+	}
+	keyBytes = keyBytes[:32]
+
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, cipherData := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, cipherData, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
+}
+
+// GenerateRandomKey 生成随机加密密钥（32字节，适用于AES-256）
+func GenerateRandomKey() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?"
+	b := make([]byte, 64) // 生成64字符的密钥
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		// 如果随机数生成失败，使用时间戳作为种子
+		r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+		for i := range b {
+			b[i] = charset[r.Intn(len(charset))]
+		}
+		return string(b)
+	}
+
+	// 将随机字节映射到字符集
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
 }

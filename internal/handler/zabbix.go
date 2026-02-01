@@ -7,6 +7,7 @@ import (
 	"strconv"
 	model "zbxtable/internal/model"
 	"zbxtable/pkg/response"
+	"zbxtable/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -14,20 +15,21 @@ import (
 
 // ZabbixInstanceafeResponse 安全的租户响应结构，隐藏敏感信息
 type ZabbixInstanceafeResponse struct {
-	ID               int    `json:"id"`
-	InstanceID       string `json:"instance_id"`
-	Name             string `json:"name"`
-	URL              string `json:"url"`
-	User             string `json:"user"`
-	Enabled          bool   `json:"enabled"`
-	Version          string `json:"version"`
-	LastTestOk       bool   `json:"last_test_ok"`
-	LastTestMessage  string `json:"last_test_message"`
-	NotifyMethod     string `json:"notify_method"`
-	MSAgentInstalled bool   `json:"ms_agent_installed"`
-	MSAgentVersion   string `json:"ms_agent_version"`
-	WebhookInstalled bool   `json:"webhook_installed"`
-	WebhookURL       string `json:"webhook_url"`
+	ID               int      `json:"id"`
+	InstanceID       string   `json:"instance_id"`
+	Name             string   `json:"name"`
+	URL              string   `json:"url"`
+	User             string   `json:"user"`
+	Enabled          bool     `json:"enabled"`
+	Version          string   `json:"version"`
+	LastTestOk       bool     `json:"last_test_ok"`
+	LastTestMessage  string   `json:"last_test_message"`
+	NotifyMethod     string   `json:"notify_method"`
+	MSAgentInstalled bool     `json:"ms_agent_installed"`
+	MSAgentVersion   string   `json:"ms_agent_version"`
+	WebhookInstalled bool     `json:"webhook_installed"`
+	WebhookURL       string   `json:"webhook_url"`
+	AuthMethods      []string `json:"auth_methods"` // 认证方式：password, token
 	// 不包含 Pass, Token, WebhookToken 字段
 }
 
@@ -36,12 +38,22 @@ func toTenantSafeResponse(instance *model.ZabbixInstance) ZabbixInstanceafeRespo
 	if instance == nil {
 		return ZabbixInstanceafeResponse{}
 	}
+	
+	// 判断认证方式
+	authMethods := []string{}
+	if instance.User != "" && instance.Pass != "" {
+		authMethods = append(authMethods, "password")
+	}
+	if instance.Token != "" {
+		authMethods = append(authMethods, "token")
+	}
+	
 	return ZabbixInstanceafeResponse{
-		ID:         instance.ID,
-		InstanceID: instance.InstanceID,
-		Name:       instance.Name,
-		URL:        instance.URL,
-		// User:             instance.User,
+		ID:               instance.ID,
+		InstanceID:       instance.InstanceID,
+		Name:             instance.Name,
+		URL:              instance.URL,
+		User:             instance.User,
 		Enabled:          instance.Enabled,
 		Version:          instance.Version,
 		LastTestOk:       instance.LastTestOk,
@@ -51,6 +63,7 @@ func toTenantSafeResponse(instance *model.ZabbixInstance) ZabbixInstanceafeRespo
 		MSAgentVersion:   instance.MSAgentVersion,
 		WebhookInstalled: instance.WebhookInstalled,
 		WebhookURL:       instance.WebhookURL,
+		AuthMethods:      authMethods,
 	}
 }
 
@@ -71,7 +84,7 @@ func ListZabbixInstanceGin(c *gin.Context) {
 	response.Success(c, safeList)
 }
 
-// GetZabbixInstanceGin 获取单个租户
+// GetZabbixInstanceGin 获取单个租户（用于编辑）
 func GetZabbixInstanceGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.ParseInt(idStr, 10, 64)
@@ -82,7 +95,43 @@ func GetZabbixInstanceGin(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, toTenantSafeResponse(tenant))
+	// 解密密码和Token用于编辑表单回显
+	encryptionKey := model.GetEncryptionKey()
+	decryptedPass := ""
+	decryptedToken := ""
+	
+	if tenant.Pass != "" {
+		pass, err := utils.DecryptString(tenant.Pass, encryptionKey)
+		if err == nil {
+			decryptedPass = pass
+		}
+	}
+	if tenant.Token != "" {
+		token, err := utils.DecryptString(tenant.Token, encryptionKey)
+		if err == nil {
+			decryptedToken = token
+		}
+	}
+
+	// 返回包含解密后密码和Token的响应（仅用于编辑）
+	response.Success(c, gin.H{
+		"id":                 tenant.ID,
+		"instance_id":        tenant.InstanceID,
+		"name":               tenant.Name,
+		"url":                tenant.URL,
+		"user":               tenant.User,
+		"pass":               decryptedPass,
+		"token":              decryptedToken,
+		"enabled":            tenant.Enabled,
+		"version":            tenant.Version,
+		"last_test_ok":       tenant.LastTestOk,
+		"last_test_message":  tenant.LastTestMessage,
+		"notify_method":      tenant.NotifyMethod,
+		"ms_agent_installed": tenant.MSAgentInstalled,
+		"ms_agent_version":   tenant.MSAgentVersion,
+		"webhook_installed":  tenant.WebhookInstalled,
+		"webhook_url":        tenant.WebhookURL,
+	})
 }
 
 // CreateZabbixInstanceGin 创建租户

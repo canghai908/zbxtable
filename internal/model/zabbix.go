@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
+	"zbxtable/pkg/utils"
 
 	zabbix "github.com/canghai908/zabbix-go"
 )
@@ -100,6 +101,23 @@ func CreateZabbixInstance(m *ZabbixInstance) error {
 		return errors.New("URL is required")
 	}
 
+	// 加密密码和Token
+	encryptionKey := GetEncryptionKey()
+	if m.Pass != "" {
+		encryptedPass, err := utils.EncryptString(m.Pass, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("加密密码失败: %w", err)
+		}
+		m.Pass = encryptedPass
+	}
+	if m.Token != "" {
+		encryptedToken, err := utils.EncryptString(m.Token, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("加密Token失败: %w", err)
+		}
+		m.Token = encryptedToken
+	}
+
 	m.UpdatedAt = time.Now()
 	return DB.Create(m).Error
 }
@@ -111,14 +129,27 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 		return nil, err
 	}
 
+	// 解密现有的密码和Token用于比较
+	encryptionKey := GetEncryptionKey()
+	currentPass := instance.Pass
+	currentToken := instance.Token
+	if currentPass != "" {
+		decryptedPass, _ := utils.DecryptString(currentPass, encryptionKey)
+		currentPass = decryptedPass
+	}
+	if currentToken != "" {
+		decryptedToken, _ := utils.DecryptString(currentToken, encryptionKey)
+		currentToken = decryptedToken
+	}
+
 	newWeb := strings.TrimRight(strings.TrimSpace(patch.URL), "/")
 	changedConn := false
 	if newWeb != "" && newWeb != strings.TrimRight(strings.TrimSpace(instance.URL), "/") {
 		changedConn = true
 	}
 	if strings.TrimSpace(patch.User) != strings.TrimSpace(instance.User) ||
-		strings.TrimSpace(patch.Pass) != strings.TrimSpace(instance.Pass) ||
-		strings.TrimSpace(patch.Token) != strings.TrimSpace(instance.Token) {
+		strings.TrimSpace(patch.Pass) != currentPass ||
+		strings.TrimSpace(patch.Token) != currentToken {
 		changedConn = true
 	}
 
@@ -133,8 +164,28 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 		updates["url"] = newWeb
 	}
 	updates["user"] = patch.User
-	updates["pass"] = patch.Pass
-	updates["token"] = patch.Token
+	
+	// 加密密码和Token
+	if patch.Pass != "" {
+		encryptedPass, err := utils.EncryptString(patch.Pass, encryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("加密密码失败: %w", err)
+		}
+		updates["pass"] = encryptedPass
+	} else {
+		updates["pass"] = ""
+	}
+	
+	if patch.Token != "" {
+		encryptedToken, err := utils.EncryptString(patch.Token, encryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("加密Token失败: %w", err)
+		}
+		updates["token"] = encryptedToken
+	} else {
+		updates["token"] = ""
+	}
+	
 	updates["enabled"] = patch.Enabled
 	updates["notify_method"] = patch.NotifyMethod
 	updates["updated_at"] = time.Now()
@@ -180,8 +231,30 @@ func TestAndUpdateZabbixInstance(zid int) (*ZabbixInstance, string, error) {
 	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, "", err
 	}
+	
+	// 解密密码和Token
+	encryptionKey := GetEncryptionKey()
+	decryptedPass := instance.Pass
+	decryptedToken := instance.Token
+	if decryptedPass != "" {
+		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密密码失败:", err)
+		} else {
+			decryptedPass = pass
+		}
+	}
+	if decryptedToken != "" {
+		token, err := utils.DecryptString(decryptedToken, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密Token失败:", err)
+		} else {
+			decryptedToken = token
+		}
+	}
+	
 	now := time.Now()
-	ver, err := TestZabbixInstanceConfig(instance.URL, instance.User, instance.Pass, instance.Token)
+	ver, err := TestZabbixInstanceConfig(instance.URL, instance.User, decryptedPass, decryptedToken)
 	if err != nil {
 		_ = DB.Model(&ZabbixInstance{}).Where("id = ?", zid).Updates(map[string]interface{}{
 			"last_test_ok":      false,
@@ -213,11 +286,32 @@ func UninstallMSAgentFromZabbixInstance(zid int) error {
 		return fmt.Errorf("获取实例失败: %w", err)
 	}
 
+	// 解密密码和Token
+	encryptionKey := GetEncryptionKey()
+	decryptedPass := instance.Pass
+	decryptedToken := instance.Token
+	if decryptedPass != "" {
+		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密密码失败:", err)
+		} else {
+			decryptedPass = pass
+		}
+	}
+	if decryptedToken != "" {
+		token, err := utils.DecryptString(decryptedToken, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密Token失败:", err)
+		} else {
+			decryptedToken = token
+		}
+	}
+
 	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
-	if instance.Token != "" {
-		api.Auth = instance.Token
+	if decryptedToken != "" {
+		api.Auth = decryptedToken
 	} else {
-		_, err := api.Login(instance.User, instance.Pass)
+		_, err := api.Login(instance.User, decryptedPass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}

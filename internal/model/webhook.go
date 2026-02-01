@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"zbxtable/pkg/logger"
+	"zbxtable/pkg/utils"
 
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/google/uuid"
@@ -21,12 +22,33 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
 		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
+	// 解密密码和Token
+	encryptionKey := GetEncryptionKey()
+	decryptedPass := instance.Pass
+	decryptedToken := instance.Token
+	if decryptedPass != "" {
+		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密密码失败:", err)
+		} else {
+			decryptedPass = pass
+		}
+	}
+	if decryptedToken != "" {
+		token, err := utils.DecryptString(decryptedToken, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密Token失败:", err)
+		} else {
+			decryptedToken = token
+		}
+	}
+
 	// 初始化 Zabbix API
 	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
-	if instance.Token != "" {
-		api.Auth = instance.Token
+	if decryptedToken != "" {
+		api.Auth = decryptedToken
 	} else {
-		_, err := api.Login(instance.User, instance.Pass)
+		_, err := api.Login(instance.User, decryptedPass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
@@ -378,11 +400,32 @@ func UninstallWebhookFromZabbixInstance(id int) error {
 		return fmt.Errorf("获取租户失败: %w", err)
 	}
 
+	// 解密密码和Token
+	encryptionKey := GetEncryptionKey()
+	decryptedPass := tenant.Pass
+	decryptedToken := tenant.Token
+	if decryptedPass != "" {
+		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密密码失败:", err)
+		} else {
+			decryptedPass = pass
+		}
+	}
+	if decryptedToken != "" {
+		token, err := utils.DecryptString(decryptedToken, encryptionKey)
+		if err != nil {
+			logger.Log.Error("解密Token失败:", err)
+		} else {
+			decryptedToken = token
+		}
+	}
+
 	api := zabbix.NewAPI(tenant.URL + "/api_jsonrpc.php")
-	if tenant.Token != "" {
-		api.Auth = tenant.Token
+	if decryptedToken != "" {
+		api.Auth = decryptedToken
 	} else {
-		_, err := api.Login(tenant.User, tenant.Pass)
+		_, err := api.Login(tenant.User, decryptedPass)
 		if err != nil {
 			return fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
