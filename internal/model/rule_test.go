@@ -38,7 +38,7 @@ func TestCreateRule(t *testing.T) {
 
 	rule := &Rule{
 		Name:       "Test Rule",
-		TenantID:   "tenant1",
+		ZIDs:       "1",
 		MType:      "1",
 		Conditions: `[{"r_type":"host","r_func":"==","r_value":"test"}]`,
 		Sweek:      "1,2,3,4,5",
@@ -55,7 +55,7 @@ func TestCreateRule(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotZero(t, rule.ID)
 	assert.Equal(t, "Test Rule", rule.Name)
-	assert.Equal(t, "tenant1", rule.InstanceID)
+	assert.Equal(t, "zids", rule.ZIDs)
 }
 
 func TestRule_DefaultRule(t *testing.T) {
