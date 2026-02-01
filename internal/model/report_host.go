@@ -27,9 +27,9 @@ import (
 
 // HostReportConfig 主机报表配置结构
 type HostReportConfig struct {
-	HostID     string   `json:"host_id"`
-	ItemIDs    []string `json:"item_ids"`
-	InstanceID string   `json:"instance_id"`
+	HostID  string   `json:"host_id"`
+	ItemIDs []string `json:"item_ids"`
+	ZID     string   `json:"zid"`
 }
 
 // ItemData 指标数据结构，用于生成多sheet Excel
@@ -132,13 +132,13 @@ func TaskHostReport(m Report) error {
 	// 遍历每个主机配置
 	for _, hostConfig := range hostConfigs {
 		// 检查实例ID是否存在
-		if hostConfig.InstanceID == "" {
+		if hostConfig.ZID == "" {
 			logger.Log.Error("主机配置缺少实例ID")
 			continue
 		}
 
 		// 获取该实例的 API 连接（使用 tenant_id 字符串）
-		inst, err := GetZabbixInstanceAPI(hostConfig.InstanceID)
+		inst, err := GetZabbixInstanceAPI(hostConfig.ZID)
 		if err != nil {
 			logger.Log.Error("获取实例API失败:", err)
 			continue
@@ -355,8 +355,8 @@ func CreateHostChart(data ChartData) *charts.Line {
 		charts.WithInitializationOpts(opts.Initialization{
 			Width:           "1200px",
 			Height:          "600px",
-			Theme:           "white",           // 使用白色主题
-			BackgroundColor: "#ffffff",        // 白色背景
+			Theme:           "white",   // 使用白色主题
+			BackgroundColor: "#ffffff", // 白色背景
 		}),
 		charts.WithLegendOpts(opts.Legend{
 			Show:   true,
