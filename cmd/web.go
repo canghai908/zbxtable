@@ -162,7 +162,7 @@ func initLoggerSafe() error {
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
 		// 配置文件不存在，使用默认日志配置：./log/yyyy-MM-dd.log
-		err = logger.InitLogger("", 1, 7, 10000, 100, true)
+		err = logger.InitLoggerWithRunMode("dev", "", 7, 10000, 100, true)
 		if err != nil {
 			// 如果日志初始化失败，使用标准输出
 			logger.Log = logrus.New()
@@ -182,10 +182,13 @@ func initLoggerSafe() error {
 		// 如果配置文件中未指定日志路径，使用默认路径：./log/yyyy-MM-dd.log
 		logPath = ""
 	}
-	level, _ := cfg.Section("").Key("log_level").Int()
-	if level == 0 {
-		level = 1
+	
+	// 获取 runmode 配置
+	runmode := cfg.Section("").Key("runmode").String()
+	if runmode == "" {
+		runmode = "prod" // 默认为生产模式
 	}
+	
 	maxday, _ := cfg.Section("").Key("maxdays").Int()
 	if maxday == 0 {
 		maxday = 7
@@ -203,7 +206,16 @@ func initLoggerSafe() error {
 		daily = true // 默认启用按天分割
 	}
 
-	err = logger.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
+	// 检查是否手动指定了 log_level，如果指定了则使用手动配置，否则根据 runmode 自动设置
+	level, err := cfg.Section("").Key("log_level").Int()
+	if err != nil || level == 0 {
+		// 未手动指定 log_level，根据 runmode 自动设置
+		err = logger.InitLoggerWithRunMode(runmode, logPath, maxday, maxlines, maxsize, daily)
+	} else {
+		// 手动指定了 log_level，使用手动配置
+		err = logger.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
+	}
+	
 	if err != nil {
 		// 如果日志初始化失败，使用标准输出
 		logger.Log = logrus.New()
@@ -215,6 +227,10 @@ func initLoggerSafe() error {
 		})
 		return nil
 	}
+	
+	// 记录当前运行模式和日志级别
+	logger.Log.Infof("System running in %s mode", runmode)
+	
 	return nil
 }
 

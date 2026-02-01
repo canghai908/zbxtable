@@ -41,23 +41,7 @@ func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, da
 	})
 
 	// 设置日志级别
-	level := logrus.InfoLevel
-	switch logLevel {
-	case 0:
-		level = logrus.PanicLevel
-	case 1:
-		level = logrus.InfoLevel
-	case 2:
-		level = logrus.ErrorLevel
-	case 3:
-		level = logrus.WarnLevel
-	case 4:
-		level = logrus.InfoLevel
-	case 5:
-		level = logrus.DebugLevel
-	case 6:
-		level = logrus.TraceLevel
-	}
+	level := parseLogLevel(logLevel)
 	Log.SetLevel(level)
 
 	// 如果未配置日志路径，使用默认路径：./log/yyyy-MM-dd.log
@@ -90,6 +74,58 @@ func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, da
 	Log.SetOutput(writer)
 
 	return nil
+}
+
+// InitLoggerWithRunMode 根据 runmode 初始化日志系统
+// runmode: 运行模式 (dev/test/prod)
+// logPath: 日志文件路径，如果为空则默认为 ./log/yyyy-MM-dd.log
+// maxDays: 日志保留天数
+// maxLines: 最大行数（暂未使用）
+// maxSize: 单个日志文件最大大小（MB），0表示不限制
+// daily: 是否按天分割日志文件
+func InitLoggerWithRunMode(runmode, logPath string, maxDays, maxLines, maxSize int, daily bool) error {
+	// 根据 runmode 自动设置日志级别
+	logLevel := getLogLevelByRunMode(runmode)
+	return InitLogger(logPath, logLevel, maxDays, maxLines, maxSize, daily)
+}
+
+// getLogLevelByRunMode 根据运行模式返回对应的日志级别
+// dev: Debug级别 (5) - 开发环境，记录详细的调试信息
+// test: Info级别 (4) - 测试环境，记录一般信息
+// prod: Warn级别 (3) - 生产环境，只记录警告和错误
+func getLogLevelByRunMode(runmode string) int {
+	switch runmode {
+	case "dev":
+		return 5 // Debug级别
+	case "test":
+		return 4 // Info级别
+	case "prod":
+		return 3 // Warn级别
+	default:
+		return 4 // 默认Info级别
+	}
+}
+
+// parseLogLevel 解析日志级别数字为 logrus.Level
+func parseLogLevel(logLevel int) logrus.Level {
+	switch logLevel {
+	case 0:
+		return logrus.PanicLevel
+	case 1:
+		return logrus.FatalLevel
+	case 2:
+		return logrus.ErrorLevel
+	case 3:
+		return logrus.WarnLevel
+	case 4:
+		return logrus.InfoLevel
+	case 5:
+		return logrus.DebugLevel
+	case 6:
+		return logrus.TraceLevel
+	default:
+		return logrus.InfoLevel
+	}
 }
 
 // 兼容 beego/logs 的常用方法
