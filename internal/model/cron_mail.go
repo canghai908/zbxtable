@@ -81,9 +81,9 @@ func SendEmailAlert(event *Event, user Manager) error {
 	var err error
 	var tplname string
 	if event.Status == "0" {
-		tplname = "./template/mail_recovery.tpl"
+		tplname = TplPath + "mail_recovery.tpl"
 	} else {
-		tplname = "./template/mail_problem.tpl"
+		tplname = TplPath + "mail_problem.tpl"
 	}
 	tmpl, err := template.ParseFiles("./" + tplname)
 	if err != nil {

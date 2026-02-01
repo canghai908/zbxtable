@@ -65,8 +65,8 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
     var params = JSON.parse(value);
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
-    req.addHeader('ZBX-InstanceID: ' + params.instance_id);
-    req.addHeader('WebhookToken: ' + params.webhook_token);
+    req.addHeader('X-Instance: ' + params.instance_id);
+    req.addHeader('X-Token: ' + params.webhook_token);
     
     // 直接使用 {ALERT.MESSAGE} 作为消息体
     var response = req.post(params.webhook_url, params.message);
@@ -365,7 +365,7 @@ func GetWebhookInfo(zid int, zbxtableURL string) (map[string]string, error) {
 		"webhook_token": instance.WebhookToken,
 		"method":        "POST",
 		"content_type":  "application/json",
-		"headers":       fmt.Sprintf("ZBX-InstanceID: %s\nWebhookToken: %s", instance.InstanceID, instance.WebhookToken),
+		"headers":       fmt.Sprintf("X-Instance: %s\nX-Token: %s", instance.InstanceID, instance.WebhookToken),
 	}
 
 	return info, nil

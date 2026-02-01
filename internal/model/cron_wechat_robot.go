@@ -21,6 +21,7 @@ func ConsumeWechatRobot() {
 			time.Sleep(time.Millisecond * 200)
 			continue
 		}
+		fmt.Println(L)
 		SendWechatRobotList(L)
 	}
 }
@@ -49,9 +50,9 @@ func SendWechatRobot(event *Event) {
 	}
 	var tplname string
 	if event.Status == "0" {
-		tplname = "./template/wechat_recovery.tpl"
+		tplname = TplPath + "wechat_recovery.tpl"
 	} else {
-		tplname = "./template/wechat_problem.tpl"
+		tplname = TplPath + "wechat_problem.tpl"
 	}
 	event.Level = utils.AlertSeverityTo(event.Level)
 	event.Status = utils.AlertType(event.Status)

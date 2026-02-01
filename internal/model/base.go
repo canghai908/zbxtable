@@ -54,7 +54,7 @@ const (
 	WebhookUser   = "zbxtable-webhook"
 	//down
 	DownloadPath = "./download/"
-	TplPath      = "./assets/templates"
+	TplPath      = "./assets/templates/"
 )
 
 // TableName 表名前缀

@@ -191,12 +191,13 @@ func ReceiveGin(c *gin.Context) {
 	}
 	//老系统使用的是ZBX-TenantID
 	TenantID := c.GetHeader("ZBX-TenantID")
-	//新系统使用的是ZBX-InstanceID
-	token := c.GetHeader("Token")
+
+	token := c.GetHeader("X-Token")
 	var InstanceID string
 	//如果为空可能是新webhook
 	if TenantID == "" {
-		InstanceID = c.GetHeader("ZBX-InstanceID")
+		//新系统使用的是X-Instance
+		InstanceID = c.GetHeader("X-Instance")
 	}
 	if InstanceID == "" {
 		response.BadRequest(c, "instanceID not found")
@@ -218,7 +219,7 @@ func ReceiveGin(c *gin.Context) {
 		return
 	}
 	//token是否正确
-	if instance.Token != "" && token != instance.Token {
+	if token == "" || (instance.Token != "" && token != instance.Token) {
 		res.ID = 0
 		res.Msg = "Token Error!"
 		response.Success(c, res)
