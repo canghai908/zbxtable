@@ -44,7 +44,7 @@ func GetAllAlarm(c *gin.Context) {
 		response.DatabaseError(c, "获取告警列表失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithPage(c, al, cnt)
 }
 
@@ -57,7 +57,7 @@ func GetAlarmByID(c *gin.Context) {
 		response.NotFound(c, "告警不存在")
 		return
 	}
-	
+
 	response.Success(c, v)
 }
 
@@ -68,7 +68,7 @@ func GetAlarmTenant(c *gin.Context) {
 		response.DatabaseError(c, "获取租户列表失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithPage(c, al, cnt)
 }
 
@@ -86,7 +86,7 @@ func AnalysisAlarm(c *gin.Context) {
 		response.BadRequest(c, "请求参数解析失败: "+err.Error())
 		return
 	}
-	
+
 	var Start, End time.Time
 	if v.Begin == "" || v.End == "" {
 		End := time.Now()
@@ -96,19 +96,19 @@ func AnalysisAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	
+
 	// 支持 instance_id 参数
-	instanceID := v.InstanceID
-	if instanceID == "" {
-		instanceID = v.InstanceID // 兼容旧的 tenant_id 字段
+	zid := v.ZID
+	if zid == "" {
+		zid = v.ZID // 兼容旧的 tenant_id 字段
 	}
-	
-	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, instanceID)
+
+	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, zid)
 	if err != nil {
 		response.DatabaseError(c, "告警分析失败: "+err.Error())
 		return
 	}
-	
+
 	response.Success(c, map[string]interface{}{
 		"level":       arraytitle,
 		"level_count": piee,
@@ -131,7 +131,7 @@ func ExportAlarm(c *gin.Context) {
 		response.BadRequest(c, "请求参数解析失败: "+err.Error())
 		return
 	}
-	
+
 	var Start, End time.Time
 	if v.Begin == "" || v.End == "" {
 		End := time.Now()
@@ -141,19 +141,19 @@ func ExportAlarm(c *gin.Context) {
 	loc, _ := time.LoadLocation("Local")
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-	
+
 	// 支持 instance_id 参数
-	instanceID := v.InstanceID
-	if instanceID == "" {
-		instanceID = v.InstanceID // 兼容旧的 tenant_id 字段
+	zid := v.ZID
+	if zid == "" {
+		zid = v.ZID // 兼容旧的 tenant_id 字段
 	}
-	
-	cnt, err := model.ExportAlarm(Start, End, v.Hosts, instanceID, v.Status, v.Level, v.HostIP)
+
+	cnt, err := model.ExportAlarm(Start, End, v.Hosts, zid, v.Status, v.Level, v.HostIP)
 	if err != nil {
 		response.InternalError(c, "导出告警失败: "+err.Error())
 		return
 	}
-	
+
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", "attachment; filename=alarm_list.xlsx")
 	c.Header("Content-Transfer-Encoding", "binary")

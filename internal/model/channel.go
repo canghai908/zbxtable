@@ -13,15 +13,21 @@ import (
 
 // 根据规则生成告警
 func GenAlert(alarm *Alarm) bool {
-	// 先从实例表查询 InstanceID 和 InstanceName
+	// 先从实例表查询 InstanceID
+	var instanceID string
+	if alarm.ZID > 0 {
+		instance, err := GetZabbixInstanceByZID(alarm.ZID)
+		if err == nil && instance != nil {
+			instanceID = instance.InstanceID
+		}
+	}
 
 	var rules []Rule
-	zid := strconv.Itoa(alarm.ZID)
 	query := DB.Model(&Rule{}).
-		Where("z_ids LIKE ?", "%"+zid+"%").
+		Where("z_ids LIKE ?", "%"+instanceID+"%").
 		Where("m_type = ?", "1").
 		Where("status = ?", "0")
-	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+	err := query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 		Find(&rules).Error
 	if err != nil {
@@ -85,13 +91,12 @@ func GenAlert(alarm *Alarm) bool {
 		//select default rule
 		// 优先查找匹配当前租户的默认规则
 		var rules []Rule
-		fmt.Println("CCC", alarm.ZID)
-		zid := strconv.Itoa(alarm.ZID)
+		fmt.Println("CCC", instanceID)
 		query := DB.Model(&Rule{}).
-			Where("z_ids LIKE ?", "%"+zid+"%").
-			Where("m_type = ?", "1").
+			Where("z_ids LIKE ?", "%"+instanceID+"%").
+			Where("m_type = ?", "2").
 			Where("status = ?", "0").Debug()
-		err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+		err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 			Find(&rules).Error
 		if err != nil {
@@ -99,7 +104,7 @@ func GenAlert(alarm *Alarm) bool {
 			return false
 		}
 
-		// 如果没有找到匹配租户的默认规则，则查找全局默认规则（tenant_id 为空或 "*"）
+		// 如果没有找到匹配租户的默认规则，则查找全局默认规则（z_ids 为空或 "*"）
 		if len(rules) == 0 {
 			query = DB.Model(&Rule{}).
 				Where("m_type = ?", "2").
@@ -116,7 +121,7 @@ func GenAlert(alarm *Alarm) bool {
 
 		//default rule disable
 		if len(rules) == 0 {
-			logger.Log.Errorf("default rule is null for instance: %s", alarm.ZID)
+			logger.Log.Errorf("default rule is null for instance: %s", instanceID)
 			return false
 		}
 		//event
@@ -253,20 +258,20 @@ func sendEvent(event *Event) {
 // mut
 func IsMuted(event *Event) bool {
 	// 先从实例表查询 InstanceID
-	if event.ZID > 0 && event.InstanceID == "" {
+	var instanceID string
+	if event.ZID > 0 {
 		instance, err := GetZabbixInstanceByZID(event.ZID)
 		if err == nil && instance != nil {
-			event.InstanceID = instance.InstanceID
-			event.InstanceName = instance.Name
+			instanceID = instance.InstanceID
 		}
 	}
 
 	var rules []Rule
 	query := DB.Model(&Rule{}).
-		Where("instance_id LIKE ?", "%"+event.InstanceID+"%").
+		Where("z_ids LIKE ?", "%"+instanceID+"%").
 		Where("m_type = ?", "3").
 		Where("status = ?", "0")
-	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+	err := query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 		Find(&rules).Error
 	if err != nil {

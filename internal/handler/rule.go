@@ -51,7 +51,7 @@ func CreateRule(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	zid := gjson.Get(string(body), "zid").String()
+	zids := gjson.Get(string(body), "z_ids").String()
 	conditions := gjson.Get(string(body), "conditions").String()
 	sweek := gjson.Get(string(body), "s_week").String()
 	stime := gjson.Get(string(body), "s_time").String()
@@ -70,7 +70,7 @@ func CreateRule(c *gin.Context) {
 
 	v := model.Rule{Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, ZID: zid, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
 	_, err = model.AddRule(&v)
 	if err != nil {
 		response.DatabaseError(c, "创建规则失败: "+err.Error())
@@ -91,7 +91,7 @@ func UpdateRule(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	zid := gjson.Get(string(body), "zid").String()
+	zids := gjson.Get(string(body), "z_ids").String()
 	conditions := gjson.Get(string(body), "conditions").String()
 	sweek := gjson.Get(string(body), "s_week").String()
 	stime := gjson.Get(string(body), "s_time").String()
@@ -111,7 +111,7 @@ func UpdateRule(c *gin.Context) {
 
 	v := model.Rule{ID: id, Name: name, Conditions: conditions,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, ZID: zid, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
 	err = model.UpdateRule(&v, tuserStr)
 	if err != nil {
 		response.DatabaseError(c, "更新规则失败: "+err.Error())

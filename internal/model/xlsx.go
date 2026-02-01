@@ -379,6 +379,47 @@ func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 
 // CreateAlarmXlsx excel table
 func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
+	// 定义临时结构体，用于存储告警数据和实例信息
+	type AlarmWithInstance struct {
+		Alarm
+		InstanceID   string
+		InstanceName string
+	}
+
+	// 创建临时数据切片
+	alarmData := make([]AlarmWithInstance, len(Filedata))
+
+	// 批量查询实例信息
+	if len(Filedata) > 0 {
+		// 收集所有唯一的 ZID
+		zidMap := make(map[int]bool)
+		for _, alarm := range Filedata {
+			if alarm.ZID > 0 {
+				zidMap[alarm.ZID] = true
+			}
+		}
+
+		// 批量查询实例信息
+		instanceMap := make(map[int]*ZabbixInstance)
+		for zid := range zidMap {
+			instance, err := GetZabbixInstanceByZID(zid)
+			if err == nil && instance != nil {
+				instanceMap[zid] = instance
+			}
+		}
+
+		// 填充临时数据
+		for i := range Filedata {
+			alarmData[i].Alarm = Filedata[i]
+			if Filedata[i].ZID > 0 {
+				if instance, ok := instanceMap[Filedata[i].ZID]; ok {
+					alarmData[i].InstanceID = instance.InstanceID
+					alarmData[i].InstanceName = instance.Name
+				}
+			}
+		}
+	}
+
 	StartUnix := time.Unix(start, 0)
 	StrStart := StartUnix.Format("2006-01-02 15:04:05")
 	EndUnix := time.Unix(end, 0)
@@ -405,7 +446,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	xlsx.SetCellValue("Sheet1", "A3", "告警共计")
 	xlsx.SetCellValue("Sheet1", "B3", cnt)
 	//指标key
-	xlsx.SetCellValue("Sheet1", "A5", "租户ID")
+	xlsx.SetCellValue("Sheet1", "A5", "实例名称")
 	xlsx.SetCellValue("Sheet1", "B5", "主机名")
 	xlsx.SetCellValue("Sheet1", "C5", "主机组")
 	xlsx.SetCellValue("Sheet1", "D5", "告警时间")
@@ -415,8 +456,8 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	xlsx.SetCellValue("Sheet1", "H5", "告警详情")
 	xlsx.SetCellValue("Sheet1", "I5", "告警类型")
 	xlsx.SetCellValue("Sheet1", "J5", "事件ID")
-	for k, v := range Filedata {
-		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.InstanceID)
+	for k, v := range alarmData {
+		xlsx.SetCellValue("Sheet1", "A"+strconv.Itoa(k+6), v.InstanceName)
 		xlsx.SetCellValue("Sheet1", "B"+strconv.Itoa(k+6), v.Host)
 		xlsx.SetCellValue("Sheet1", "C"+strconv.Itoa(k+6), v.Hgroup)
 		xlsx.SetCellValue("Sheet1", "D"+strconv.Itoa(k+6), v.OccurTime.Format("2006-01-02 15:04:05"))
