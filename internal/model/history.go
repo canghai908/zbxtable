@@ -114,8 +114,8 @@ func GetHistoryByItemIDNewP(itemid, TimeFrom, TimeTill int64) ([]History, error)
 // GetInterfaceGraphData 接口流量数据获取
 func GetInterfaceGraphData(data InterfaceData) (series TrafficData, err error) {
 	// 如果提供了实例ID，使用指定实例的API
-	if data.InstanceID > 0 {
-		inst, err := GetAPIByZID(data.InstanceID)
+	if data.ZID > 0 {
+		inst, err := GetAPIByZID(data.ZID)
 		if err != nil {
 			return TrafficData{}, err
 		}

@@ -138,7 +138,7 @@ type Hosts struct {
 	PingSec           string `json:"ping_sec"`           //ping时延
 	Alarm             string `json:"alarm"`              //告警总数
 	// 多实例支持字段
-	InstanceID   int    `json:"instance_id"`   //所属实例ZID
+	ZID          int    `json:"zid"`           //所属实例ZID
 	InstanceName string `json:"instance_name"` //所属实例名称
 }
 
@@ -328,7 +328,7 @@ type InterfaceData struct {
 	Lastclock                  string `json:"lastclock"`
 	Begin                      string `json:"begin"`
 	End                        string `json:"end"`
-	InstanceID                 int    `json:"instance_id"` // 添加实例ID字段
+	ZID                        int    `json:"zid"` // 添加实例ID字段
 }
 type WinFilesSystemData struct {
 	ID               int64   `json:"id"`

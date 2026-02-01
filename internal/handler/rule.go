@@ -15,7 +15,7 @@ func GetAllRule(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
 	name := c.Query("name")
-	zid := c.Query("zid")
+	zid := c.Query("zids")
 	m_type := c.Query("m_type")
 	status := c.Query("status")
 

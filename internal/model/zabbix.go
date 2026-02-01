@@ -71,13 +71,13 @@ func GetZabbixInstanceByZID(id int) (*ZabbixInstance, error) {
 }
 
 // GetZabbixInstanceByInstanceID 根据 instance_id 获取实例
-func GetZabbixInstanceByInstanceID(id string) (*ZabbixInstance, error) {
-	iid := strings.TrimSpace(id)
+func GetZabbixInstanceByInstanceID(instance_id string) (*ZabbixInstance, error) {
+	iid := strings.TrimSpace(instance_id)
 	if iid == "" {
-		return nil, errors.New("id is empty")
+		return nil, errors.New("instance_id is empty")
 	}
 	var instance ZabbixInstance
-	err := DB.Where("id = ?", iid).First(&instance).Error
+	err := DB.Where("instance_id = ?", iid).First(&instance).Error
 	if err != nil {
 		return nil, err
 	}

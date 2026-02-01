@@ -204,22 +204,26 @@ func ReceiveGin(c *gin.Context) {
 	fmt.Println(c.Request.Header)
 	// instance的token校验
 	//查询instanceid和token,可以一起查询，无需多次查询
-	var instance *model.ZabbixInstance
-	var err error
-	if instance, err = model.GetZabbixInstanceByInstanceID(InstanceID); err == nil && instance != nil {
-		fmt.Println("aaaa")
-		if !instance.Enabled {
-			res.ID = 0
-			res.Msg = "Instance Disabled!"
-			response.Success(c, res)
-			return
-		}
-		if instance.Token != "" && token != instance.Token {
-			res.ID = 0
-			res.Msg = "Token Error!"
-			response.Success(c, res)
-			return
-		}
+	//
+	instance, err := model.GetZabbixInstanceByInstanceID(InstanceID)
+	if err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+	//实例是否启用
+	if !instance.Enabled {
+		res.ID = 0
+		res.Msg = "Instance Disabled!"
+		response.Success(c, res)
+		return
+	}
+	//token是否正确
+	if instance.Token != "" && token != instance.Token {
+		res.ID = 0
+		res.Msg = "Token Error!"
+		response.Success(c, res)
+		return
+
 	}
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -238,7 +242,7 @@ func ReceiveGin(c *gin.Context) {
 	}
 
 	res.ID = id
-	res.Msg = "successed"
+	res.Msg = "success"
 	response.Success(c, res)
 }
 

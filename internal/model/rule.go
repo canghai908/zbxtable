@@ -52,7 +52,7 @@ func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist
 		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
 	if zid != "" {
-		query = query.Where("zid = ?", zid)
+		query = query.Where("z_ids IN ?", zid)
 	}
 	if m_type == "" {
 		query = query.Where("m_type IN ?", []string{"1", "2"})
@@ -71,7 +71,7 @@ func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist
 
 	// 获取分页数据
 	offset := (pages - 1) * limits
-	err = query.Select("id", "name", "conditions", "zid", "note",
+	err = query.Select("id", "name", "conditions", "z_ids", "note",
 		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 		Limit(limits).Offset(offset).Find(&rules).Error
 	if err != nil {

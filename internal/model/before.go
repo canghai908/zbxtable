@@ -14,7 +14,6 @@ func MsAdd(zid int, message []byte) (int64, error) {
 	p1 := strings.Replace(p0, `"`, `\"`, -1)
 	p2 := strings.ReplaceAll(p1, `¦`, `"`)
 	var mes EventTpl
-	fmt.Println(p2)
 	err := json.Unmarshal([]byte(p2), &mes)
 	if err != nil {
 		fmt.Println("CCCC")

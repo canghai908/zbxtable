@@ -168,26 +168,36 @@ func DatabaseInit() {
 		}
 		logger.Log.Info("Init system data successfully!")
 	}
-	//出口
-	//初始化系统数据
-	// var cne []Egress
-	// err = DB.Find(&cne).Error
-	// if err != nil {
-	// 	logger.Log.Info(err)
-	// 	return
-	// }
-	// if len(cne) == 0 {
-	// 	egress := []Egress{
-	// 		{NameOne: "电信100M", NameTwo: "移动100M", Status: 0},
-	// 	}
-	// 	err := DB.Create(&egress).Error
-	// 	if err != nil {
-	// 		logger.Log.Info("Init egress info error！")
-	// 		return
-	// 	}
-	// 	logger.Log.Info("Init egress data successfully!")
-	// }
-	// 默认配置初始化（包括面板、邮件、微信、Ollama 等）
+	//告警默认规则初始化 default rule
+	var rules []Rule
+	err = DB.Where("m_type = ?", "2").Find(&rules).Error
+	if err != nil {
+		logger.Log.Info(err)
+		return
+	}
+	fmt.Println("AAAAAAAAA")
+	fmt.Println(rules)
+	if len(rules) == 0 {
+		// 使用 "*" 作为全局默认规则，匹配所有租户
+		defaultRule := []Rule{
+			{
+				Name:    "全局默认规则",
+				ZIDs:    "*",
+				MType:   "2",
+				Channel: "wechat_robot",
+				UserIds: "1",
+				Sweek:   "0,1,2,3,4,5,6",
+				Stime:   "00:00",
+				Etime:   "23.59",
+				Status:  "0"},
+		}
+		err := DB.Create(&defaultRule).Error
+		if err != nil {
+			logger.Log.Info("Init default rule error！", err)
+			return
+		}
+		logger.Log.Info("Init default rule successfully!")
+	}
 	defaultConfigs := []Config{
 		// Dashboard 相关
 		{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
@@ -226,34 +236,7 @@ func DatabaseInit() {
 	InitMenuData()
 	//检查并添加缺失的菜单项（用于版本升级）
 	CheckAndAddMenus()
-	//告警默认规则初始化 default rule
-	var rule []Rule
-	err = DB.Where("m_type = ?", "2").Find(&rule).Error
-	if err != nil {
-		logger.Log.Info(err)
-		return
-	}
-	if len(rule) == 0 {
-		// 使用 "*" 作为全局默认规则，匹配所有租户
-		defaultRule := []Rule{
-			{
-				Name:    "全局默认规则",
-				ZIDs:    "*",
-				MType:   "2",
-				Channel: "wechat_robot",
-				UserIds: "1",
-				Sweek:   "0,1,2,3,4,5,6",
-				Stime:   "00:00",
-				Etime:   "23.59",
-				Status:  "0"},
-		}
-		err := DB.Create(&defaultRule).Error
-		if err != nil {
-			logger.Log.Info("Init default rule error！", err)
-			return
-		}
-		logger.Log.Info("Init default rule successfully!")
-	}
+
 }
 
 func GetConfKey(v string) string {
