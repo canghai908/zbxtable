@@ -86,24 +86,18 @@ func AnalysisAlarm(c *gin.Context) {
 		response.BadRequest(c, "请求参数解析失败: "+err.Error())
 		return
 	}
-
-	var Start, End time.Time
-	if v.Begin == "" || v.End == "" {
-		End := time.Now()
-		Start = End.Add(-168 * time.Hour)
-	}
 	timeLayout := "2006-01-02 15:04:05"
 	loc, _ := time.LoadLocation("Local")
-	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
-	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
-
-	// 支持 instance_id 参数
-	zid := v.ZID
-	if zid == "" {
-		zid = v.ZID // 兼容旧的 tenant_id 字段
+	var Start, End time.Time
+	//判断时间，如果为空，默认查询一周时间告警
+	if v.Begin == "" || v.End == "" {
+		End = time.Now()
+		Start = End.Add(-168 * time.Hour)
+	} else {
+		Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
+		End, _ = time.ParseInLocation(timeLayout, v.End, loc)
 	}
-
-	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, zid)
+	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, v.ZID)
 	if err != nil {
 		response.DatabaseError(c, "告警分析失败: "+err.Error())
 		return

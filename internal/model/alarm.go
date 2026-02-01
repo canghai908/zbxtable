@@ -163,7 +163,7 @@ func ExportAlarm(begin, end time.Time,
 }
 
 // AnalysisAlarm all alarm
-func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, pie []Pie, na []string, va []int, err error) {
+func AnalysisAlarm(begin, end time.Time, zid string) (arrytile []string, pie []Pie, na []string, va []int, err error) {
 	strbeing := begin.Format("2006-01-02 15:04:05")
 	strend := end.Format("2006-01-02 15:04:05")
 	var ss []string
@@ -187,8 +187,8 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
 	// }
 
-	if tenant_id != "" {
-		query = query.Where("instance_id = ?", tenant_id)
+	if zid != "" {
+		query = query.Where("zid = ?", zid)
 	}
 
 	err = query.Group("level").Order("level_count DESC").Find(&levelCounts).Error
@@ -201,28 +201,22 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 
 	// Top10 主机查询（包含实例信息）
 	type HostCount struct {
-		Hostname         string `gorm:"column:hostname"`
-		ZabbixInstanceID int    `gorm:"column:zabbix_instance_id"`
-		HostCount        int    `gorm:"column:host_count"`
+		Hostname  string `gorm:"column:hostname"`
+		ZID       int    `gorm:"column:zid"`
+		HostCount int    `gorm:"column:host_count"`
 	}
 	var hostCounts []HostCount
 
 	hostQuery := DB.Model(&Alarm{}).
-		Select("hostname, zabbix_instance_id, COUNT(DISTINCT id) AS host_count").
+		Select("hostname, zid, COUNT(DISTINCT id) AS host_count").
 		Where("occurtime >= ? AND occurtime <= ?", strbeing, strend).
 		Where("(status = ? OR status = ?)", "故障", "1")
 
-	// 多实例场景：显示所有实例的主机统计
-	// 注释掉原来的实例过滤逻辑
-	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
-	// 	hostQuery = hostQuery.Where("zabbix_instance_id = ?", inst.ZID)
-	// }
-
-	if tenant_id != "" {
-		hostQuery = hostQuery.Where("instance_id = ?", tenant_id)
+	if zid != "" {
+		hostQuery = hostQuery.Where("zid = ?", zid)
 	}
 
-	err = hostQuery.Group("hostname, zabbix_instance_id").Order("host_count DESC").Limit(10).Find(&hostCounts).Error
+	err = hostQuery.Group("hostname, zid").Order("host_count DESC").Limit(10).Find(&hostCounts).Error
 	var name []string
 	var values []int
 	if err == nil && len(hostCounts) > 0 {
@@ -230,21 +224,21 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 		instanceMap := make(map[int]string)
 		instanceIDs := make(map[int]bool)
 		for _, hc := range hostCounts {
-			if hc.ZabbixInstanceID > 0 {
-				instanceIDs[hc.ZabbixInstanceID] = true
+			if hc.ZID > 0 {
+				instanceIDs[hc.ZID] = true
 			}
 		}
 		for id := range instanceIDs {
-			tenant, err := GetZabbixInstanceByZID(id)
-			if err == nil && tenant != nil {
-				instanceMap[id] = tenant.Name
+			instance, err := GetZabbixInstanceByZID(id)
+			if err == nil && instance != nil {
+				instanceMap[id] = instance.Name
 			}
 		}
 
 		// 组合主机名和实例名
 		for _, hc := range hostCounts {
 			hostName := hc.Hostname
-			if instanceName, ok := instanceMap[hc.ZabbixInstanceID]; ok && instanceName != "" {
+			if instanceName, ok := instanceMap[hc.ZID]; ok && instanceName != "" {
 				hostName = hc.Hostname + " [" + instanceName + "]"
 			}
 			name = append(name, hostName)
