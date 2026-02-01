@@ -353,8 +353,10 @@ func CreateHostChart(data ChartData) *charts.Line {
 		}),
 		charts.WithDataZoomOpts(opts.DataZoom{Type: "slider"}),
 		charts.WithInitializationOpts(opts.Initialization{
-			Width:  "1200px",
-			Height: "600px",
+			Width:           "1200px",
+			Height:          "600px",
+			Theme:           "white",           // 使用白色主题
+			BackgroundColor: "#ffffff",        // 白色背景
 		}),
 		charts.WithLegendOpts(opts.Legend{
 			Show:   true,
@@ -374,17 +376,27 @@ func CreateHostChart(data ChartData) *charts.Line {
 				},
 			},
 		}),
-		charts.WithInitializationOpts(opts.Initialization{Theme: "shine"}),
 		charts.WithTitleOpts(opts.Title{
 			Title:         titleText,
 			Subtitle:      data.Name + "\n" + data.Start + "--" + data.End,
 			Left:          "center",
-			TitleStyle:    &opts.TextStyle{FontSize: 20},
-			SubtitleStyle: &opts.TextStyle{FontSize: 12},
+			TitleStyle:    &opts.TextStyle{FontSize: 20, Color: "#333"},
+			SubtitleStyle: &opts.TextStyle{FontSize: 12, Color: "#666"},
 		}),
+		// 设置颜色为蓝色系，替代红色
+		charts.WithColorsOpts(opts.Colors{"#5470c6"}),
 	)
 	line.SetXAxis(data.Date).AddSeries(data.Name, data.Data).
-		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
+		SetSeriesOptions(
+			charts.WithLineChartOpts(opts.LineChart{Smooth: true}),
+			charts.WithLineStyleOpts(opts.LineStyle{
+				Color: "#5470c6", // 蓝色线条
+				Width: 2,
+			}),
+			charts.WithItemStyleOpts(opts.ItemStyle{
+				Color: "#5470c6", // 蓝色数据点
+			}),
+		)
 	line.PageTitle = data.Name
 	return line
 }

@@ -275,6 +275,16 @@ func InitRouter() *gin.Engine {
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 			}
 
+			// 出口配置管理（新）
+			egressConfigGroup := api.Group("/egress")
+			{
+				egressConfigGroup.GET("/configs", handler.GetAllEgressConfigs)
+				egressConfigGroup.GET("/configs/:id", handler.GetEgressConfigByID)
+				egressConfigGroup.POST("/configs", handler.AddEgressConfig)
+				egressConfigGroup.PUT("/configs/:id", handler.UpdateEgressConfigHandler)
+				egressConfigGroup.DELETE("/configs/:id", handler.DeleteEgressConfigHandler)
+			}
+
 			// 指标映射配置
 			metricMappingGroup := api.Group("/metric_mapping")
 			{

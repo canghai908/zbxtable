@@ -65,8 +65,21 @@ func GetOverview(c *gin.Context) {
 	response.SuccessWithMessage(c, "获取成功", info)
 }
 
-// GetEgressData 获取出口带宽数据
+// GetEgressData 获取出口带宽数据（新版本，支持多个出口）
 func GetEgressData(c *gin.Context) {
+	// 尝试从新缓存读取数据
+	data, err := model.CacheGet("egress_data")
+	if err == nil && data != "" {
+		// 返回新格式的数据（JSON 数组）
+		var egressList []map[string]interface{}
+		jsonErr := json.Unmarshal([]byte(data), &egressList)
+		if jsonErr == nil && len(egressList) > 0 {
+			response.SuccessWithMessage(c, "获取成功", egressList)
+			return
+		}
+	}
+	
+	// 如果新缓存没有数据，尝试使用旧的 API（向后兼容）
 	info, err := model.GetEgressData()
 	if err != nil {
 		response.InternalError(c, err.Error())

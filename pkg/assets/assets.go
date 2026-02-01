@@ -67,7 +67,6 @@ func RestoreAssets() error {
 			// 检查文件是否已存在
 			if _, err := os.Stat(targetPath); err == nil {
 				// 文件已存在，跳过
-				logger.Log.Debugf("Asset file already exists, skipping: %s", targetPath)
 				return nil
 			}
 
@@ -107,7 +106,7 @@ func CopyAssetsToDir(targetDir string) ([]string, error) {
 		return nil, err
 	}
 
-	// 确保静态资源已释放
+	// 程序启动时会自动释放，再次检查，确保静态资源已释放
 	if err := RestoreAssets(); err != nil {
 		return nil, err
 	}

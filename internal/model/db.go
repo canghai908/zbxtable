@@ -98,6 +98,7 @@ func AutoMigrate() error {
 		&System{},
 		&Report{},
 		&Egress{},
+		&EgressConfig{}, // 新的出口配置表
 		&TaskLog{},
 		&Rule{},
 		&UserGroup{},

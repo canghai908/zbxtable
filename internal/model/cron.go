@@ -32,6 +32,9 @@ func InitTask() {
 	// 新增：失败重试任务（每30分钟检查一次）
 	cronScheduler.AddFunc("0 */30 * * * *", func() { _ = RetryFailedMappings() })
 
+	// 新增：出口数据采集任务（每分钟执行一次）
+	cronScheduler.AddFunc("0 * * * * *", func() { _ = CollectEgressData() })
+
 	// 启动调度器
 	cronScheduler.Start()
 	logger.Log.Info("Cron scheduler started")

@@ -1,10 +1,13 @@
 package model
 
 import (
+	"compress/gzip"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -134,7 +137,16 @@ func (p *APIPool) GetOrCreateAPI(instanceID int) (*APIInstance, error) {
 	jar := new(Jar)
 	if strings.TrimSpace(tenant.User) != "" && strings.TrimSpace(tenant.Pass) != "" {
 		// 执行 Web 登录
-		loginToZabbixWeb(webURL, tenant.User, tenant.Pass, jar)
+		logger.Log.Infof("尝试登录 Zabbix Web 界面: %s (实例: %s)", webURL, tenant.Name)
+		err := loginToZabbixWeb(webURL, tenant.User, tenant.Pass, jar)
+		if err != nil {
+			// Web 登录失败不影响 API 连接的创建，仅记录警告日志
+			logger.Log.Warnf("Zabbix Web 登录失败 (实例: %s, URL: %s): %v，API 连接仍可正常使用，但图形查看功能可能受限", tenant.Name, webURL, err)
+		} else {
+			logger.Log.Infof("Zabbix Web 登录成功: %s (实例: %s)", webURL, tenant.Name)
+		}
+	} else {
+		logger.Log.Debugf("实例 %s 未配置用户名/密码，跳过 Web 登录", tenant.Name)
 	}
 
 	inst := &APIInstance{
@@ -205,8 +217,65 @@ func (p *APIPool) ClearAll() {
 
 // loginToZabbixWeb 登录 Zabbix Web 界面（用于图形查看）
 func loginToZabbixWeb(webURL, user, pass string, jar *Jar) error {
-	// 这里复用原有的登录逻辑，但使用独立的 JAR
-	// 简化版本，不做详细错误处理
+	v := url.Values{}
+	v.Set("name", user)
+	v.Add("password", pass)
+	v.Add("autologin", "1")
+	v.Add("enter", "Sign in")
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: tr,
+		Jar:       jar,
+		Timeout:   10 * time.Second,
+	}
+
+	request, err := http.NewRequest("POST", webURL+"/index.php", strings.NewReader(v.Encode()))
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	request.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	request.Header.Add("Accept-Encoding", "gzip, deflate")
+	request.Header.Add("Accept-Language", "zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3")
+	request.Header.Add("Connection", "keep-alive")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
+
+	response, err := client.Do(request)
+	if err != nil {
+		return fmt.Errorf("登录请求失败: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return fmt.Errorf("登录失败，状态码: %d", response.StatusCode)
+	}
+
+	// 检查响应内容
+	var reader io.Reader
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return fmt.Errorf("解压响应失败: %w", err)
+		}
+	default:
+		reader = response.Body
+	}
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	if strings.Contains(string(data), "blocked") {
+		return errors.New("登录被阻止，请检查用户名和密码")
+	}
+
+	logger.Log.Debugf("Zabbix Web 登录成功: %s", webURL)
 	return nil
 }
 

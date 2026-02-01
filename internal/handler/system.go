@@ -234,3 +234,134 @@ func UpdateConfig(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, SystemRes)
 }
+
+// ============ 新的出口配置 API ============
+
+// GetAllEgressConfigs 获取所有出口配置
+func GetAllEgressConfigs(c *gin.Context) {
+	configs, err := model.GetAllEgressConfigs()
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, configs)
+}
+
+// GetEgressConfigByID 根据ID获取出口配置
+func GetEgressConfigByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	config, err := model.GetEgressConfigByID(id)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, config)
+}
+
+// AddEgressConfig 添加出口配置
+func AddEgressConfig(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.InternalError(c, "请求体读取失败")
+		return
+	}
+
+	name := gjson.Get(string(body), "name").String()
+	tenantID := gjson.Get(string(body), "tenant_id").String()
+	hostID := gjson.Get(string(body), "host_id").String()
+	inItemID := gjson.Get(string(body), "in_item_id").String()
+	outItemID := gjson.Get(string(body), "out_item_id").String()
+	sortOrder := int(gjson.Get(string(body), "sort_order").Int())
+
+	if name == "" || tenantID == "" || hostID == "" || inItemID == "" || outItemID == "" {
+		response.BadRequest(c, "缺少必填字段")
+		return
+	}
+
+	config := &model.EgressConfig{
+		Name:      name,
+		TenantID:  tenantID,
+		HostID:    hostID,
+		InItemID:  inItemID,
+		OutItemID: outItemID,
+		Status:    1,
+		SortOrder: sortOrder,
+	}
+
+	err = model.AddEgressConfig(config)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "添加成功", config)
+}
+
+// UpdateEgressConfigHandler 更新出口配置
+func UpdateEgressConfigHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.InternalError(c, "请求体读取失败")
+		return
+	}
+
+	name := gjson.Get(string(body), "name").String()
+	tenantID := gjson.Get(string(body), "tenant_id").String()
+	hostID := gjson.Get(string(body), "host_id").String()
+	inItemID := gjson.Get(string(body), "in_item_id").String()
+	outItemID := gjson.Get(string(body), "out_item_id").String()
+	status := int(gjson.Get(string(body), "status").Int())
+	sortOrder := int(gjson.Get(string(body), "sort_order").Int())
+
+	if name == "" || tenantID == "" || hostID == "" || inItemID == "" || outItemID == "" {
+		response.BadRequest(c, "缺少必填字段")
+		return
+	}
+
+	config := &model.EgressConfig{
+		ID:        id,
+		Name:      name,
+		TenantID:  tenantID,
+		HostID:    hostID,
+		InItemID:  inItemID,
+		OutItemID: outItemID,
+		Status:    status,
+		SortOrder: sortOrder,
+	}
+
+	err = model.UpdateEgressConfig(config)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "更新成功", config)
+}
+
+// DeleteEgressConfigHandler 删除出口配置
+func DeleteEgressConfigHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	err = model.DeleteEgressConfig(id)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "删除成功", nil)
+}

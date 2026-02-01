@@ -97,22 +97,22 @@ func SearchHost(c *gin.Context) {
 	
 	// 如果提供了实例ID或租户ID，从指定实例查询
 	if instanceID != "" || tenantID != "" {
-		var instID int
+		var inst *model.APIInstance
 		var err error
 		
 		if instanceID != "" {
-			instID, err = strconv.Atoi(instanceID)
+			// 如果提供了数字 instance_id，直接使用
+			instID, err := strconv.Atoi(instanceID)
+			if err != nil {
+				response.InternalError(c, "无效的实例ID")
+				return
+			}
+			inst, err = model.GetAPIByInstanceID(instID)
 		} else {
-			instID, err = strconv.Atoi(tenantID)
+			// 如果提供了 tenant_id 字符串，使用 GetZabbixInstanceAPI
+			inst, err = model.GetZabbixInstanceAPI(tenantID)
 		}
 		
-		if err != nil {
-			response.InternalError(c, "无效的实例ID")
-			return
-		}
-		
-		// 获取该实例的 API 连接
-		inst, err := model.GetAPIByInstanceID(instID)
 		if err != nil {
 			response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
 			return
