@@ -84,6 +84,9 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 		return nil, errors.New("实例已禁用")
 	}
 
+	// 解密密码和Token
+	decryptedPass, decryptedToken := DecryptInstanceCredentials(instance)
+
 	// 创建 API 连接
 	webURL := strings.TrimRight(strings.TrimSpace(instance.URL), "/")
 	apiURL := webURL + "/api_jsonrpc.php"
@@ -105,10 +108,10 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 
 	// 创建 API 对象
 	api := zabbix.NewAPI(apiURL)
-	if strings.TrimSpace(instance.Token) != "" {
-		api.SetAuth(strings.TrimSpace(instance.Token))
-	} else if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(instance.Pass) != "" {
-		_, err := api.Login(strings.TrimSpace(instance.User), strings.TrimSpace(instance.Pass))
+	if strings.TrimSpace(decryptedToken) != "" {
+		api.SetAuth(strings.TrimSpace(decryptedToken))
+	} else if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(decryptedPass) != "" {
+		_, err := api.Login(strings.TrimSpace(instance.User), strings.TrimSpace(decryptedPass))
 		if err != nil {
 			return nil, fmt.Errorf("登录失败: %w", err)
 		}
@@ -135,10 +138,10 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 
 	// 创建 Web 登录 JAR（用于图形查看）
 	jar := new(Jar)
-	if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(instance.Pass) != "" {
+	if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(decryptedPass) != "" {
 		// 执行 Web 登录
 		logger.Log.Infof("尝试登录 Zabbix Web 界面: %s (实例: %s)", webURL, instance.Name)
-		err := loginToZabbixWeb(webURL, instance.User, instance.Pass, jar)
+		err := loginToZabbixWeb(webURL, instance.User, decryptedPass, jar)
 		if err != nil {
 			// Web 登录失败不影响 API 连接的创建，仅记录警告日志
 			logger.Log.Warnf("Zabbix Web 登录失败 (实例: %s, URL: %s): %v，API 连接仍可正常使用，但图形查看功能可能受限", instance.Name, webURL, err)
@@ -290,19 +293,19 @@ func GetAllEnabledAPIInstances() ([]*APIInstance, error) {
 }
 
 // GetZabbixInstanceAPI 根据 instance_id 字符串获取 API 实例
-func GetZabbixInstanceAPI(zid string) (*APIInstance, error) {
-	if zid == "" {
-		return nil, errors.New("instance_id 不能为空")
+func GetZabbixInstanceAPI(id string) (*APIInstance, error) {
+	if id == "" {
+		return nil, errors.New("id 不能为空")
 	}
-
+	zid, _ := strconv.Atoi(id)
 	// 根据 instance_id 查询实例
-	instance, err := GetZabbixInstanceByInstanceID(zid)
+	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
-		return nil, fmt.Errorf("未找到启用的实例 (id=%s): %w", zid, err)
+		return nil, fmt.Errorf("未找到启用的实例 (zid=%s): %w", zid, err)
 	}
 
 	if !instance.Enabled {
-		return nil, fmt.Errorf("实例已禁用 (id=%s)", zid)
+		return nil, fmt.Errorf("实例已禁用 (id=%s)", id)
 	}
 
 	// 获取或创建 API 连接

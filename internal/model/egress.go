@@ -86,7 +86,9 @@ func CollectEgressData() error {
 		logger.Log.Error("获取出口配置失败:", err)
 		return err
 	}
+
 	var egressDataList []map[string]interface{}
+
 	for _, config := range configs {
 		zidStr := strconv.Itoa(config.ZID)
 		// 获取实例
@@ -95,18 +97,21 @@ func CollectEgressData() error {
 			logger.Log.Errorf("获取实例失败 (zid=%s): %v", config.ZID, err)
 			continue
 		}
+
 		// 获取入流量最新值
 		inHistory, err := GetLastHistoryByItemIDFromInstance(inst, config.InItemID)
 		if err != nil {
 			logger.Log.Errorf("获取入流量数据失败 (item_id=%s): %v", config.InItemID, err)
 			continue
 		}
+
 		// 获取出流量最新值
 		outHistory, err := GetLastHistoryByItemIDFromInstance(inst, config.OutItemID)
 		if err != nil {
 			logger.Log.Errorf("获取出流量数据失败 (item_id=%s): %v", config.OutItemID, err)
 			continue
 		}
+
 		egressData := map[string]interface{}{
 			"id":          config.ID,
 			"name":        config.Name,

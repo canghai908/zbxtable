@@ -54,6 +54,40 @@ func TestZabbixInstanceConfig(webURL, user, pass, token string) (string, error) 
 	return ver, nil
 }
 
+// DecryptInstanceCredentials 解密 Zabbix 实例的密码和 Token
+// 返回解密后的密码和 Token
+func DecryptInstanceCredentials(instance *ZabbixInstance) (decryptedPass, decryptedToken string) {
+	if instance == nil {
+		return "", ""
+	}
+
+	encryptionKey := GetEncryptionKey()
+	decryptedPass = instance.Pass
+	decryptedToken = instance.Token
+
+	// 解密密码
+	if decryptedPass != "" {
+		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
+		if err != nil {
+			logger.Log.Errorf("解密密码失败 (实例: %s): %v", instance.Name, err)
+		} else {
+			decryptedPass = pass
+		}
+	}
+
+	// 解密 Token
+	if decryptedToken != "" {
+		token, err := utils.DecryptString(decryptedToken, encryptionKey)
+		if err != nil {
+			logger.Log.Errorf("解密Token失败 (实例: %s): %v", instance.Name, err)
+		} else {
+			decryptedToken = token
+		}
+	}
+
+	return decryptedPass, decryptedToken
+}
+
 // ListZabbixInstances 列出所有 Zabbix 实例
 func ListZabbixInstance() ([]ZabbixInstance, error) {
 	var list []ZabbixInstance
@@ -233,25 +267,7 @@ func TestAndUpdateZabbixInstance(zid int) (*ZabbixInstance, string, error) {
 	}
 	
 	// 解密密码和Token
-	encryptionKey := GetEncryptionKey()
-	decryptedPass := instance.Pass
-	decryptedToken := instance.Token
-	if decryptedPass != "" {
-		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密密码失败:", err)
-		} else {
-			decryptedPass = pass
-		}
-	}
-	if decryptedToken != "" {
-		token, err := utils.DecryptString(decryptedToken, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密Token失败:", err)
-		} else {
-			decryptedToken = token
-		}
-	}
+	decryptedPass, decryptedToken := DecryptInstanceCredentials(&instance)
 	
 	now := time.Now()
 	ver, err := TestZabbixInstanceConfig(instance.URL, instance.User, decryptedPass, decryptedToken)
@@ -287,25 +303,7 @@ func UninstallMSAgentFromZabbixInstance(zid int) error {
 	}
 
 	// 解密密码和Token
-	encryptionKey := GetEncryptionKey()
-	decryptedPass := instance.Pass
-	decryptedToken := instance.Token
-	if decryptedPass != "" {
-		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密密码失败:", err)
-		} else {
-			decryptedPass = pass
-		}
-	}
-	if decryptedToken != "" {
-		token, err := utils.DecryptString(decryptedToken, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密Token失败:", err)
-		} else {
-			decryptedToken = token
-		}
-	}
+	decryptedPass, decryptedToken := DecryptInstanceCredentials(instance)
 
 	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
 	if decryptedToken != "" {

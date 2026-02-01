@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
-	"zbxtable/pkg/utils"
 
 	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/google/uuid"
@@ -181,25 +180,7 @@ func InstallMSAgentToZabbix(zid int) error {
 	}
 
 	// 解密密码和Token
-	encryptionKey := GetEncryptionKey()
-	decryptedPass := instance.Pass
-	decryptedToken := instance.Token
-	if decryptedPass != "" {
-		pass, err := utils.DecryptString(decryptedPass, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密密码失败:", err)
-		} else {
-			decryptedPass = pass
-		}
-	}
-	if decryptedToken != "" {
-		token, err := utils.DecryptString(decryptedToken, encryptionKey)
-		if err != nil {
-			logger.Log.Error("解密Token失败:", err)
-		} else {
-			decryptedToken = token
-		}
-	}
+	decryptedPass, decryptedToken := DecryptInstanceCredentials(instance)
 
 	// 初始化 Zabbix API
 	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")

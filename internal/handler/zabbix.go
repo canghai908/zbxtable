@@ -7,7 +7,6 @@ import (
 	"strconv"
 	model "zbxtable/internal/model"
 	"zbxtable/pkg/response"
-	"zbxtable/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -38,7 +37,7 @@ func toTenantSafeResponse(instance *model.ZabbixInstance) ZabbixInstanceafeRespo
 	if instance == nil {
 		return ZabbixInstanceafeResponse{}
 	}
-	
+
 	// 判断认证方式
 	authMethods := []string{}
 	if instance.User != "" && instance.Pass != "" {
@@ -47,13 +46,12 @@ func toTenantSafeResponse(instance *model.ZabbixInstance) ZabbixInstanceafeRespo
 	if instance.Token != "" {
 		authMethods = append(authMethods, "token")
 	}
-	
+
 	return ZabbixInstanceafeResponse{
 		ID:               instance.ID,
 		InstanceID:       instance.InstanceID,
 		Name:             instance.Name,
 		URL:              instance.URL,
-		User:             instance.User,
 		Enabled:          instance.Enabled,
 		Version:          instance.Version,
 		LastTestOk:       instance.LastTestOk,
@@ -95,33 +93,15 @@ func GetZabbixInstanceGin(c *gin.Context) {
 		return
 	}
 
-	// 解密密码和Token用于编辑表单回显
-	encryptionKey := model.GetEncryptionKey()
-	decryptedPass := ""
-	decryptedToken := ""
-	
-	if tenant.Pass != "" {
-		pass, err := utils.DecryptString(tenant.Pass, encryptionKey)
-		if err == nil {
-			decryptedPass = pass
-		}
-	}
-	if tenant.Token != "" {
-		token, err := utils.DecryptString(tenant.Token, encryptionKey)
-		if err == nil {
-			decryptedToken = token
-		}
-	}
-
-	// 返回包含解密后密码和Token的响应（仅用于编辑）
+	// 返回租户信息，但不包含密码和Token（安全考虑，编辑时不显示已配置的密码和Token）
 	response.Success(c, gin.H{
 		"id":                 tenant.ID,
 		"instance_id":        tenant.InstanceID,
 		"name":               tenant.Name,
 		"url":                tenant.URL,
 		"user":               tenant.User,
-		"pass":               decryptedPass,
-		"token":              decryptedToken,
+		"pass":               "", // 不返回密码
+		"token":              "", // 不返回Token
 		"enabled":            tenant.Enabled,
 		"version":            tenant.Version,
 		"last_test_ok":       tenant.LastTestOk,
