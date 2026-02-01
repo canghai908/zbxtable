@@ -67,7 +67,7 @@ func CreateOrUpdateMetricMapping(c *gin.Context) {
 		mapping.ID, _ = strconv.ParseInt(idStr, 10, 64)
 	}
 
-	mapping.InstanceID, _ = strconv.Atoi(gjson.Get(string(body), "instance_id").String())
+	mapping.ZID, _ = strconv.Atoi(gjson.Get(string(body), "zid").String())
 	mapping.SystemType = gjson.Get(string(body), "system_type").String()
 	mapping.HostGroupIDs = gjson.Get(string(body), "host_group_ids").String()
 	mapping.MetricConfig = gjson.Get(string(body), "metric_config").String()
@@ -89,7 +89,7 @@ func CreateOrUpdateMetricMapping(c *gin.Context) {
 	}
 
 	// 验证必填字段
-	if mapping.InstanceID == 0 {
+	if mapping.ZID == 0 {
 		response.ValidationError(c, "请选择实例")
 		return
 	}

@@ -290,19 +290,19 @@ func GetAllEnabledAPIInstances() ([]*APIInstance, error) {
 }
 
 // GetZabbixInstanceAPI 根据 instance_id 字符串获取 API 实例
-func GetZabbixInstanceAPI(instanceID string) (*APIInstance, error) {
-	if instanceID == "" {
+func GetZabbixInstanceAPI(zid string) (*APIInstance, error) {
+	if zid == "" {
 		return nil, errors.New("instance_id 不能为空")
 	}
 
 	// 根据 instance_id 查询实例
-	instance, err := GetZabbixInstanceByInstanceID(instanceID)
+	instance, err := GetZabbixInstanceByInstanceID(zid)
 	if err != nil {
-		return nil, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instanceID, err)
+		return nil, fmt.Errorf("未找到启用的实例 (id=%s): %w", zid, err)
 	}
 
 	if !instance.Enabled {
-		return nil, fmt.Errorf("实例已禁用 (instance_id=%s)", instanceID)
+		return nil, fmt.Errorf("实例已禁用 (id=%s)", zid)
 	}
 
 	// 获取或创建 API 连接

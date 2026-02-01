@@ -1,25 +1,5 @@
 package model
 
-// HostGroupsList struct
-type HostGroupsList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []HostGroups `json:"items"`
-		Total int64        `json:"total"`
-	} `json:"data"`
-}
-
-// HostGroupBYGroupIDList struct
-type HostGroupBYGroupIDList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []HostGroupBYGroupID `json:"items"`
-		Total int64                `json:"total"`
-	} `json:"data"`
-}
-
 // HostGroups struct
 type HostGroups struct {
 	GroupID  string `json:"groupid"`
@@ -29,6 +9,12 @@ type HostGroups struct {
 	Hosts    string `json:"hosts"`
 }
 
+// HostGroups struct
+type HostGroupList struct {
+	GroupID string `json:"groupid"`
+	Name    string `json:"name"`
+}
+
 // HostGroupsPlist list
 type HostGroupsPlist struct {
 	GroupID  string `json:"groupid,omitempty"`
@@ -36,16 +22,6 @@ type HostGroupsPlist struct {
 	Internal string `json:"internal,omitempty"`
 	Flags    string `json:"flags,omitempty"`
 	Hosts    []Host `json:"hosts,omitempty"`
-}
-
-// HostTreeList sst
-type HostTreeList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []HostTree `json:"items"`
-		Total int64      `json:"total"`
-	} `json:"data"`
 }
 
 // HostTree struct

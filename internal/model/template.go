@@ -166,13 +166,8 @@ func TemplateListGetFromInstance(id string) ([]TemplateByItemList, error) {
 	}
 	var instance *ZabbixInstance
 	var err error
-
 	idInt, _ := strconv.Atoi(id)
-	if err == nil {
-		// 如果转换成功，按 ID 查询
-		instance, err = GetZabbixInstanceByZID(idInt)
-	}
-
+	instance, err = GetZabbixInstanceByZID(idInt)
 	if err != nil {
 		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", id, err)
 	}
@@ -250,11 +245,11 @@ func TemplateByItemFromInstance(templateid string, zid string) ([]TemplateByItem
 	id, _ := strconv.Atoi(zid)
 	instance, err = GetZabbixInstanceByZID(id)
 	if err != nil {
-		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (instance_id=%s): %w", instance.ID, err)
+		return []TemplateByItemList{}, fmt.Errorf("未找到启用的实例 (zid=%s): %w", zid, err)
 	}
 	// 检查实例是否启用
 	if !instance.Enabled {
-		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (id=%d, tenant_id=%s)", instance.ID, instance.InstanceID)
+		return []TemplateByItemList{}, fmt.Errorf("实例未启用 (id=%d, instance_id=%s)", instance.ID, instance.InstanceID)
 	}
 	// 创建 Zabbix API 实例
 	apiURL := instance.URL + "/api_jsonrpc.php"
@@ -269,7 +264,6 @@ func TemplateByItemFromInstance(templateid string, zid string) ([]TemplateByItem
 			return []TemplateByItemList{}, fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
 	}
-
 	par := []string{"host", "name", "templateid"}
 	itemParams := []string{"itemid", "name"}
 	rep, err := api.Call("template.get", Params{"output": par,

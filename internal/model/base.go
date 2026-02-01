@@ -170,23 +170,23 @@ func DatabaseInit() {
 	}
 	//出口
 	//初始化系统数据
-	var cne []Egress
-	err = DB.Find(&cne).Error
-	if err != nil {
-		logger.Log.Info(err)
-		return
-	}
-	if len(cne) == 0 {
-		egress := []Egress{
-			{NameOne: "电信100M", NameTwo: "移动100M", Status: 0},
-		}
-		err := DB.Create(&egress).Error
-		if err != nil {
-			logger.Log.Info("Init egress info error！")
-			return
-		}
-		logger.Log.Info("Init egress data successfully!")
-	}
+	// var cne []Egress
+	// err = DB.Find(&cne).Error
+	// if err != nil {
+	// 	logger.Log.Info(err)
+	// 	return
+	// }
+	// if len(cne) == 0 {
+	// 	egress := []Egress{
+	// 		{NameOne: "电信100M", NameTwo: "移动100M", Status: 0},
+	// 	}
+	// 	err := DB.Create(&egress).Error
+	// 	if err != nil {
+	// 		logger.Log.Info("Init egress info error！")
+	// 		return
+	// 	}
+	// 	logger.Log.Info("Init egress data successfully!")
+	// }
 	// 默认配置初始化（包括面板、邮件、微信、Ollama 等）
 	defaultConfigs := []Config{
 		// Dashboard 相关

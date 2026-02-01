@@ -23,11 +23,11 @@ func GetItemByKey(c *gin.Context) {
 func GetAllItemByHostID(c *gin.Context) {
 	HostID := c.Query("hostid")
 	zidStr := c.Query("zid")
-	
+
 	var v interface{}
 	var count int64
 	var err error
-	
+
 	// 如果指定了实例ID，从指定实例获取监控项
 	if zidStr != "" {
 		v, count, err = model.GetAllItemByHostIDFromInstance(zidStr, HostID)
@@ -35,7 +35,7 @@ func GetAllItemByHostID(c *gin.Context) {
 		// 否则使用全局API
 		v, count, err = model.GetAllItemByHostID(HostID)
 	}
-	
+
 	if err != nil {
 		response.InternalError(c, "获取错误")
 		return
@@ -46,22 +46,16 @@ func GetAllItemByHostID(c *gin.Context) {
 // GetAllTrafficItem 获取设备所有流量指标
 func GetAllTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	zidStr := c.Query("zid")
-	
+	zid := c.Query("zid")
+
 	var v interface{}
 	var count int64
 	var err error
-	
+
 	// 如果指定了实例ID，从指定实例获取流量监控项
-	if zidStr != "" {
-		v, count, err = model.GetAllTrafficItemByHostIDFromInstance(zidStr, HostID)
-	} else {
-		// 否则使用全局API
-		v, count, err = model.GetAllTrafficItemByHostID(HostID)
-	}
-	
+	v, count, err = model.GetAllTrafficItemByHostIDFromInstance(zid, HostID)
 	if err != nil {
-		response.InternalError(c, "获取错误")
+		response.InternalError(c, "获取错误:"+err.Error())
 		return
 	}
 	response.SuccessWithPage(c, v, count)

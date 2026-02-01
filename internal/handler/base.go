@@ -194,10 +194,12 @@ func ReceiveGin(c *gin.Context) {
 	//新系统使用的是ZBX-InstanceID
 	token := c.GetHeader("Token")
 	var InstanceID string
+	//如果为空可能是新webhook
 	if TenantID == "" {
 		InstanceID = c.GetHeader("ZBX-InstanceID")
-	} else {
-		InstanceID = TenantID
+	}
+	if InstanceID == "" {
+		response.BadRequest(c, "instanceID not found")
 	}
 	fmt.Println(c.Request.Header)
 	// instance的token校验

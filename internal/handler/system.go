@@ -149,37 +149,6 @@ func GetEgress(c *gin.Context) {
 	c.JSON(http.StatusOK, SystemRes)
 }
 
-// UpdateEgress 更新带宽配置
-func UpdateEgress(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		response.InternalError(c, "请求体读取失败")
-		return
-	}
-
-	nameone := gjson.Get(string(body), "name_one").String()
-	in_one := gjson.Get(string(body), "in_one").String()
-	out_one := gjson.Get(string(body), "out_one").String()
-	nametwo := gjson.Get(string(body), "name_two").String()
-	in_two := gjson.Get(string(body), "in_two").String()
-	out_two := gjson.Get(string(body), "out_two").String()
-	var SystemRes model.SystemList
-	v := model.Egress{ID: 1,
-		NameOne: nameone, InOne: in_one, OutOne: out_one,
-		NameTwo: nametwo, InTwo: in_two, OutTwo: out_two}
-	err = model.UpdateEgress(&v)
-	if err != nil {
-		SystemRes.Code = 500
-		SystemRes.Message = err.Error()
-	} else {
-		SystemRes.Code = 200
-		SystemRes.Message = "更新成功"
-		SystemRes.Data.Items = ""
-		SystemRes.Data.Total = 1
-	}
-	c.JSON(http.StatusOK, SystemRes)
-}
-
 // GetAllConfig 获取系统参数配置
 func GetAllConfig(c *gin.Context) {
 	var SystemRes model.SystemList
@@ -226,7 +195,7 @@ func UpdateConfig(c *gin.Context) {
 
 // GetAllEgressConfigs 获取所有出口配置
 func GetAllEgressConfigs(c *gin.Context) {
-	configs, err := model.GetAllEgressConfigs()
+	configs, err := model.GetAllEgress()
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -260,28 +229,29 @@ func AddEgressConfig(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	tenantID := gjson.Get(string(body), "tenant_id").String()
+	zidStr := gjson.Get(string(body), "zid").String()
+	zid, _ := strconv.Atoi(zidStr)
 	hostID := gjson.Get(string(body), "host_id").String()
 	inItemID := gjson.Get(string(body), "in_item_id").String()
 	outItemID := gjson.Get(string(body), "out_item_id").String()
 	sortOrder := int(gjson.Get(string(body), "sort_order").Int())
 
-	if name == "" || tenantID == "" || hostID == "" || inItemID == "" || outItemID == "" {
+	if name == "" || zidStr == "" || hostID == "" || inItemID == "" || outItemID == "" {
 		response.BadRequest(c, "缺少必填字段")
 		return
 	}
 
-	config := &model.EgressConfig{
-		Name:       name,
-		InstanceID: tenantID,
-		HostID:     hostID,
-		InItemID:   inItemID,
-		OutItemID:  outItemID,
-		Status:     1,
-		SortOrder:  sortOrder,
+	config := &model.Egress{
+		Name:      name,
+		ZID:       zid,
+		HostID:    hostID,
+		InItemID:  inItemID,
+		OutItemID: outItemID,
+		Status:    1,
+		SortOrder: sortOrder,
 	}
 
-	err = model.AddEgressConfig(config)
+	err = model.AddEgress(config)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -305,30 +275,31 @@ func UpdateEgressConfigHandler(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	tenantID := gjson.Get(string(body), "tenant_id").String()
+	zidStr := gjson.Get(string(body), "zid").String()
 	hostID := gjson.Get(string(body), "host_id").String()
 	inItemID := gjson.Get(string(body), "in_item_id").String()
 	outItemID := gjson.Get(string(body), "out_item_id").String()
 	status := int(gjson.Get(string(body), "status").Int())
 	sortOrder := int(gjson.Get(string(body), "sort_order").Int())
 
-	if name == "" || tenantID == "" || hostID == "" || inItemID == "" || outItemID == "" {
+	if name == "" || zidStr == "" || hostID == "" || inItemID == "" || outItemID == "" {
 		response.BadRequest(c, "缺少必填字段")
 		return
 	}
+	zid, _ := strconv.Atoi(zidStr)
 
-	config := &model.EgressConfig{
-		ID:         id,
-		Name:       name,
-		InstanceID: tenantID,
-		HostID:     hostID,
-		InItemID:   inItemID,
-		OutItemID:  outItemID,
-		Status:     status,
-		SortOrder:  sortOrder,
+	config := &model.Egress{
+		ID:        id,
+		Name:      name,
+		ZID:       zid,
+		HostID:    hostID,
+		InItemID:  inItemID,
+		OutItemID: outItemID,
+		Status:    status,
+		SortOrder: sortOrder,
 	}
 
-	err = model.UpdateEgressConfig(config)
+	err = model.UpdateEgress(config)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

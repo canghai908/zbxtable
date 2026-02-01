@@ -30,7 +30,7 @@ func (m *MetricMapping) SetMetricConfig(config *MetricConfig) error {
 // CreateOrUpdateMetricMapping 创建或更新映射配置
 func CreateOrUpdateMetricMapping(m *MetricMapping) error {
 	var existing MetricMapping
-	err := DB.Where("instance_id = ? AND system_type = ?", m.InstanceID, m.SystemType).First(&existing).Error
+	err := DB.Where("zid = ? AND system_type = ?", m.ZID, m.SystemType).First(&existing).Error
 
 	if err != nil {
 		// 不存在，创建
@@ -91,7 +91,7 @@ func ExecuteMetricMapping(mapping *MetricMapping, execType string) error {
 	// 创建执行历史记录
 	history := &MetricMappingHistory{
 		MappingID:  mapping.ID,
-		InstanceID: mapping.InstanceID,
+		ZID:        mapping.ZID,
 		SystemType: mapping.SystemType,
 		ExecType:   execType,
 		StartTime:  time.Now(),
@@ -100,7 +100,7 @@ func ExecuteMetricMapping(mapping *MetricMapping, execType string) error {
 	DB.Create(history)
 
 	// 获取实例API
-	apiInstance, err := GetAPIByZID(mapping.InstanceID)
+	apiInstance, err := GetAPIByZID(mapping.ZID)
 	if err != nil {
 		return updateMappingError(mapping, history, fmt.Errorf("获取实例API失败: %w", err))
 	}
@@ -142,7 +142,7 @@ func updateMappingError(mapping *MetricMapping, history *MetricMappingHistory, e
 	mapping.RetryCount++
 	DB.Save(mapping)
 
-	logger.Log.Errorf("指标映射执行失败 [ID=%d, Instance=%d]: %v", mapping.ID, mapping.InstanceID, err)
+	logger.Log.Errorf("指标映射执行失败 [ID=%d, zid=%d]: %v", mapping.ID, mapping.ZID, err)
 	return err
 }
 
@@ -167,7 +167,7 @@ func updateMappingSuccess(mapping *MetricMapping, history *MetricMappingHistory,
 	mapping.RetryCount = 0
 	DB.Save(mapping)
 
-	logger.Log.Infof("指标映射执行成功 [ID=%d, Instance=%d, Hosts=%d]", mapping.ID, mapping.InstanceID, affectedHosts)
+	logger.Log.Infof("指标映射执行成功 [ID=%d, zid=%d, Hosts=%d]", mapping.ID, mapping.ZID, affectedHosts)
 	return nil
 }
 

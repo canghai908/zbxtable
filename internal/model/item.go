@@ -163,9 +163,9 @@ func GetAllTrafficItemByHostID(hostid string) (item []interface{}, count int64, 
 }
 
 // GetAllTrafficItemByHostIDFromInstance 从指定实例根据hostid获取流量监控项
-func GetAllTrafficItemByHostIDFromInstance(instanceID, hostid string) (item []interface{}, count int64, err error) {
+func GetAllTrafficItemByHostIDFromInstance(zid, hostid string) (item []interface{}, count int64, err error) {
 	// 获取实例API
-	inst, err := GetZabbixInstanceAPI(instanceID)
+	inst, err := GetZabbixInstanceAPI(zid)
 	if err != nil {
 		return []interface{}{}, 0, fmt.Errorf("获取实例API失败: %v", err)
 	}
@@ -210,7 +210,7 @@ func GetAllTrafficItemByHostIDFromInstance(instanceID, hostid string) (item []in
 		}
 		return ItemList, int64(len(ItemList)), nil
 	}
-	
+
 	// 旧版本处理
 	ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
 	rep, err := inst.API.Call("item.get", Params{"output": ItemsOutput,

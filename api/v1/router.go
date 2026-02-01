@@ -196,18 +196,18 @@ func InitRouter() *gin.Engine {
 			// 主机组管理
 			hostGroupGroup := api.Group("/host_group")
 			{
-				hostGroupGroup.GET("", handler.GetAllHostGroup)
-				hostGroupGroup.GET("/list", handler.GetAllHostGroupsList)
-				hostGroupGroup.GET("/all", handler.GetAllGroupsList)
+				hostGroupGroup.GET("", handler.GetAllGroupsList)
+				//	hostGroupGroup.GET("/list", handler.GetAllGroupsList)
+				hostGroupGroup.GET("/tree", handler.GetAllHostGroupsTree)
 				hostGroupGroup.GET("/list/:id", handler.GetHostsByGroupID)
 			}
 
 			// 模板管理
 			templateGroup := api.Group("/template")
 			{
-				templateGroup.GET("", handler.GetAllTemplate)
-				templateGroup.GET("/all", handler.GetAllTemplateAll)
-				templateGroup.GET("/list", handler.GetAllTemplateList)
+				templateGroup.GET("", handler.GetAllTemplateList)
+				// templateGroup.GET("/all", handler.GetAllTemplateAll)
+				// templateGroup.GET("/list", handler.GetAllTemplateList)
 				templateGroup.GET("/item/:templateid", handler.GetItemByTemplateID)
 			}
 
@@ -269,8 +269,6 @@ func InitRouter() *gin.Engine {
 				systemGroup.GET("/:id", handler.GetSystemByID)
 				systemGroup.PUT("/:id", handler.UpdateSystem)
 				systemGroup.POST("/init/:id", handler.SystemInit)
-				systemGroup.GET("/egress", handler.GetEgress)
-				systemGroup.PUT("/egress", handler.UpdateEgress)
 				systemGroup.GET("/config", handler.GetAllConfig)
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 			}

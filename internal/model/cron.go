@@ -127,7 +127,7 @@ func AutoMetricMapping() error {
 		// 检查是否需要执行（距离上次成功执行超过24小时）
 		if shouldExecuteMapping(&mapping) {
 			go func(m MetricMapping) {
-				logger.Log.Infof("自动执行指标映射 [ID=%d, Instance=%d, Type=%s]", m.ID, m.InstanceID, m.SystemType)
+				logger.Log.Infof("自动执行指标映射 [ID=%d, Instance=%d, Type=%s]", m.ID, m.ZID, m.SystemType)
 				err := ExecuteMetricMapping(&m, "auto")
 				if err != nil {
 					logger.Log.Errorf("自动执行指标映射失败 [ID=%d]: %v", m.ID, err)

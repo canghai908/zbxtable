@@ -96,23 +96,23 @@ func GetAllHostGroups(page, limit, groups string) ([]HostGroups, int64, error) {
 }
 
 // GetAllHostGroupsList func
-func GetAllHostGroupsList() ([]HostTree, int64, error) {
+func GetAllHostGroupsList() ([]HostGroupList, int64, error) {
 	selectHosts := []string{"hostid", "name", "status"}
 	rep, err := API.Call("hostgroup.get", Params{"output": "extend",
 		"selectHosts": selectHosts})
 	if err != nil {
-		return []HostTree{}, 0, err
+		return []HostGroupList{}, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		return []HostTree{}, 0, err
+		return []HostGroupList{}, 0, err
 	}
-	var hb []HostTree
+	var hb []HostGroupList
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		logger.Errorf(err.Error())
-		return []HostTree{}, 0, err
+		return []HostGroupList{}, 0, err
 	}
 	return hb, int64(len(hb)), err
 }
@@ -138,24 +138,19 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 }
 
 // GetAllGroupsListFromInstance 从指定实例获取所有组列表
-func GetAllGroupsListFromInstance(zid string) ([]HostTree, int64, error) {
+func GetAllGroupsListFromInstance(id string) ([]HostGroupList, error) {
 	// 如果没有指定实例ID，使用全局API
-	if zid == "" {
-		return GetAllGroupsList()
-	}
 	var instance *ZabbixInstance
 	var err error
-	// 尝试将 instanceID 转换为 int64（数据库ID）
-	id, err := strconv.Atoi(zid)
-	if err == nil { // 如果转换成功，按 ID 查询
-		instance, err = GetZabbixInstanceByZID(id)
-	}
+	zid, _ := strconv.Atoi(id)
+	var list []HostGroupList
+	instance, err = GetZabbixInstanceByZID(zid)
 	if err != nil {
-		return []HostTree{}, 0, fmt.Errorf("未找到启用的实例 (tenant_id=%s): %w", zid, err)
+		return list, fmt.Errorf("未找到启用的实例 (zid=%s): %w", id, err)
 	}
 	// 检查实例是否启用
 	if !instance.Enabled {
-		return []HostTree{}, 0, fmt.Errorf("实例未启用 (zid=%d, instance_id=%s)", instance.ID, instance.InstanceID)
+		return list, fmt.Errorf("实例未启用 (zid=%d, instance_id=%s)", instance.ID, instance.InstanceID)
 	}
 	// 创建 Zabbix API 实例
 	apiURL := instance.URL + "/api_jsonrpc.php"
@@ -167,26 +162,24 @@ func GetAllGroupsListFromInstance(zid string) ([]HostTree, int64, error) {
 	} else {
 		_, err := api.Login(instance.User, instance.Pass)
 		if err != nil {
-			return []HostTree{}, 0, fmt.Errorf("登录 Zabbix 失败: %w", err)
+			return list, fmt.Errorf("登录 Zabbix 失败: %w", err)
 		}
 	}
 	// 调用 Zabbix API 获取主机组
 	rep, err := api.Call("hostgroup.get", Params{"output": "extend"})
 	if err != nil {
-		return []HostTree{}, 0, err
+		return list, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		return []HostTree{}, 0, err
+		return list, err
 	}
-	var hb []HostTree
-
-	err = json.Unmarshal(hba, &hb)
+	err = json.Unmarshal(hba, &list)
 	if err != nil {
 		logger.Errorf(err.Error())
-		return []HostTree{}, 0, err
+		return list, err
 	}
-	return hb, int64(len(hb)), err
+	return list, err
 }
 
 // GetHostsInfoByGroupID func
