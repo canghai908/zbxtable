@@ -227,7 +227,7 @@ func ReceiveGin(c *gin.Context) {
 		response.Success(c, res)
 		return
 	}
-	id, err := model.MsAdd(instance.ID, instance.InstanceID, instance.Name, body)
+	id, err := model.MsAdd(instance.ID, body)
 	if err != nil {
 		res.ID = 0
 		res.Msg = err.Error()

@@ -7,7 +7,7 @@ import (
 	"zbxtable/pkg/utils"
 )
 
-func MsAdd(zid int, instance_id, instance_name string, message []byte) (int64, error) {
+func MsAdd(zid int, message []byte) (int64, error) {
 	//replace " \
 	p0 := strings.Replace(string(message), `\`, `\\`, -1)
 	//替换"
@@ -27,10 +27,9 @@ func MsAdd(zid int, instance_id, instance_name string, message []byte) (int64, e
 		return 0, err
 	}
 
+	// 创建告警记录，只保存 ZID
 	var meal = Alarm{
 		ZID:           zid,
-		InstanceID:    instance_id,
-		InstanceName:  instance_name,
 		HostID:        mes.HostsID,
 		Hostname:      mes.Hostname,
 		Host:          mes.HostHost,

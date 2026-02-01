@@ -11,9 +11,7 @@ const (
 // Alarm struct
 type Alarm struct {
 	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	ZID           int       `gorm:"column:zid;index" json:"zid"`
-	InstanceID    string    `gorm:"column:instance_id;size:255" json:"instance_id"`
-	InstanceName  string    `gorm:"-" json:"instance_name"` // 实例名称（动态填充，不存数据库）
+	ZID           int       `gorm:"column:zid;index" json:"zid"` // 实例ID（数字主键）
 	HostID        string    `gorm:"column:host_id;size:255" json:"host_id"`
 	Hostname      string    `gorm:"column:hostname;size:255" json:"hostname"`
 	Host          string    `gorm:"column:host;size:200" json:"host"`

@@ -255,13 +255,13 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 	return ss, dpie, name, values, nil
 }
 
-// fillAlarmInstanceNames 填充告警数据的实例名称
+// fillAlarmInstanceNames 填充告警数据的实例信息（InstanceID 和 InstanceName）
 func fillAlarmInstanceNames(alarms *[]Alarm) {
 	if alarms == nil || len(*alarms) == 0 {
 		return
 	}
 
-	// 收集所有唯一的实例ID
+	// 收集所有唯一的 ZID
 	instanceIDs := make(map[int]bool)
 	for _, alarm := range *alarms {
 		if alarm.ZID > 0 {
@@ -270,19 +270,20 @@ func fillAlarmInstanceNames(alarms *[]Alarm) {
 	}
 
 	// 批量查询实例信息
-	instanceMap := make(map[int]string)
+	instanceMap := make(map[int]*ZabbixInstance)
 	for id := range instanceIDs {
-		tenant, err := GetZabbixInstanceByZID(id)
-		if err == nil && tenant != nil {
-			instanceMap[id] = tenant.Name
+		instance, err := GetZabbixInstanceByZID(id)
+		if err == nil && instance != nil {
+			instanceMap[id] = instance
 		}
 	}
 
-	// 填充实例名称
+	// 填充实例信息（InstanceID 和 InstanceName）
 	for i := range *alarms {
 		if (*alarms)[i].ZID > 0 {
-			if name, ok := instanceMap[(*alarms)[i].ZID]; ok {
-				(*alarms)[i].InstanceName = name
+			if instance, ok := instanceMap[(*alarms)[i].ZID]; ok {
+				(*alarms)[i].InstanceName = instance.Name
+				(*alarms)[i].InstanceID = instance.InstanceID
 			}
 		}
 	}

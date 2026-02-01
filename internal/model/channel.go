@@ -13,9 +13,11 @@ import (
 
 // 根据规则生成告警
 func GenAlert(alarm *Alarm) bool {
+	// 先从实例表查询 InstanceID 和 InstanceName
+
 	var rules []Rule
 	query := DB.Model(&Rule{}).
-		Where("instance_id LIKE ?", "%"+alarm.InstanceID+"%").
+		Where("zid LIKE ?", "%"+alarm.ZID+"%").
 		Where("m_type = ?", "1").
 		Where("status = ?", "0")
 	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
@@ -43,8 +45,7 @@ func GenAlert(alarm *Alarm) bool {
 		//event
 		event := &Event{
 			ID:            alarm.ID,
-			InstanceID:    alarm.InstanceID,
-			InstanceName:  alarm.InstanceName,
+			ZID:           alarm.ZID,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,
@@ -119,8 +120,7 @@ func GenAlert(alarm *Alarm) bool {
 		//event
 		event := &Event{
 			ID:            alarm.ID,
-			InstanceID:    alarm.InstanceID,
-			InstanceName:  alarm.InstanceName,
+			ZID:           alarm.ZID,
 			HostID:        alarm.HostID,
 			Hostname:      alarm.Hostname,
 			Host:          alarm.Host,
@@ -250,6 +250,15 @@ func sendEvent(event *Event) {
 
 // mut
 func IsMuted(event *Event) bool {
+	// 先从实例表查询 InstanceID
+	if event.ZID > 0 && event.InstanceID == "" {
+		instance, err := GetZabbixInstanceByZID(event.ZID)
+		if err == nil && instance != nil {
+			event.InstanceID = instance.InstanceID
+			event.InstanceName = instance.Name
+		}
+	}
+
 	var rules []Rule
 	query := DB.Model(&Rule{}).
 		Where("instance_id LIKE ?", "%"+event.InstanceID+"%").

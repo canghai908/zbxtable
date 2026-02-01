@@ -6,7 +6,7 @@ import (
 
 type Rule struct {
 	ID         int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	ZID        string    `gorm:"column:zid;size:100" json:"zid"`
+	ZID        int       `gorm:"column:zid" json:"zid"` // 实例标识符（字符串，支持通配符 "*"）
 	Name       string    `gorm:"column:name;size:200" json:"name"`
 	Conditions string    `gorm:"column:conditions;type:text" json:"conditions"`
 	Sweek      string    `gorm:"column:s_week;size:200" json:"s_week"`

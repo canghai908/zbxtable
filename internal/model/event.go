@@ -60,8 +60,9 @@ type EventTpl struct {
 
 type Event struct {
 	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	InstanceID    string    `gorm:"column:instance_id;size:255" json:"instance_id"`
-	InstanceName  string    `gorm:"column:instance_name;size:255" json:"instance_name"`
+	ZID           int       `gorm:"column:zid;index" json:"zid"` // 实例ID（数字主键）
+	InstanceID    string    `gorm:"-" json:"instance_id"`        // 实例标识符（动态填充，不存数据库）
+	InstanceName  string    `gorm:"-" json:"instance_name"`      // 实例名称（动态填充，不存数据库）
 	HostID        string    `gorm:"column:host_id;size:255" json:"host_id"`
 	Hostname      string    `gorm:"column:hostname;size:255" json:"hostname"`
 	Host          string    `gorm:"column:host;size:200" json:"host"`
