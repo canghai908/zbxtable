@@ -1,7 +1,6 @@
 ﻿package model
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -12,12 +11,11 @@ import (
 )
 
 // 根据规则生成告警
-func GenAlert(alarm *Alarm) bool {
+func GenAlert(alarm *Alarm) {
 	// 查询匹配当前实例的普通规则（m_type = 1）
-	fmt.Println("ADDDDDDDDDD")
 	var rules []Rule
 	var err error
-	fmt.Println(alarm.ZID)
+
 	if alarm.ZID > 0 {
 		// 使用 FIND_IN_SET 或 LIKE 来匹配实例ID（存储的是数字ID，用逗号分隔）
 		query := DB.Model(&Rule{}).
@@ -36,12 +34,10 @@ func GenAlert(alarm *Alarm) bool {
 			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 			Find(&rules).Error
 	}
-	fmt.Println(rules)
+
 	if err != nil {
 		logger.Log.Error("查询普通规则失败:", err)
-		return true
 	}
-
 	//找不到实例匹配的规则，走默认规则
 	if len(rules) == 0 {
 		//更新规则，告警走默认规则
@@ -53,42 +49,22 @@ func GenAlert(alarm *Alarm) bool {
 		//select default rule
 		var rules []Rule
 
-		// 优先查找匹配当前实例ID的默认规则
-		if alarm.ZID > 0 {
-			// 使用 FIND_IN_SET 或者精确匹配来查找包含当前实例ID的规则
-			query := DB.Model(&Rule{}).
-				Where("m_type = ?", "2").
-				Where("status = ?", "0").
-				Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", strconv.Itoa(alarm.ZID), "%"+strconv.Itoa(alarm.ZID)+"%")
-			err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
-				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
-				Find(&rules).Error
-			if err != nil {
-				logger.Log.Error(err)
-				return false
-			}
-		}
-
 		// 如果没有找到匹配实例的默认规则，则查找全局默认规则（z_ids 为 "*"）
-		if len(rules) == 0 {
-			query := DB.Model(&Rule{}).
-				Where("m_type = ?", "2").
-				Where("status = ?", "0").
-				Where("z_ids = ?", "*")
-			err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
-				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
-				Find(&rules).Error
-			if err != nil {
-				logger.Log.Error(err)
-				return false
-			}
+		query := DB.Model(&Rule{}).
+			Where("m_type = ?", "2").
+			Where("status = ?", "0").
+			Where("z_ids = ?", "*")
+		err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
+			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+			Find(&rules).Error
+		if err != nil {
+			logger.Log.Error(err)
+			return
 		}
-		fmt.Println("Found rule", rules)
-
 		//default rule disable
 		if len(rules) == 0 {
 			logger.Log.Errorf("default rule is null for zid: %d", alarm.ZID)
-			return false
+			return
 		}
 		//event
 		event := &Event{
@@ -119,8 +95,9 @@ func GenAlert(alarm *Alarm) bool {
 		}
 		//push event to redis
 		sendEvent(event)
+		return
 	}
-	//遍历rules
+	//找到规则，遍历规则
 	count := 0
 	for _, v := range rules {
 		//rfunc
@@ -162,9 +139,9 @@ func GenAlert(alarm *Alarm) bool {
 		}
 		//push event to redis
 		sendEvent(event)
+		return
 	}
-
-	return true
+	return
 }
 
 // GetEventUser 查找事件用户信息
@@ -214,10 +191,18 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 	return []string{}, err
 }
 func sendEvent(event *Event) {
+	// 填充实例信息
+	if event.ZID > 0 {
+		instance, err := GetZabbixInstanceByZID(event.ZID)
+		if err == nil && instance != nil {
+			event.InstanceID = instance.InstanceID
+			event.InstanceName = instance.Name
+		}
+	}
+
 	if len(event.Channel) == 0 {
 		return
 	}
-	fmt.Println("aaa", event)
 	channel := strings.Split(event.Channel, ",")
 	//遍历channel
 	for _, v := range channel {
@@ -245,7 +230,6 @@ func sendEvent(event *Event) {
 		userList := strings.Join(toUsers, ",")
 		event.ToUsers = userList
 		p, _ := json.Marshal(event)
-		fmt.Println(string(p))
 		err = CacheLPush(v, p)
 		if err != nil {
 			logger.Log.Error(err)

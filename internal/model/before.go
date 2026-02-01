@@ -1,7 +1,6 @@
 ﻿package model
 
 import (
-	"fmt"
 	"strings"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
@@ -16,7 +15,6 @@ func MsAdd(zid int, message []byte) (int64, error) {
 	var mes EventTpl
 	err := json.Unmarshal([]byte(p2), &mes)
 	if err != nil {
-		fmt.Println("CCCC")
 		logger.Log.Error(err)
 		return 0, err
 	}

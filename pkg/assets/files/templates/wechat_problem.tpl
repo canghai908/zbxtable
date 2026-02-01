@@ -1,6 +1,6 @@
 [{{.Status}}][{{.OccurTime.Format "15:04:05"}}]设备:{{.Hostname}}发生:{{.Message}}故障！
 =========================================
-Zabbix实例: {{.TenantName}}
+Zabbix实例: {{.InstanceName}}
 告警主机: {{.Hostname}}
 主机IP：{{.HostsIP}}
 主机分组: {{.Hgroup}}

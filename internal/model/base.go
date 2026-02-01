@@ -175,7 +175,6 @@ func DatabaseInit() {
 		logger.Log.Info(err)
 		return
 	}
-	fmt.Println("AAAAAAAAA")
 	fmt.Println(rules)
 	if len(rules) == 0 {
 		// 使用 "*" 作为全局默认规则，匹配所有租户
