@@ -14,7 +14,7 @@ const (
 // AddRule one
 func AddRule(m *Rule) (id int64, err error) {
 	m.Sweek = utils.VAarToStr(m.Sweek)
-	m.ZID = utils.VAarToStr(m.ZID)
+	m.ZIDs = utils.VAarToStr(m.ZIDs)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
@@ -113,25 +113,25 @@ func UpdateRule(m *Rule, tuser string) error {
 		return errors.New("no permission")
 	}
 	//vue array to str
-	m.ZID = utils.VAarToStr(m.ZID)
+	m.ZIDs = utils.VAarToStr(m.ZIDs)
 	m.Sweek = utils.VAarToStr(m.Sweek)
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
 	//判断是不是修改默认规则，如果是修改默认规则，则默认规则类型不变,表达式，条件配置
-	var mType, mConditions, mInstanceID string
+	var mType, mConditions, mZIds string
 	if m.MType == "2" {
 		mType = "2"
 		mConditions = ""
-		mInstanceID = "*"
+		mZIds = "*"
 	} else {
 		mType = m.MType
 		mConditions = m.Conditions
-		mInstanceID = m.ZID
+		mZIds = m.ZIDs
 	}
 	err = DB.Model(&Rule{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"name":       m.Name,
-		"zid":        mInstanceID,
+		"z_ids":      mZIds,
 		"conditions": mConditions,
 		"s_week":     m.Sweek,
 		"m_type":     mType,

@@ -40,56 +40,24 @@ type ListQueryAlarm struct {
 
 // ListExportAlarm struct
 type ListExportAlarm struct {
-	Begin      string `json:"begin"`
-	End        string `json:"end"`
-	Hosts      string `json:"hosts"`
-	InstanceID string `json:"instance_id"`
-	Status     string `json:"status"`
-	Level      string `json:"level"`
-	HostIP     string `json:"host_ip"`
+	Begin  string `json:"begin"`
+	End    string `json:"end"`
+	Hosts  string `json:"hosts"`
+	ZID    string `json:"zid"`
+	Status string `json:"status"`
+	Level  string `json:"level"`
+	HostIP string `json:"host_ip"`
 }
 
 // ListAnalysisAlarm qu
 type ListAnalysisAlarm struct {
-	Begin      string `json:"begin"`
-	End        string `json:"end"`
-	InstanceID string `json:"instance_id"`
+	Begin string `json:"begin"`
+	End   string `json:"end"`
+	ZID   string `json:"zid"`
 }
 
 // Pie struct
 type Pie struct {
 	Value int    `json:"value"`
 	Name  string `json:"name"`
-}
-
-// AlarmList struct
-type AlarmList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []Alarm `json:"items"`
-		Total int64   `json:"total"`
-	} `json:"data"`
-}
-
-// AlarmList struct
-type AlarmTendantList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items interface{} `json:"items"`
-		Total int64       `json:"total"`
-	} `json:"data"`
-}
-
-// AnalysisList struct
-type AnalysisList struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Level      []string `json:"level"`
-		LevelCount []Pie    `json:"level_count"`
-		Host       []string `json:"host"`
-		HostCount  []int    `json:"host_count"`
-	} `json:"data"`
 }

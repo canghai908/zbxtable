@@ -42,7 +42,7 @@ func GetAlarmByID(id int) (v *Alarm, err error) {
 
 // GetAllAlarm retrieves all Alarm matches certain condition. Returns empty list if
 // no records exist
-func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status, level string) (cnt int64, al []Alarm, err error) {
+func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, zid, status, level string) (cnt int64, al []Alarm, err error) {
 	var alarms []Alarm
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
@@ -62,8 +62,8 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 	if hosts != "" {
 		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
-	if tenant_id != "" {
-		query = query.Where("instance_id = ?", tenant_id)
+	if zid != "" {
+		query = query.Where("zid = ?", zid)
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -89,7 +89,7 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, tenant_id, status
 	}
 
 	// 填充实例名称
-	fillAlarmInstanceNames(&alarms)
+	//fillAlarmInstanceNames(&alarms)
 
 	return cnt, alarms, nil
 }
@@ -123,7 +123,7 @@ func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 
 // ExportAlarm export
 func ExportAlarm(begin, end time.Time,
-	hosts, tenant_id, status, level, hostIP string) ([]byte, error) {
+	hosts, zid, status, level, hostIP string) ([]byte, error) {
 	var alarms []Alarm
 	intbegin := begin.Unix()
 	intend := end.Unix()
@@ -133,8 +133,8 @@ func ExportAlarm(begin, end time.Time,
 	if hosts != "" {
 		query = query.Where("host LIKE ?", "%"+hosts+"%")
 	}
-	if tenant_id != "" {
-		query = query.Where("instance_id = ?", tenant_id)
+	if zid != "" {
+		query = query.Where("zid = ?", zid)
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -152,7 +152,7 @@ func ExportAlarm(begin, end time.Time,
 	}
 
 	// 填充实例名称
-	fillAlarmInstanceNames(&alarms)
+	//fillAlarmInstanceNames(&alarms)
 
 	cnt := int64(len(alarms))
 	pbye, err := CreateAlarmXlsx(alarms, cnt, intbegin, intend)
@@ -256,35 +256,35 @@ func AnalysisAlarm(begin, end time.Time, tenant_id string) (arrytile []string, p
 }
 
 // fillAlarmInstanceNames 填充告警数据的实例信息（InstanceID 和 InstanceName）
-func fillAlarmInstanceNames(alarms *[]Alarm) {
-	if alarms == nil || len(*alarms) == 0 {
-		return
-	}
+// func fillAlarmInstanceNames(alarms *[]Alarm) {
+// 	if alarms == nil || len(*alarms) == 0 {
+// 		return
+// 	}
 
-	// 收集所有唯一的 ZID
-	instanceIDs := make(map[int]bool)
-	for _, alarm := range *alarms {
-		if alarm.ZID > 0 {
-			instanceIDs[alarm.ZID] = true
-		}
-	}
+// 	// 收集所有唯一的 ZID
+// 	instanceIDs := make(map[int]bool)
+// 	for _, alarm := range *alarms {
+// 		if alarm.ZID > 0 {
+// 			instanceIDs[alarm.ZID] = true
+// 		}
+// 	}
 
-	// 批量查询实例信息
-	instanceMap := make(map[int]*ZabbixInstance)
-	for id := range instanceIDs {
-		instance, err := GetZabbixInstanceByZID(id)
-		if err == nil && instance != nil {
-			instanceMap[id] = instance
-		}
-	}
+// 	// 批量查询实例信息
+// 	instanceMap := make(map[int]*ZabbixInstance)
+// 	for id := range instanceIDs {
+// 		instance, err := GetZabbixInstanceByZID(id)
+// 		if err == nil && instance != nil {
+// 			instanceMap[id] = instance
+// 		}
+// 	}
 
-	// 填充实例信息（InstanceID 和 InstanceName）
-	for i := range *alarms {
-		if (*alarms)[i].ZID > 0 {
-			if instance, ok := instanceMap[(*alarms)[i].ZID]; ok {
-				(*alarms)[i].InstanceName = instance.Name
-				(*alarms)[i].InstanceID = instance.InstanceID
-			}
-		}
-	}
-}
+// 	// 填充实例信息（InstanceID 和 InstanceName）
+// 	for i := range *alarms {
+// 		if (*alarms)[i].ZID > 0 {
+// 			if instance, ok := instanceMap[(*alarms)[i].ZID]; ok {
+// 				(*alarms)[i].InstanceName = instance.Name
+// 				(*alarms)[i].InstanceID = instance.InstanceID
+// 			}
+// 		}
+// 	}
+// }

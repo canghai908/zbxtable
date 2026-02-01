@@ -16,8 +16,9 @@ func GenAlert(alarm *Alarm) bool {
 	// 先从实例表查询 InstanceID 和 InstanceName
 
 	var rules []Rule
+	zid := strconv.Itoa(alarm.ZID)
 	query := DB.Model(&Rule{}).
-		Where("zid LIKE ?", "%"+alarm.ZID+"%").
+		Where("z_ids LIKE ?", "%"+zid+"%").
 		Where("m_type = ?", "1").
 		Where("status = ?", "0")
 	err := query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
@@ -84,9 +85,10 @@ func GenAlert(alarm *Alarm) bool {
 		//select default rule
 		// 优先查找匹配当前租户的默认规则
 		var rules []Rule
-		fmt.Println("CCC", alarm.InstanceID)
+		fmt.Println("CCC", alarm.ZID)
+		zid := strconv.Itoa(alarm.ZID)
 		query := DB.Model(&Rule{}).
-			Where("instance_id LIKE ?", "%"+alarm.InstanceID+"%").
+			Where("z_ids LIKE ?", "%"+zid+"%").
 			Where("m_type = ?", "1").
 			Where("status = ?", "0").Debug()
 		err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
@@ -102,8 +104,8 @@ func GenAlert(alarm *Alarm) bool {
 			query = DB.Model(&Rule{}).
 				Where("m_type = ?", "2").
 				Where("status = ?", "0").
-				Where("(instance_id = ? OR instance_id = ? OR tenant_id IS NULL)", "", "*")
-			err = query.Select("id", "name", "conditions", "tenant_id", "note", "s_week",
+				Where("(z_ids = ? OR z_ids = ? OR z_ids IS NULL)", "", "*")
+			err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 				"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 				Find(&rules).Error
 			if err != nil {
@@ -114,7 +116,7 @@ func GenAlert(alarm *Alarm) bool {
 
 		//default rule disable
 		if len(rules) == 0 {
-			logger.Log.Errorf("default rule is null for tenant: %s", alarm.InstanceID)
+			logger.Log.Errorf("default rule is null for instance: %s", alarm.ZID)
 			return false
 		}
 		//event

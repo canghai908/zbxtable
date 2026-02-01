@@ -237,15 +237,15 @@ func DatabaseInit() {
 		// 使用 "*" 作为全局默认规则，匹配所有租户
 		defaultRule := []Rule{
 			{
-				Name:       "全局默认规则",
-				InstanceID: "*",
-				MType:      "2",
-				Channel:    "wechat_robot",
-				UserIds:    "1",
-				Sweek:      "0,1,2,3,4,5,6",
-				Stime:      "00:00",
-				Etime:      "23.59",
-				Status:     "0"},
+				Name:    "全局默认规则",
+				ZIDs:    "*",
+				MType:   "2",
+				Channel: "wechat_robot",
+				UserIds: "1",
+				Sweek:   "0,1,2,3,4,5,6",
+				Stime:   "00:00",
+				Etime:   "23.59",
+				Status:  "0"},
 		}
 		err := DB.Create(&defaultRule).Error
 		if err != nil {
