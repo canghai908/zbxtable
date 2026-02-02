@@ -271,6 +271,11 @@ func InitRouter() *gin.Engine {
 				systemGroup.POST("/init/:id", handler.SystemInit)
 				systemGroup.GET("/config", handler.GetAllConfig)
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
+				
+				// 系统更新
+				systemGroup.GET("/version", handler.GetCurrentVersion)
+				systemGroup.GET("/check-update", handler.CheckUpdate)
+				systemGroup.POST("/update", handler.DoUpdate)
 			}
 
 			// 出口配置管理（新）
