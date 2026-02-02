@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -129,7 +128,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
-
 	logger.Log.Info("WebSocket connection established successfully")
 
 	for {
@@ -140,7 +138,7 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 			break
 		}
 		logger.Log.Info("Received message:", string(ms))
-		fmt.Println("AAAAAAAAAA", string(ms))
+
 		// 发送数据
 		if string(ms) == "success" {
 			// 查询数据
@@ -149,7 +147,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 				logger.Log.Debug("GetTopologyById in loop error:", err)
 				continue
 			}
-			fmt.Println(val)
 			// 再次检查状态
 			if val.Status != "1" {
 				logger.Log.Debug("拓扑已取消共享")

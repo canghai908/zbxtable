@@ -59,16 +59,35 @@ func CreateTopology(c *gin.Context) {
 	nodes := gjson.Get(string(body), "nodes").String()
 	edges := gjson.Get(string(body), "edges").String()
 	topology := gjson.Get(string(body), "topology").String()
+	backgroundImage := gjson.Get(string(body), "background_image").String()
+	canvasWidth := int(gjson.Get(string(body), "canvas_width").Int())
+	canvasHeight := int(gjson.Get(string(body), "canvas_height").Int())
+	
+	// 设置默认值
+	if canvasWidth == 0 {
+		canvasWidth = 3000
+	}
+	if canvasHeight == 0 {
+		canvasHeight = 2000
+	}
 
 	var TopologyRes model.TopologyList
-	v := model.Topology{Nodes: nodes, Edges: edges, Topology: topology}
-	_, err = model.AddTopology(&v)
+	v := model.Topology{
+		Nodes:           nodes,
+		Edges:           edges,
+		Topology:        topology,
+		BackgroundImage: backgroundImage,
+		CanvasWidth:     canvasWidth,
+		CanvasHeight:    canvasHeight,
+	}
+	id, err := model.AddTopology(&v)
 	if err != nil {
 		TopologyRes.Code = 500
 		TopologyRes.Message = err.Error()
 	} else {
 		TopologyRes.Code = 200
 		TopologyRes.Message = "创建成功"
+		TopologyRes.Data.Items = []model.Topology{{ID: int(id)}}
 	}
 	c.JSON(http.StatusOK, TopologyRes)
 }
@@ -86,9 +105,28 @@ func UpdateTopology(c *gin.Context) {
 	nodes := gjson.Get(string(body), "nodes").String()
 	edges := gjson.Get(string(body), "edges").String()
 	topology := gjson.Get(string(body), "topology").String()
+	backgroundImage := gjson.Get(string(body), "background_image").String()
+	canvasWidth := int(gjson.Get(string(body), "canvas_width").Int())
+	canvasHeight := int(gjson.Get(string(body), "canvas_height").Int())
+	
+	// 设置默认值
+	if canvasWidth == 0 {
+		canvasWidth = 3000
+	}
+	if canvasHeight == 0 {
+		canvasHeight = 2000
+	}
 
 	var TopologyRes model.TopologyList
-	v := model.Topology{ID: id, Nodes: nodes, Edges: edges, Topology: topology}
+	v := model.Topology{
+		ID:              id,
+		Nodes:           nodes,
+		Edges:           edges,
+		Topology:        topology,
+		BackgroundImage: backgroundImage,
+		CanvasWidth:     canvasWidth,
+		CanvasHeight:    canvasHeight,
+	}
 	err = model.UpdateTopologyByID(&v)
 	if err != nil {
 		TopologyRes.Code = 500
