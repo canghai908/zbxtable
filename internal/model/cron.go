@@ -35,6 +35,9 @@ func InitTask() {
 	// 新增：出口数据采集任务（每分钟执行一次）
 	cronScheduler.AddFunc("0 * * * * *", func() { _ = CollectEgressData() })
 
+	// 新增：状态纵览数据采集任务（每5分钟执行一次）
+	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncOverviewData() })
+
 	// 启动调度器
 	cronScheduler.Start()
 	logger.Log.Info("Cron scheduler started")
@@ -499,4 +502,130 @@ func SyncInventory() error {
 	}
 
 	return nil
+}
+
+// SyncOverviewData 同步状态纵览数据到缓存（支持多实例）
+func SyncOverviewData() error {
+	logger.Log.Info("开始同步状态纵览数据到缓存")
+
+	// 获取所有启用的实例
+	instances, err := GetAllEnabledAPIInstances()
+	if err != nil {
+		logger.Log.Errorf("获取启用的实例失败: %v", err)
+		return err
+	}
+
+	// 定义主机类型列表
+	hostTypes := []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
+
+	// 遍历每种主机类型
+	for _, hostType := range hostTypes {
+		var allHosts []Hosts
+
+		// 从所有实例收集该类型的主机数据
+		for _, inst := range instances {
+			hosts, err := getOverviewHostsFromInstance(inst, hostType)
+			if err != nil {
+				logger.Log.Errorf("从实例 %s 获取 %s 类型主机失败: %v", inst.Name, hostType, err)
+				continue
+			}
+
+			// 为每个主机添加实例信息
+			for i := range hosts {
+				hosts[i].ZID = inst.ZID
+				hosts[i].InstanceName = inst.Name
+			}
+
+			allHosts = append(allHosts, hosts...)
+		}
+
+		// 将数据序列化并写入缓存
+		data, err := json.Marshal(allHosts)
+		if err != nil {
+			logger.Log.Errorf("序列化 %s 类型主机数据失败: %v", hostType, err)
+			continue
+		}
+
+		err = CacheSet(hostType+"_OVERVIEW", string(data), 0)
+		if err != nil {
+			logger.Log.Errorf("写入 %s 类型主机数据到缓存失败: %v", hostType, err)
+			continue
+		}
+
+		logger.Log.Infof("成功同步 %s 类型主机数据到缓存，共 %d 台主机", hostType, len(allHosts))
+	}
+
+	logger.Log.Info("状态纵览数据同步完成")
+	return nil
+}
+
+// getOverviewHostsFromInstance 从指定实例获取状态纵览主机数据
+func getOverviewHostsFromInstance(inst *APIInstance, hostType string) ([]Hosts, error) {
+	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
+	SearchInventoryPar := make(map[string]string)
+	SearchInventoryPar["type"] = hostType
+	filterPar := make(map[string]string)
+	filterPar["status"] = "0" // 只获取启用的主机
+
+	rep, err := inst.API.CallWithError("host.get", Params{
+		"output":           "extend",
+		"filter":           filterPar,
+		"searchInventory":  SearchInventoryPar,
+		"selectInventory":  "extend",
+		"selectInterfaces": SelectInterfacesPar})
+	if err != nil {
+		return nil, err
+	}
+
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var hb ListHosts
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		return nil, err
+	}
+
+	var hosts []Hosts
+	for _, v := range hb {
+		var d Hosts
+		d.HostID = v.Hostid
+		d.Host = v.Host
+		d.Name = v.Name
+		if len(v.Interfaces) != 0 {
+			d.Interfaces = v.Interfaces[0].IP
+			d.Available = v.Interfaces[0].Available
+			d.Error = v.Interfaces[0].Error
+		}
+		d.Status = v.Status
+		d.Model = v.Inventory.Model
+		d.OS = v.Inventory.Os
+		d.NumberOfCores = v.Inventory.Software
+		d.CPUUtilization = v.Inventory.SoftwareAppA
+		d.MemoryUtilization = v.Inventory.SoftwareAppB
+		d.MemoryTotal = v.Inventory.SoftwareAppC
+		d.MemoryUsed = v.Inventory.SoftwareAppD
+		d.Uptime = v.Inventory.SoftwareAppE
+		d.DateHwInstall = v.Inventory.DateHwInstall
+		d.DateHwExpiry = v.Inventory.DateHwExpiry
+		d.MAC = v.Inventory.MacaddressA
+		d.ResourceID = v.Inventory.SerialnoB
+		d.Vendor = v.Inventory.Vendor
+		d.Ping = v.Inventory.Poc1Name
+		d.PingLoss = v.Inventory.Poc1Email
+		d.PingSec = v.Inventory.Poc1PhoneA
+
+		// 网络设备和物理服务器的特殊字段
+		if hostType == "HW_NET" || hostType == "HW_SRV" {
+			d.SerialNo = v.Inventory.SerialnoA
+			d.Location = v.Inventory.Location
+			d.Department = v.Inventory.SiteCity
+		}
+
+		hosts = append(hosts, d)
+	}
+
+	return hosts, nil
 }

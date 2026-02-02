@@ -72,6 +72,16 @@ func GetOverview(c *gin.Context) {
 	response.SuccessWithMessage(c, "获取成功", info)
 }
 
+// SyncOverview 手动触发状态纵览数据同步
+func SyncOverview(c *gin.Context) {
+	err := model.SyncOverviewData()
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "同步成功", nil)
+}
+
 // GetEgressData 获取出口带宽数据（新版本，支持多个出口）
 func GetEgressData(c *gin.Context) {
 	// 尝试从新缓存读取数据
