@@ -1,7 +1,6 @@
 ﻿package model
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -76,7 +75,6 @@ func GetAllReportsLimt(page, limit, name, reportType string) (cnt int64, topo []
 func AddReport(m *Report) (id int64, err error) {
 	m.Items = utils.VAarToStr(m.Items)
 	m.Cycle = utils.VAarToStr(m.Cycle)
-	fmt.Println(m.Items, m.Cycle)
 	err = DB.Create(m).Error
 	if err != nil {
 		return 0, err

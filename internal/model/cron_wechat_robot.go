@@ -21,7 +21,6 @@ func ConsumeWechatRobot() {
 			time.Sleep(time.Millisecond * 200)
 			continue
 		}
-		fmt.Println(L)
 		SendWechatRobotList(L)
 	}
 }

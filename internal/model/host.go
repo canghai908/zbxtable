@@ -1070,7 +1070,6 @@ func GetWinFilesSystemData(hostid string) ([]WinFilesSystemData, error) {
 						}
 						switch v.Key {
 						case "vfs.fs.size[" + vv.Value + ",pused]", "vfs.fs.dependent.size[" + vv.Value + ",pused]":
-							fmt.Println("vfs.fs.size["+vv.Value+",pused]", v.Lastvalue)
 							fsData["SpaceUtilization"] = utils.DecFloat64Round2(v.Lastvalue)
 							fsData["Lastclock"] = v.Lastclock
 						case "vfs.fs.size[" + vv.Value + ",total]", "vfs.fs.dependent.size[" + vv.Value + ",total]":

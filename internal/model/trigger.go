@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strconv"
 	"zbxtable/pkg/logger"
 )
@@ -14,8 +13,6 @@ func GetTriggers() ([]EndTrigger, int64, error) {
 		logger.Log.Errorf("获取启用的实例失败: %v", err)
 		return []EndTrigger{}, 0, err
 	}
-
-	fmt.Println(instances)
 	var allTriggers []EndTrigger
 	for _, inst := range instances {
 		triggers, _, err := GetTriggersFromInstance(inst)

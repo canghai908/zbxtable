@@ -124,7 +124,6 @@ func CreateZabbixInstance(m *ZabbixInstance) error {
 	m.URL = strings.TrimRight(strings.TrimSpace(m.URL), "/")
 	m.InstanceID = strings.TrimSpace(m.InstanceID)
 	m.Name = strings.TrimSpace(m.Name)
-	fmt.Println(m.InstanceID)
 	if m.InstanceID == "" {
 		return errors.New("instance_id is required")
 	}
@@ -198,7 +197,7 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 		updates["url"] = newWeb
 	}
 	updates["user"] = patch.User
-	
+
 	// 加密密码和Token
 	if patch.Pass != "" {
 		encryptedPass, err := utils.EncryptString(patch.Pass, encryptionKey)
@@ -209,7 +208,7 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 	} else {
 		updates["pass"] = ""
 	}
-	
+
 	if patch.Token != "" {
 		encryptedToken, err := utils.EncryptString(patch.Token, encryptionKey)
 		if err != nil {
@@ -219,7 +218,7 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 	} else {
 		updates["token"] = ""
 	}
-	
+
 	updates["enabled"] = patch.Enabled
 	updates["notify_method"] = patch.NotifyMethod
 	updates["updated_at"] = time.Now()
@@ -265,10 +264,10 @@ func TestAndUpdateZabbixInstance(zid int) (*ZabbixInstance, string, error) {
 	if err := DB.First(&instance, zid).Error; err != nil {
 		return nil, "", err
 	}
-	
+
 	// 解密密码和Token
 	decryptedPass, decryptedToken := DecryptInstanceCredentials(&instance)
-	
+
 	now := time.Now()
 	ver, err := TestZabbixInstanceConfig(instance.URL, instance.User, decryptedPass, decryptedToken)
 	if err != nil {

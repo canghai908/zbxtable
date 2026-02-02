@@ -89,7 +89,6 @@ func TaskWeekReport(m Report) error {
 		}
 		//获取item信息
 		ItemInfo, _ := GetItemByID(v)
-		//	fmt.Println(ItemInfo[0])
 		//判断是否为空
 		if len(ItemInfo) == 0 {
 			logger.Log.Error(err)

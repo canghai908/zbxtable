@@ -1,7 +1,6 @@
 ﻿package model
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -115,7 +114,6 @@ func TaskDayReport(m Report) error {
 			logger.Log.Error(err)
 			continue
 		}
-		//	fmt.Println(ItemInfo[0])
 		hostInfo, err := GetHost(ItemInfo[0].Hostid)
 		if err != nil {
 			//写入日志
@@ -209,7 +207,6 @@ func TaskDayReport(m Report) error {
 		filelist = append(filelist, assetFiles...)
 	}
 
-	fmt.Println(filelist)
 	dirdata := Tend.Format("2006-01-02_15_04_05")
 	dirname := m.Name + "_day_" + dirdata + "/"
 	Subject := "[日报]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"

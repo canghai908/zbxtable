@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
@@ -42,6 +41,5 @@ func GetItemByTemplateID(c *gin.Context) {
 		response.InternalError(c, "获取模版错误")
 		return
 	}
-	fmt.Println(list)
 	response.Success(c, list)
 }

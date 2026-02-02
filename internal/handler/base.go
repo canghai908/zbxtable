@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -202,7 +201,6 @@ func ReceiveGin(c *gin.Context) {
 	if InstanceID == "" {
 		response.BadRequest(c, "instanceID not found")
 	}
-	fmt.Println(c.Request.Header)
 	// instance的token校验
 	//查询instanceid和token,可以一起查询，无需多次查询
 	//
