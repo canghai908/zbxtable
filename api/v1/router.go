@@ -146,7 +146,6 @@ func InitRouter() *gin.Engine {
 				indexGroup.GET("/restop", handler.GetResourceTop)
 				indexGroup.GET("/inventory", handler.GetInventory)
 				indexGroup.GET("/overview", handler.GetOverview)
-				indexGroup.POST("/overview/sync", handler.SyncOverview) // 手动触发同步
 				indexGroup.GET("/egress", handler.GetEgressData)
 				indexGroup.GET("/version", handler.GetVersion)
 				indexGroup.GET("/session", handler.GetZbxSession)
