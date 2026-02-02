@@ -9,6 +9,7 @@ import (
 	"zbxtable/internal/middleware"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,6 +23,9 @@ func InitRouter() *gin.Engine {
 	// 中间件
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+
+	// Gzip 压缩中间件（用于压缩静态资源和 API 响应）
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// CORS 中间件
 	config := cors.DefaultConfig()
