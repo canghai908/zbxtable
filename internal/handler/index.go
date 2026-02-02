@@ -7,6 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// VersionInfo 版本信息响应结构
+type VersionInfo struct {
+	Version   string `json:"version"`
+	GitHash   string `json:"gitHash"`
+	BuildTime string `json:"buildTime"`
+}
+
 // GetRouters 获取异步路由
 func GetRouters(c *gin.Context) {
 	tuser, _ := c.Get("username")
@@ -78,7 +85,7 @@ func GetEgressData(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// 如果新缓存没有数据，尝试使用旧的 API（向后兼容）
 	info, err := model.GetEgressData()
 	if err != nil {
@@ -90,11 +97,10 @@ func GetEgressData(c *gin.Context) {
 
 // GetVersion 获取版本信息
 func GetVersion(c *gin.Context) {
-	versionInfo := gin.H{
-		"zabbix_version": model.ZBX_VER,
-		"version":        model.Version,
-		"git_hash":       model.GitHash,
-		"build_time":     model.BuildTime,
+	versionInfo := VersionInfo{
+		Version:   model.Version,
+		GitHash:   model.GitHash,
+		BuildTime: model.BuildTime,
 	}
 	response.SuccessWithMessage(c, "获取成功", versionInfo)
 }

@@ -25,13 +25,29 @@ var updater = &selfupdate.Updater{
 	CurrentVersion: model.Version,
 }
 
-// UpdateInfo 更新信息
+// UpdateInfo 更新信息响应结构
 type UpdateInfo struct {
-	CurrentVersion string `json:"current_version"`
-	LatestVersion  string `json:"latest_version"`
-	HasUpdate      bool   `json:"has_update"`
-	UpdateURL      string `json:"update_url"`
-	ReleaseNotes   string `json:"release_notes,omitempty"`
+	CurrentVersion string `json:"currentVersion"`
+	LatestVersion  string `json:"latestVersion"`
+	HasUpdate      bool   `json:"hasUpdate"`
+	UpdateURL      string `json:"updateUrl"`
+	ReleaseNotes   string `json:"releaseNotes,omitempty"`
+}
+
+// UpdateResult 更新结果响应结构
+type UpdateResult struct {
+	Success      bool   `json:"success"`
+	OldVersion   string `json:"oldVersion"`
+	NewVersion   string `json:"newVersion"`
+	NeedRestart  bool   `json:"needRestart"`
+	RestartDelay int    `json:"restartDelay"`
+}
+
+// SystemVersion 系统版本信息响应结构
+type SystemVersion struct {
+	Version   string `json:"version"`
+	GitHash   string `json:"gitHash"`
+	BuildTime string `json:"buildTime"`
 }
 
 // CheckUpdate 检查更新
@@ -113,13 +129,14 @@ func DoUpdate(c *gin.Context) {
 	logger.Log.Infof("更新成功: %s -> %s", model.Version, updater.Info.Version)
 
 	// 返回成功响应
-	response.SuccessWithMessage(c, "更新成功，系统将在 3 秒后自动重启", gin.H{
-		"success":        true,
-		"old_version":    model.Version,
-		"new_version":    updater.Info.Version,
-		"need_restart":   true,
-		"restart_delay":  3,
-	})
+	updateResult := UpdateResult{
+		Success:      true,
+		OldVersion:   model.Version,
+		NewVersion:   updater.Info.Version,
+		NeedRestart:  true,
+		RestartDelay: 3,
+	}
+	response.SuccessWithMessage(c, "更新成功，系统将在 3 秒后自动重启", updateResult)
 
 	// 延迟重启，让响应先返回给客户端
 	go func() {
@@ -180,10 +197,10 @@ func triggerUpdateRestart() {
 
 // GetCurrentVersion 获取当前版本信息
 func GetCurrentVersion(c *gin.Context) {
-	versionInfo := gin.H{
-		"version":    model.Version,
-		"git_hash":   model.GitHash,
-		"build_time": model.BuildTime,
+	versionInfo := SystemVersion{
+		Version:   model.Version,
+		GitHash:   model.GitHash,
+		BuildTime: model.BuildTime,
 	}
 	response.Success(c, versionInfo)
 }
