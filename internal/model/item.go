@@ -317,6 +317,84 @@ func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count in
 	return ItemList, int64(len(ItemList)), nil
 }
 
+// GetReceiveTrafficeItemByHostIDFromInstance 从指定实例根据hostid获取入流量监控项
+func GetReceiveTrafficeItemByHostIDFromInstance(zid, hostid string) (item []interface{}, count int64, err error) {
+	// 获取实例API
+	inst, err := GetZabbixInstanceAPI(zid)
+	if err != nil {
+		return []interface{}{}, 0, fmt.Errorf("获取实例API失败: %v", err)
+	}
+
+	var ItemList []interface{}
+	if inst.IsV54OrLater {
+		ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
+		selectTags := []string{"tag", "value"}
+		Search2Par := make(map[string]string, 1)
+		Search2Par["tag"] = "interface"
+		Par := make(map[int]interface{})
+		Par[0] = Search2Par
+		rep1, err := inst.API.CallWithError("item.get", Params{
+			"output":     ItemsOutput,
+			"hostids":    hostid,
+			"selectTags": selectTags,
+			"sortfield":  "name",
+			"tags":       Par})
+		if err != nil {
+			return ItemList, 0, err
+		}
+		ApplicationResByte, err := json.Marshal(rep1.Result)
+		if err != nil {
+			return ItemList, 0, err
+		}
+		var ts []MonIts
+		err = json.Unmarshal(ApplicationResByte, &ts)
+		if err != nil {
+			return ItemList, 0, err
+		}
+		for _, v := range ts {
+			for _, vv := range v.Tags {
+				if vv.Tag == "interface" {
+					switch {
+					case strings.Contains(v.Name, "Bits received"):
+						v.Name = vv.Value
+						ItemList = append(ItemList, v)
+					}
+				}
+			}
+		}
+		return ItemList, int64(len(ItemList)), nil
+	}
+
+	// 旧版本处理
+	ItemsOutput := []string{"itemid", "tags", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
+	rep, err := inst.API.Call("item.get", Params{"output": ItemsOutput,
+		"sortfield": "name",
+		"hostids":   hostid,
+	})
+	if err != nil {
+		logger.Log.Error(err)
+		return ItemList, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		logger.Log.Error(err)
+		return ItemList, 0, err
+	}
+	var hb []Item
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		logger.Log.Error(err)
+		return ItemList, 0, err
+	}
+	for _, v := range hb {
+		switch {
+		case strings.Contains(v.Name, "Bits received"):
+			ItemList = append(ItemList, v)
+		}
+	}
+	return ItemList, int64(len(ItemList)), nil
+}
+
 // GetFlowItemByHostID func
 func GetFlowItemByHostID(hostid string) (item []Item, count int64, err error) {
 	output := []string{"itemid", "name", "key_", "value_type", "units"}

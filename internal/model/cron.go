@@ -399,7 +399,8 @@ func UpdateEdgeDataById(id int) error {
 			v.Attrs.Line.Stroke = "#A4A4A4"
 			v.Attrs.Line.StrokeDasharray = 0
 			if v.Attrs.Line.FlowID != "" {
-				flow, err := GetFlowByFlowID(v.Attrs.Line.FlowID)
+				// 使用边上的ZID从对应实例获取流量数据
+				flow, err := GetFlowByFlowIDFromInstance(v.Attrs.Line.ZID, v.Attrs.Line.FlowID)
 				if err != nil {
 					logger.Log.Error(err)
 				}
@@ -407,7 +408,8 @@ func UpdateEdgeDataById(id int) error {
 			}
 			//trigger get
 			if v.Attrs.Line.TriggerID != "" {
-				status, err := GetTriggerValueByTriggerID(v.Attrs.Line.TriggerID)
+				// 使用边上的ZID从对应实例获取触发器状态
+				status, err := GetTriggerValueByTriggerIDFromInstance(v.Attrs.Line.ZID, v.Attrs.Line.TriggerID)
 				if err != nil {
 					logger.Log.Error(err)
 				}

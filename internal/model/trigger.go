@@ -102,6 +102,37 @@ func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
 	return hb, int64(len(hb)), nil
 }
 
+// GetTriggerListFromInstance 从指定实例根据主机ID获取Trigger列表
+func GetTriggerListFromInstance(zid string, hostid string) ([]TriggerListStr, int64, error) {
+	inst, err := GetZabbixInstanceAPI(zid)
+	if err != nil {
+		logger.Log.Errorf("获取实例API失败: %v", err)
+		return []TriggerListStr{}, 0, err
+	}
+
+	triggers, err := inst.API.CallWithError("trigger.get", Params{"output": "extend",
+		"sortorder":         "DESC",
+		"hostids":           hostid,
+		"monitored":         true,
+		"expandDescription": true})
+	if err != nil {
+		logger.Log.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	hba, err := json.Marshal(triggers.Result)
+	if err != nil {
+		logger.Log.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	var hb []TriggerListStr
+	err = json.Unmarshal(hba, &hb)
+	if err != nil {
+		logger.Log.Debug(err)
+		return []TriggerListStr{}, 0, err
+	}
+	return hb, int64(len(hb)), nil
+}
+
 // GetTriggerList get porblems
 func GetTriggerHostCount(hostid string) (int64, error) {
 	filter := make(map[string]string)

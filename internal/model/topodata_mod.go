@@ -22,6 +22,7 @@ type AllEdge []AEdge
 type AEdge struct {
 	Attrs struct {
 		Line struct {
+			ZID          int    `json:"ZID"`
 			FlowID       string `json:"FlowID"`
 			FlowName     string `json:"FlowName"`
 			FlowType     string `json:"FlowType"`

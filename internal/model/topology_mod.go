@@ -8,6 +8,7 @@ type Topology struct {
 	Edges     string    `gorm:"column:edges;type:text" json:"edges"`
 	Topology  string    `gorm:"column:topology;size:200" json:"topology"`
 	Status    string    `gorm:"column:status;size:10" json:"status"`
+	ZID       int       `gorm:"column:zid;default:0" json:"zid"` // Zabbix实例主键ID，0表示未指定
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }

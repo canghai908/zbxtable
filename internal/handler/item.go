@@ -64,9 +64,22 @@ func GetAllTrafficItem(c *gin.Context) {
 // GetAllReceiveTrafficItem 获取设备所有出流量
 func GetAllReceiveTrafficItem(c *gin.Context) {
 	HostID := c.Query("hostid")
-	v, count, err := model.GetReceiveTrafficeItemByHostID(HostID)
+	zid := c.Query("zid")
+
+	var v interface{}
+	var count int64
+	var err error
+
+	// 如果指定了实例ID，从指定实例获取流量监控项
+	if zid != "" {
+		v, count, err = model.GetReceiveTrafficeItemByHostIDFromInstance(zid, HostID)
+	} else {
+		// 否则使用全局API
+		v, count, err = model.GetReceiveTrafficeItemByHostID(HostID)
+	}
+
 	if err != nil {
-		response.InternalError(c, "获取错误")
+		response.InternalError(c, "获取错误:"+err.Error())
 		return
 	}
 	response.SuccessWithPage(c, v, count)

@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"zbxtable/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
