@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -79,7 +80,7 @@ func WebSocketHandlerGin(c *gin.Context) {
 	}
 }
 
-// PublicWebSocketHandlerGin 公开的 WebSocket 处理（无需认证，仅限已发布的拓扑）
+// PublicWebSocketHandlerGin 公开的 WebSocket 处理（无需认证，仅限已共享的拓扑）
 func PublicWebSocketHandlerGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
@@ -89,20 +90,20 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 	logger.Log.Info("Request URL:", c.Request.URL.String())
 	logger.Log.Info("Request Method:", c.Request.Method)
 
-	// 检查拓扑是否已发布
+	// 检查拓扑是否已共享
 	topo, err := model.GetTopologyById(id)
 	if err != nil {
 		logger.Log.Error("GetTopologyById failed:", err)
 		// 返回 HTTP 错误，不进行 WebSocket 升级
-		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "拓扑不存在"})
+		// c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "拓扑不存在"})
 		return
 	}
 	logger.Log.Info("Topology found, status:", topo.Status)
 
 	if topo.Status != "1" {
-		logger.Log.Error("Topology not published, status:", topo.Status)
+		logger.Log.Error("Topology not shared, status:", topo.Status)
 		// 返回 HTTP 错误，不进行 WebSocket 升级
-		c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "该拓扑未发布，无法公开访问"})
+		//	c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "该拓扑未共享，无法公开访问"})
 		return
 	}
 
@@ -110,8 +111,8 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 
 	// 使用与 websocket.go 相同的 upgrader 配置
 	upgrader := websocket.Upgrader{
-		ReadBufferSize:   1024,
-		WriteBufferSize:  1024,
+		ReadBufferSize:   10240,
+		WriteBufferSize:  10240,
 		HandshakeTimeout: 10 * time.Second,
 		CheckOrigin: func(r *http.Request) bool {
 			logger.Log.Info("CheckOrigin called, Origin:", r.Header.Get("Origin"))
@@ -139,7 +140,7 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 			break
 		}
 		logger.Log.Info("Received message:", string(ms))
-
+		fmt.Println("AAAAAAAAAA", string(ms))
 		// 发送数据
 		if string(ms) == "success" {
 			// 查询数据
@@ -148,9 +149,10 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 				logger.Log.Debug("GetTopologyById in loop error:", err)
 				continue
 			}
+			fmt.Println(val)
 			// 再次检查状态
 			if val.Status != "1" {
-				logger.Log.Debug("拓扑已撤回发布")
+				logger.Log.Debug("拓扑已取消共享")
 				break
 			}
 			// write

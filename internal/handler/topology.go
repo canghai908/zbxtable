@@ -140,7 +140,7 @@ func UpdateTopologyStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, TopologyRes)
 }
 
-// GetPublicTopologyByID 公开访问拓扑详情（无需认证，仅限已发布的拓扑）
+// GetPublicTopologyByID 公开访问拓扑详情（无需认证，仅限已共享的拓扑）
 func GetPublicTopologyByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
@@ -153,10 +153,10 @@ func GetPublicTopologyByID(c *gin.Context) {
 		return
 	}
 
-	// 只允许访问已发布的拓扑
+	// 只允许访问已共享的拓扑
 	if v.Status != "1" {
 		TopologyResp.Code = 403
-		TopologyResp.Message = "该拓扑未发布，无法公开访问"
+		TopologyResp.Message = "该拓扑未共享，无法公开访问"
 		c.JSON(http.StatusOK, TopologyResp)
 		return
 	}

@@ -78,12 +78,12 @@ func InitRouter() *gin.Engine {
 		c.Data(200, "text/html; charset=utf-8", data)
 	})
 
-	// WebSocket（必须在 NoRoute 之前）
-	r.GET("/ws/:id", handler.WebSocketHandlerGin)
-
 	// 公开的拓扑预览接口（无需认证）
 	r.GET("/public/topology/:id", handler.GetPublicTopologyByID)
-	r.GET("/pb/ws/:id", handler.PublicWebSocketHandlerGin)
+
+	// WebSocket 路由（统一使用 /ws 前缀）
+	r.GET("/ws/auth/:id", handler.WebSocketHandlerGin)      // 需要认证的 WebSocket
+	r.GET("/ws/pub/:id", handler.PublicWebSocketHandlerGin) // 公开的 WebSocket（共享）
 
 	// 安装引导 API（无需认证，必须在 NoRoute 之前）
 	installGroup := r.Group("/install")
@@ -373,7 +373,7 @@ func InitRouter() *gin.Engine {
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		// 如果是 API 请求，返回 404
+		// 如果是 API 请求或 WebSocket 请求，返回 404
 		if strings.HasPrefix(path, "/v1") ||
 			strings.HasPrefix(path, "/install") ||
 			strings.HasPrefix(path, "/ws") ||
