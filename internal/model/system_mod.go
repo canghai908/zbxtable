@@ -5,7 +5,7 @@ import "time"
 // system
 type System struct {
 	ID                  int64      `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	ZID                 int        `gorm:"column:instance;index" json:"zid"` // 实例ID
+	ZID                 int        `gorm:"column:zid;index" json:"zid"` // 实例ID
 	Name                string     `gorm:"column:name;size:255" json:"name"`
 	GroupID             string     `gorm:"column:group_id;size:255" json:"group_id"`
 	CPUUtilizationID    string     `gorm:"column:cpu_utilization_id;size:200" json:"cpu_utilization_id"`

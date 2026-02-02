@@ -67,7 +67,7 @@ func GetTriggersFromInstance(inst *APIInstance) ([]EndTrigger, int64, error) {
 		bs.Eventid = v.LastEvent.Eventid
 		bs.Objectid = v.LastEvent.Objectid
 		// 添加实例信息
-		bs.Instance = inst.ZID
+		bs.Instance = inst.Instance
 		bs.InstanceName = inst.Name
 		ma = append(ma, bs)
 	}

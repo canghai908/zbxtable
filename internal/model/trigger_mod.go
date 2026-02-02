@@ -95,7 +95,7 @@ type EndTrigger struct {
 	Eventid       string `json:"eventid"`
 	Objectid      string `json:"objectid"`
 	// 多实例支持字段
-	Instance     int    `json:"instance,omitempty"`
+	ZID          string `json:"zid,omitempty"`
+	Instance     string `json:"instance,omitempty"`
 	InstanceName string `json:"instance_name,omitempty"`
-	TenantID     string `json:"tenant_id,omitempty"`
 }
