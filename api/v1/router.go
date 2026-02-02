@@ -80,6 +80,11 @@ func InitRouter() *gin.Engine {
 
 	// WebSocket（必须在 NoRoute 之前）
 	r.GET("/ws/:id", handler.WebSocketHandlerGin)
+
+	// 公开的拓扑预览接口（无需认证）
+	r.GET("/public/topology/:id", handler.GetPublicTopologyByID)
+	r.GET("/pb/ws/:id", handler.PublicWebSocketHandlerGin)
+
 	// 安装引导 API（无需认证，必须在 NoRoute 之前）
 	installGroup := r.Group("/install")
 	{

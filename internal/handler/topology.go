@@ -139,3 +139,30 @@ func UpdateTopologyStatus(c *gin.Context) {
 	TopologyRes.Data.Items = []model.Topology{}
 	c.JSON(http.StatusOK, TopologyRes)
 }
+
+// GetPublicTopologyByID 公开访问拓扑详情（无需认证，仅限已发布的拓扑）
+func GetPublicTopologyByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+	var TopologyResp model.TopologyInfo
+	v, err := model.GetTopologyById(id)
+	if err != nil {
+		TopologyResp.Code = 500
+		TopologyResp.Message = err.Error()
+		c.JSON(http.StatusOK, TopologyResp)
+		return
+	}
+
+	// 只允许访问已发布的拓扑
+	if v.Status != "1" {
+		TopologyResp.Code = 403
+		TopologyResp.Message = "该拓扑未发布，无法公开访问"
+		c.JSON(http.StatusOK, TopologyResp)
+		return
+	}
+
+	TopologyResp.Code = 200
+	TopologyResp.Message = "获取成功"
+	TopologyResp.Data.Items = v
+	c.JSON(http.StatusOK, TopologyResp)
+}

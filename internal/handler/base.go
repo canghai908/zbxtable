@@ -79,6 +79,103 @@ func WebSocketHandlerGin(c *gin.Context) {
 	}
 }
 
+// PublicWebSocketHandlerGin 公开的 WebSocket 处理（无需认证，仅限已发布的拓扑）
+func PublicWebSocketHandlerGin(c *gin.Context) {
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+
+	logger.Log.Info("PublicWebSocketHandlerGin called, id:", idStr)
+	logger.Log.Info("Request Headers:", c.Request.Header)
+	logger.Log.Info("Request URL:", c.Request.URL.String())
+	logger.Log.Info("Request Method:", c.Request.Method)
+
+	// 检查拓扑是否已发布
+	topo, err := model.GetTopologyById(id)
+	if err != nil {
+		logger.Log.Error("GetTopologyById failed:", err)
+		// 返回 HTTP 错误，不进行 WebSocket 升级
+		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "拓扑不存在"})
+		return
+	}
+	logger.Log.Info("Topology found, status:", topo.Status)
+
+	if topo.Status != "1" {
+		logger.Log.Error("Topology not published, status:", topo.Status)
+		// 返回 HTTP 错误，不进行 WebSocket 升级
+		c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "该拓扑未发布，无法公开访问"})
+		return
+	}
+
+	logger.Log.Info("Starting WebSocket upgrade...")
+
+	// 使用与 websocket.go 相同的 upgrader 配置
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:   1024,
+		WriteBufferSize:  1024,
+		HandshakeTimeout: 10 * time.Second,
+		CheckOrigin: func(r *http.Request) bool {
+			logger.Log.Info("CheckOrigin called, Origin:", r.Header.Get("Origin"))
+			return true
+		},
+	}
+
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if _, ok := err.(websocket.HandshakeError); ok {
+		logger.Log.Error("WebSocket handshake error:", err)
+		return
+	} else if err != nil {
+		logger.Log.Error("Cannot setup WebSocket connection:", err)
+		return
+	}
+	defer ws.Close()
+
+	logger.Log.Info("WebSocket connection established successfully")
+
+	for {
+		// 读取数据
+		_, ms, err := ws.ReadMessage()
+		if err != nil {
+			logger.Log.Debug("ReadMessage error:", err)
+			break
+		}
+		logger.Log.Info("Received message:", string(ms))
+
+		// 发送数据
+		if string(ms) == "success" {
+			// 查询数据
+			val, err := model.GetTopologyById(id)
+			if err != nil {
+				logger.Log.Debug("GetTopologyById in loop error:", err)
+				continue
+			}
+			// 再次检查状态
+			if val.Status != "1" {
+				logger.Log.Debug("拓扑已撤回发布")
+				break
+			}
+			// write
+			msg, _ := json.Marshal(val)
+			logger.Log.Info("Sending topology data, size:", len(msg))
+			err = ws.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				logger.Log.Debug("WriteMessage error:", err)
+				continue
+			}
+			logger.Log.Info("Topology data sent successfully")
+
+			// 更新数据
+			err = model.UpdateEdgeDataById(id)
+			if err != nil {
+				logger.Log.Debug("UpdateEdgeDataById error:", err)
+				continue
+			}
+		}
+		time.Sleep(time.Second * 10)
+	}
+
+	logger.Log.Info("WebSocket connection closed")
+}
+
 // LoginGin 登录（Gin版本）
 func LoginGin(c *gin.Context) {
 	var manager model.Manager
