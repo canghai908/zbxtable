@@ -1,5 +1,6 @@
 [Unit]
-Description=zbxtable
+Description=ZbxTable - Zabbix Monitoring Table Tool
+Documentation=https://github.com/canghai908/zbxtable
 After=syslog.target
 After=network.target
 After=mysql.service
@@ -8,11 +9,29 @@ After=mariadb.service
 After=postgresql.service
 
 [Service]
-PIDFile=/tmp/zbxtable.pid
+Type=simple
 User=zbxtable
 Group=zbxtable
 WorkingDirectory=/usr/local/zbxtable
-ExecStart=/bin/bash -c '/usr/local/zbxtable/zbxtable web'
+ExecStart=/usr/local/zbxtable/zbxtable web
+
+# 自动重启配置
+Restart=always
+RestartSec=3
+
+# 进程管理
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# 资源限制
+LimitNOFILE=65535
+LimitNPROC=65535
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zbxtable
 
 [Install]
 WantedBy=multi-user.target

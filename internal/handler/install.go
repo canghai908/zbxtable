@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/logger"
 	"zbxtable/pkg/response"
 
 	"github.com/canghai908/zabbix-go"
@@ -396,7 +399,66 @@ func DoInstall(c *gin.Context) {
 		req.DBPass,
 		req.DBName,
 		req.DBPort)
-	response.SuccessWithMessage(c, "安装成功", gin.H{
-		"success": true,
+	
+	response.SuccessWithMessage(c, "安装成功，系统将在 3 秒后自动重启以加载配置", gin.H{
+		"success":        true,
+		"need_restart":   true,
+		"restart_delay":  3,
 	})
+	
+	// 延迟重启，让响应先返回给客户端
+	go func() {
+		time.Sleep(3 * time.Second)
+		triggerGracefulRestart()
+	}()
+}
+
+// triggerGracefulRestart 触发优雅重启
+func triggerGracefulRestart() {
+	logger.Log.Info("触发系统重启以加载新配置...")
+	
+	// 获取当前进程的可执行文件路径
+	executable, err := os.Executable()
+	if err != nil {
+		logger.Log.Error("获取可执行文件路径失败:", err)
+		// 尝试使用 SIGTERM 信号退出，让外部服务管理器重启
+		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		return
+	}
+	
+	// 获取当前进程的参数
+	args := os.Args
+	
+	// 获取当前工作目录
+	workDir, err := os.Getwd()
+	if err != nil {
+		logger.Log.Error("获取工作目录失败:", err)
+		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		return
+	}
+	
+	// 创建新进程
+	cmd := exec.Command(executable, args[1:]...)
+	cmd.Dir = workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	
+	// 启动新进程
+	err = cmd.Start()
+	if err != nil {
+		logger.Log.Error("启动新进程失败:", err)
+		// 如果启动失败，尝试发送信号让服务管理器重启
+		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		return
+	}
+	
+	logger.Log.Info("新进程已启动，PID:", cmd.Process.Pid)
+	
+	// 等待一小段时间确保新进程启动成功
+	time.Sleep(1 * time.Second)
+	
+	// 退出当前进程
+	logger.Log.Info("当前进程即将退出...")
+	os.Exit(0)
 }
