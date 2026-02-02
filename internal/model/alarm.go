@@ -56,7 +56,7 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, zid, status, leve
 	// 多实例场景：显示所有实例的告警，不再过滤实例
 	// 注释掉原来的实例过滤逻辑，让用户可以看到所有实例的告警
 	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
+	// 	query = query.Where("zabbix_instance = ?", inst.ZID)
 	// }
 
 	if hosts != "" {
@@ -97,26 +97,26 @@ func GetAllAlarm(begin, end time.Time, page, limit, hosts, ip, zid, status, leve
 // get alarm tenant list
 func GetAlarmTenant() (cnt int64, data interface{}, err error) {
 	type TenantResult struct {
-		InstanceID string `gorm:"column:instance_id"`
+		Instance string `gorm:"column:instance"`
 	}
 	var results []TenantResult
 	query := DB.Model(&Alarm{})
 	// 多实例场景：显示所有实例的租户
 	// 注释掉原来的实例过滤逻辑
 	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
+	// 	query = query.Where("zabbix_instance = ?", inst.ZID)
 	// }
 	err = query.Select("DISTINCT tenant_id").Find(&results).Error
 	if err != nil {
 		return 0, []Alarm{}, err
 	}
 	type list struct {
-		ID         int    `json:"id"`
-		InstanceID string `json:"instance_id"`
+		ID       int    `json:"id"`
+		Instance string `json:"instance"`
 	}
 	var ss []list
 	for i, result := range results {
-		ss = append(ss, list{ID: i, InstanceID: result.InstanceID})
+		ss = append(ss, list{ID: i, Instance: result.Instance})
 	}
 	return int64(len(ss)), ss, nil
 }
@@ -184,7 +184,7 @@ func AnalysisAlarm(begin, end time.Time, zid string) (arrytile []string, pie []P
 	// 多实例场景：显示所有实例的告警分析
 	// 注释掉原来的实例过滤逻辑
 	// if inst, _ := GetActiveZabbixInstance(); inst != nil && inst.ZID != 0 {
-	// 	query = query.Where("zabbix_instance_id = ?", inst.ZID)
+	// 	query = query.Where("zabbix_instance = ?", inst.ZID)
 	// }
 
 	if zid != "" {
@@ -249,7 +249,7 @@ func AnalysisAlarm(begin, end time.Time, zid string) (arrytile []string, pie []P
 	return ss, dpie, name, values, nil
 }
 
-// fillAlarmInstanceNames 填充告警数据的实例信息（InstanceID 和 InstanceName）
+// fillAlarmInstanceNames 填充告警数据的实例信息（Instance 和 InstanceName）
 // func fillAlarmInstanceNames(alarms *[]Alarm) {
 // 	if alarms == nil || len(*alarms) == 0 {
 // 		return
@@ -272,12 +272,12 @@ func AnalysisAlarm(begin, end time.Time, zid string) (arrytile []string, pie []P
 // 		}
 // 	}
 
-// 	// 填充实例信息（InstanceID 和 InstanceName）
+// 	// 填充实例信息（Instance 和 InstanceName）
 // 	for i := range *alarms {
 // 		if (*alarms)[i].ZID > 0 {
 // 			if instance, ok := instanceMap[(*alarms)[i].ZID]; ok {
 // 				(*alarms)[i].InstanceName = instance.Name
-// 				(*alarms)[i].InstanceID = instance.InstanceID
+// 				(*alarms)[i].Instance = instance.Instance
 // 			}
 // 		}
 // 	}

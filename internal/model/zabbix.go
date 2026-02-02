@@ -105,27 +105,27 @@ func GetZabbixInstanceByZID(id int) (*ZabbixInstance, error) {
 	return &instance, nil
 }
 
-// GetZabbixInstanceByInstanceID 根据 instance_id 获取实例
-func GetZabbixInstanceByInstanceID(instance_id string) (*ZabbixInstance, error) {
-	iid := strings.TrimSpace(instance_id)
+// GetZabbixInstanceByInstance 根据 instance 获取实例
+func GetZabbixInstanceByInstance(instance string) (*ZabbixInstance, error) {
+	iid := strings.TrimSpace(instance)
 	if iid == "" {
-		return nil, errors.New("instance_id is empty")
+		return nil, errors.New("instance is empty")
 	}
-	var instance ZabbixInstance
-	err := DB.Where("instance_id = ?", iid).First(&instance).Error
+	var inst ZabbixInstance
+	err := DB.Where("instance = ?", iid).First(&inst).Error
 	if err != nil {
 		return nil, err
 	}
-	return &instance, nil
+	return &inst, nil
 }
 
 // CreateZabbixInstance 创建 Zabbix 实例
 func CreateZabbixInstance(m *ZabbixInstance) error {
 	m.URL = strings.TrimRight(strings.TrimSpace(m.URL), "/")
-	m.InstanceID = strings.TrimSpace(m.InstanceID)
+	m.Instance = strings.TrimSpace(m.Instance)
 	m.Name = strings.TrimSpace(m.Name)
-	if m.InstanceID == "" {
-		return errors.New("instance_id is required")
+	if m.Instance == "" {
+		return errors.New("instance is required")
 	}
 	if m.Name == "" {
 		return errors.New("name is required")
@@ -187,8 +187,8 @@ func UpdateZabbixInstance(zid int, patch *ZabbixInstance) (*ZabbixInstance, erro
 	}
 
 	updates := map[string]interface{}{}
-	if strings.TrimSpace(patch.InstanceID) != "" {
-		updates["instance_id"] = strings.TrimSpace(patch.InstanceID)
+	if strings.TrimSpace(patch.Instance) != "" {
+		updates["instance"] = strings.TrimSpace(patch.Instance)
 	}
 	if strings.TrimSpace(patch.Name) != "" {
 		updates["name"] = strings.TrimSpace(patch.Name)

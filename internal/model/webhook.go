@@ -68,7 +68,7 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
     var params = JSON.parse(value);
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
-    req.addHeader('X-Instance: ' + params.instance_id);
+    req.addHeader('X-Instance: ' + params.instance);
     req.addHeader('X-Token: ' + params.webhook_token);
     
     // 直接使用 {ALERT.MESSAGE} 作为消息体
@@ -94,7 +94,7 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
 	// Webhook 参数 - 只保留 webhook_url、tenant_id、webhook_token 和 message
 	parameters := []map[string]interface{}{
 		{"name": "webhook_url", "value": webhookURL},
-		{"name": "instance_id", "value": instance.InstanceID},
+		{"name": "instance", "value": instance.Instance},
 		{"name": "webhook_token", "value": webhookToken},
 		{"name": "message", "value": "{ALERT.MESSAGE}"},
 	}
@@ -364,11 +364,11 @@ func GetWebhookInfo(zid int, zbxtableURL string) (map[string]string, error) {
 
 	info := map[string]string{
 		"webhook_url":   webhookURL,
-		"instance_id":   instance.InstanceID,
+		"instance":      instance.Instance,
 		"webhook_token": instance.WebhookToken,
 		"method":        "POST",
 		"content_type":  "application/json",
-		"headers":       fmt.Sprintf("X-Instance: %s\nX-Token: %s", instance.InstanceID, instance.WebhookToken),
+		"headers":       fmt.Sprintf("X-Instance: %s\nX-Token: %s", instance.Instance, instance.WebhookToken),
 	}
 
 	return info, nil

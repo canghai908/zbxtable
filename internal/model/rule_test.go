@@ -77,7 +77,7 @@ func TestRule_DefaultRule(t *testing.T) {
 	err := DB.Create(defaultRule).Error
 	assert.NoError(t, err)
 	assert.Equal(t, "2", defaultRule.MType)
-	assert.Equal(t, "*", defaultRule.InstanceID)
+	assert.Equal(t, "*", defaultRule.Instance)
 }
 
 func TestRule_MultiTenant(t *testing.T) {
@@ -97,9 +97,9 @@ func TestRule_MultiTenant(t *testing.T) {
 
 	err := DB.Create(rule).Error
 	assert.NoError(t, err)
-	assert.Contains(t, rule.InstanceID, "tenant1")
-	assert.Contains(t, rule.InstanceID, "tenant2")
-	assert.Contains(t, rule.InstanceID, "tenant3")
+	assert.Contains(t, rule.Instance, "tenant1")
+	assert.Contains(t, rule.Instance, "tenant2")
+	assert.Contains(t, rule.Instance, "tenant3")
 }
 
 func TestRule_StatusToggle(t *testing.T) {
@@ -250,7 +250,7 @@ func TestRule_UpdateFields(t *testing.T) {
 	err = DB.First(&retrieved, rule.ID).Error
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated Name", retrieved.Name)
-	assert.Equal(t, "tenant2", retrieved.InstanceID)
+	assert.Equal(t, "tenant2", retrieved.Instance)
 	assert.Equal(t, "mail,wechat", retrieved.Channel)
 	assert.Equal(t, "1,2,3,4", retrieved.UserIds)
 	assert.Equal(t, "1,2,3", retrieved.GroupIds)

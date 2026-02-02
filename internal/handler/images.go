@@ -32,7 +32,7 @@ func GetImage(c *gin.Context) {
 	}
 	GraphID := idStr
 
-	// 可选：从查询参数中获取 instance_id（如果前端传递）
+	// 可选：从查询参数中获取 instance（如果前端传递）
 	instanceIDStr := c.Query("zid")
 
 	c.Header("Content-Type", "image/png")
@@ -44,7 +44,7 @@ func GetImage(c *gin.Context) {
 	var jarToUse http.CookieJar
 
 	if instanceIDStr != "" {
-		// 如果提供了 instance_id，直接使用该实例
+		// 如果提供了 instance，直接使用该实例
 		var instanceID int
 		_, err := fmt.Sscanf(instanceIDStr, "%d", &instanceID)
 		if err == nil {
@@ -58,7 +58,7 @@ func GetImage(c *gin.Context) {
 		}
 	}
 
-	// 如果没有提供 instance_id 或获取失败，尝试从所有启用的实例中查找
+	// 如果没有提供 instance 或获取失败，尝试从所有启用的实例中查找
 	if ZabbixWeb == "" {
 		// 获取所有启用的实例
 		instances, err := model.ListZabbixInstance()
@@ -68,7 +68,7 @@ func GetImage(c *gin.Context) {
 			return
 		}
 
-		// 使用第一个启用的实例（多实例环境下，建议前端传递 instance_id）
+		// 使用第一个启用的实例（多实例环境下，建议前端传递 instance）
 		for _, instance := range instances {
 			if instance.Enabled {
 				ZabbixWeb = instance.URL

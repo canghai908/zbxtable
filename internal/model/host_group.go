@@ -150,7 +150,7 @@ func GetAllGroupsListFromInstance(id string) ([]HostGroupList, error) {
 	}
 	// 检查实例是否启用
 	if !instance.Enabled {
-		return list, fmt.Errorf("实例未启用 (zid=%d, instance_id=%s)", instance.ID, instance.InstanceID)
+		return list, fmt.Errorf("实例未启用 (zid=%d, instance=%s)", instance.ID, instance.Instance)
 	}
 	// 创建 Zabbix API 实例
 	apiURL := instance.URL + "/api_jsonrpc.php"

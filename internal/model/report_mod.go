@@ -4,26 +4,26 @@ import "time"
 
 // Reports
 type Report struct {
-	ID            int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Name          string    `gorm:"column:name;size:255" json:"name"`
-	ReportType    string    `gorm:"column:report_type;size:255" json:"report_type"`
-	InstanceID    int       `gorm:"column:instance_id;default:0" json:"instance_id"`
-	Items         string    `gorm:"column:items;size:200" json:"items"`
-	LinkBandWidth string    `gorm:"column:link_band_width;size:200" json:"linkbandwidth"`
-	HostIds       string    `gorm:"column:host_ids;type:text" json:"host_ids"`
-	ItemIds       string    `gorm:"column:item_ids;type:text" json:"item_ids"`
-	Cycle         string    `gorm:"column:cycle;size:200" json:"cycle"`
-	Desc          string    `gorm:"column:desc;size:200" json:"desc"`
-	Emails        string    `gorm:"column:emails;size:240" json:"emails"`
-	Status        string    `gorm:"column:status;size:50" json:"status"`
+	ID            int        `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name          string     `gorm:"column:name;size:255" json:"name"`
+	ReportType    string     `gorm:"column:report_type;size:255" json:"report_type"`
+	Instance      int        `gorm:"column:instance;default:0" json:"instance"`
+	Items         string     `gorm:"column:items;size:200" json:"items"`
+	LinkBandWidth string     `gorm:"column:link_band_width;size:200" json:"linkbandwidth"`
+	HostIds       string     `gorm:"column:host_ids;type:text" json:"host_ids"`
+	ItemIds       string     `gorm:"column:item_ids;type:text" json:"item_ids"`
+	Cycle         string     `gorm:"column:cycle;size:200" json:"cycle"`
+	Desc          string     `gorm:"column:desc;size:200" json:"desc"`
+	Emails        string     `gorm:"column:emails;size:240" json:"emails"`
+	Status        string     `gorm:"column:status;size:50" json:"status"`
 	ExecStatus    string     `gorm:"column:exec_status;default:0" json:"exec_status"`
 	ReportMode    string     `gorm:"column:report_mode;size:50;default:scheduled" json:"report_mode"`
 	Start         *time.Time `gorm:"column:start;type:datetime" json:"start"`
 	End           *time.Time `gorm:"column:end;type:datetime" json:"end"`
 	StartAt       *time.Time `gorm:"column:start_at;type:datetime" json:"start_at"`
 	EndAt         *time.Time `gorm:"column:end_at;type:datetime" json:"end_at"`
-	CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt     time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 // SystemList struct

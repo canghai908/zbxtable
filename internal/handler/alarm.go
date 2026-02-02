@@ -136,7 +136,7 @@ func ExportAlarm(c *gin.Context) {
 	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
 
-	// 支持 instance_id 参数
+	// 支持 instance 参数
 	zid := v.ZID
 	if zid == "" {
 		zid = v.ZID // 兼容旧的 tenant_id 字段

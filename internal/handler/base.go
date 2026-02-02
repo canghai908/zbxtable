@@ -288,19 +288,19 @@ func ReceiveGin(c *gin.Context) {
 	TenantID := c.GetHeader("ZBX-TenantID")
 
 	token := c.GetHeader("X-Token")
-	var InstanceID string
+	var Instance string
 	//如果为空可能是新webhook
 	if TenantID == "" {
 		//新系统使用的是X-Instance
-		InstanceID = c.GetHeader("X-Instance")
+		Instance = c.GetHeader("X-Instance")
 	}
-	if InstanceID == "" {
+	if Instance == "" {
 		response.BadRequest(c, "instanceID not found")
 	}
 	// instance的token校验
 	//查询instanceid和token,可以一起查询，无需多次查询
 	//
-	instance, err := model.GetZabbixInstanceByInstanceID(InstanceID)
+	instance, err := model.GetZabbixInstanceByInstance(Instance)
 	if err != nil {
 		response.ValidationError(c, err.Error())
 		return

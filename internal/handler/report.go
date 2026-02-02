@@ -49,7 +49,7 @@ func CreateReportGin(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	instanceIDStr := gjson.Get(string(body), "instance_id").String()
+	instanceIDStr := gjson.Get(string(body), "instance").String()
 	items := gjson.Get(string(body), "items").String()
 	linkbandwidth := gjson.Get(string(body), "linkbandwidth").String()
 	host_ids := gjson.Get(string(body), "host_ids").String()
@@ -79,7 +79,7 @@ func CreateReportGin(c *gin.Context) {
 
 	instanceID, _ := strconv.Atoi(instanceIDStr)
 	v := model.Report{Name: name, Items: items, LinkBandWidth: linkbandwidth,
-		HostIds: host_ids, ItemIds: item_ids, InstanceID: instanceID,
+		HostIds: host_ids, ItemIds: item_ids, Instance: instanceID,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
 	id, err := model.AddReport(&v)
@@ -127,7 +127,7 @@ func UpdateReportGin(c *gin.Context) {
 	}
 
 	name := gjson.Get(string(body), "name").String()
-	instanceIDStr := gjson.Get(string(body), "instance_id").String()
+	instanceIDStr := gjson.Get(string(body), "instance").String()
 	items := gjson.Get(string(body), "items").String()
 	emails := gjson.Get(string(body), "emails").String()
 	linkbandwidth := gjson.Get(string(body), "linkbandwidth").String()
@@ -158,7 +158,7 @@ func UpdateReportGin(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 	instanceID, _ := strconv.Atoi(instanceIDStr)
 	v := model.Report{ID: id, Name: name, Items: items, LinkBandWidth: linkbandwidth,
-		HostIds: host_ids, ItemIds: item_ids, InstanceID: instanceID,
+		HostIds: host_ids, ItemIds: item_ids, Instance: instanceID,
 		Emails: emails, Cycle: cycle, Status: status, Desc: desc, ReportType: report_type,
 		Start: startTime, End: endTime, ReportMode: report_mode}
 	if err := model.UpdateReportByID(&v); err != nil {

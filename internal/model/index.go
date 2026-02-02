@@ -127,7 +127,7 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 
 			// 根据 tenant_id 查询实例名称
 			var tenant ZabbixInstance
-			err := DB.Where("instance_id = ?", tenantID).First(&tenant).Error
+			err := DB.Where("instance = ?", tenantID).First(&tenant).Error
 			if err == nil {
 				instanceName = tenant.Name
 			} else {

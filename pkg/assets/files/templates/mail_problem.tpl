@@ -229,7 +229,7 @@
 															<td
 																style="width: 358px; text-align: left; border-color: #000000;">
 																<p style="text-align: left;">
-																	<span style="font-size: 10pt; font-family: Arial;">{{if .InstanceName}}{{.InstanceName}}{{else}}{{.InstanceID}}{{end}}</span>
+																	<span style="font-size: 10pt; font-family: Arial;">{{if .InstanceName}}{{.InstanceName}}{{else}}{{.Instance}}{{end}}</span>
 																</p>
 																<p style="text-align: left;">
 																	<span style="font-size: 10pt; font-family: Arial;">{{.Hostname}}</span>

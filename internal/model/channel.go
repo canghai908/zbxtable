@@ -194,7 +194,7 @@ func sendEvent(event *Event) {
 	if event.ZID > 0 {
 		instance, err := GetZabbixInstanceByZID(event.ZID)
 		if err == nil && instance != nil {
-			event.InstanceID = instance.InstanceID
+			event.Instance = instance.Instance
 			event.InstanceName = instance.Name
 		}
 	}

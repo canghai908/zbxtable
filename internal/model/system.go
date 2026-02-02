@@ -50,10 +50,10 @@ func GetSystemByID(id int64) (v *System, err error) {
 	return v, nil
 }
 
-// GetSystemByInstanceID 根据实例ID和系统ID获取配置
-func GetSystemByInstanceID(systemID int64, instanceID int) (v *System, err error) {
+// GetSystemByInstance 根据实例ID和系统ID获取配置
+func GetSystemByInstance(systemID int64, instanceID int) (v *System, err error) {
 	v = &System{}
-	err = DB.Where("id = ? AND instance_id = ?", systemID, instanceID).First(v).Error
+	err = DB.Where("id = ? AND instance = ?", systemID, instanceID).First(v).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,10 +71,10 @@ func GetALlSystem() (cnt int64, system []System, err error) {
 	return cnt, sys, nil
 }
 
-// GetSystemsByInstanceID 获取指定实例的所有系统配置
-func GetSystemsByInstanceID(instanceID int) ([]System, error) {
+// GetSystemsByInstance 获取指定实例的所有系统配置
+func GetSystemsByInstance(instanceID int) ([]System, error) {
 	var sys []System
-	err := DB.Where("instance_id = ?", instanceID).Find(&sys).Error
+	err := DB.Where("instance = ?", instanceID).Find(&sys).Error
 	if err != nil {
 		return []System{}, err
 	}
@@ -84,13 +84,13 @@ func GetSystemsByInstanceID(instanceID int) ([]System, error) {
 // UpdateSystem 更新系统分类及指标
 func UpdateSystem(m *System) (err error) {
 	var v System
-	err = DB.Where("id = ? AND instance_id = ?", m.ID, m.ZID).First(&v).Error
+	err = DB.Where("id = ? AND instance = ?", m.ID, m.ZID).First(&v).Error
 	if err != nil {
 		return err
 	}
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
-	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.ZID).Updates(map[string]interface{}{
+	err = DB.Model(&System{}).Where("id = ? AND instance = ?", m.ID, m.ZID).Updates(map[string]interface{}{
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -112,7 +112,7 @@ func UpdateSystem(m *System) (err error) {
 // CreateOrUpdateSystem 创建或更新系统配置（支持多实例）
 func CreateOrUpdateSystem(m *System) error {
 	var existing System
-	err := DB.Where("id = ? AND instance_id = ?", m.ID, m.ZID).First(&existing).Error
+	err := DB.Where("id = ? AND instance = ?", m.ID, m.ZID).First(&existing).Error
 
 	if err != nil {
 		// 不存在，创建新记录
@@ -124,7 +124,7 @@ func CreateOrUpdateSystem(m *System) error {
 	// 存在，更新记录
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = existing.CreatedAt
-	return DB.Model(&System{}).Where("id = ? AND instance_id = ?", m.ID, m.ZID).Updates(map[string]interface{}{
+	return DB.Model(&System{}).Where("id = ? AND instance = ?", m.ID, m.ZID).Updates(map[string]interface{}{
 		"zid":                   m.ZID,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
@@ -182,7 +182,7 @@ func SystemInitWithInstance(systemID int64, zid int) error {
 		return err
 	}
 	now := time.Now()
-	err = DB.Model(&System{}).Where("id = ? AND instance_id = ?", systemID, zid).Updates(map[string]interface{}{
+	err = DB.Model(&System{}).Where("id = ? AND instance = ?", systemID, zid).Updates(map[string]interface{}{
 		"status":    1,
 		"inited_at": &now,
 	}).Error

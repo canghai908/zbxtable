@@ -382,7 +382,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 	// 定义临时结构体，用于存储告警数据和实例信息
 	type AlarmWithInstance struct {
 		Alarm
-		InstanceID   string
+		Instance     string
 		InstanceName string
 	}
 
@@ -413,7 +413,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 			alarmData[i].Alarm = Filedata[i]
 			if Filedata[i].ZID > 0 {
 				if instance, ok := instanceMap[Filedata[i].ZID]; ok {
-					alarmData[i].InstanceID = instance.InstanceID
+					alarmData[i].Instance = instance.Instance
 					alarmData[i].InstanceName = instance.Name
 				}
 			}

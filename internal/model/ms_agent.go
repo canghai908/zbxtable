@@ -17,7 +17,7 @@ import (
 // MSAgentConfig MS-Agent 配置信息
 type MSAgentConfig struct {
 	ZbxTableURL  string `json:"zbxtable_url"`  // ZbxTable 服务地址
-	InstanceID   string `json:"instance_id"`   // 实例 ID
+	Instance     string `json:"instance"`      // 实例 ID
 	WebhookToken string `json:"webhook_token"` // Webhook 认证 Token
 }
 
@@ -128,7 +128,7 @@ log_level: info
 
 # Log File Path
 log_path: /var/log/ms-agent/ms-agent.log
-`, config.ZbxTableURL, config.InstanceID, config.WebhookToken)
+`, config.ZbxTableURL, config.Instance, config.WebhookToken)
 
 	// 生成 curl 下载和安装命令
 	curlCommand := `curl -fsSL https://raw.githubusercontent.com/canghai908/ms-agent/main/install.sh | bash`

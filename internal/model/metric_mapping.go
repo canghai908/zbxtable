@@ -49,7 +49,7 @@ func CreateOrUpdateMetricMapping(m *MetricMapping) error {
 // GetMetricMappingsByInstance 获取实例的所有映射配置
 func GetMetricMappingsByInstance(instanceID int) ([]MetricMapping, error) {
 	var mappings []MetricMapping
-	err := DB.Where("instance_id = ?", instanceID).Find(&mappings).Error
+	err := DB.Where("instance = ?", instanceID).Find(&mappings).Error
 	return mappings, err
 }
 

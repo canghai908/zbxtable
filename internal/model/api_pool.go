@@ -26,7 +26,7 @@ type APIPool struct {
 // APIInstance 单个 Zabbix 实例的 API 连接信息
 type APIInstance struct {
 	ZID          int
-	InstanceID   string
+	Instance     string
 	Name         string
 	WebURL       string
 	API          *zabbix.API
@@ -154,7 +154,7 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 
 	inst := &APIInstance{
 		ZID:          zid,
-		InstanceID:   instance.InstanceID,
+		Instance:     instance.Instance,
 		Name:         instance.Name,
 		WebURL:       webURL,
 		API:          api,
@@ -292,13 +292,13 @@ func GetAllEnabledAPIInstances() ([]*APIInstance, error) {
 	return GetAPIPool().GetAllEnabledAPIs()
 }
 
-// GetZabbixInstanceAPI 根据 instance_id 字符串获取 API 实例
+// GetZabbixInstanceAPI 根据 instance 字符串获取 API 实例
 func GetZabbixInstanceAPI(id string) (*APIInstance, error) {
 	if id == "" {
 		return nil, errors.New("id 不能为空")
 	}
 	zid, _ := strconv.Atoi(id)
-	// 根据 instance_id 查询实例
+	// 根据 instance 查询实例
 	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
 		return nil, fmt.Errorf("未找到启用的实例 (zid=%s): %w", zid, err)

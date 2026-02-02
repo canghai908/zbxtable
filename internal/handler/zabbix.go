@@ -15,7 +15,7 @@ import (
 // ZabbixInstanceafeResponse 安全的租户响应结构，隐藏敏感信息
 type ZabbixInstanceafeResponse struct {
 	ID               int      `json:"id"`
-	InstanceID       string   `json:"instance_id"`
+	Instance         string   `json:"instance"`
 	Name             string   `json:"name"`
 	URL              string   `json:"url"`
 	User             string   `json:"user"`
@@ -49,7 +49,7 @@ func toTenantSafeResponse(instance *model.ZabbixInstance) ZabbixInstanceafeRespo
 
 	return ZabbixInstanceafeResponse{
 		ID:               instance.ID,
-		InstanceID:       instance.InstanceID,
+		Instance:         instance.Instance,
 		Name:             instance.Name,
 		URL:              instance.URL,
 		Enabled:          instance.Enabled,
@@ -96,7 +96,7 @@ func GetZabbixInstanceGin(c *gin.Context) {
 	// 返回租户信息，但不包含密码和Token（安全考虑，编辑时不显示已配置的密码和Token）
 	response.Success(c, gin.H{
 		"id":                 tenant.ID,
-		"instance_id":        tenant.InstanceID,
+		"instance":           tenant.Instance,
 		"name":               tenant.Name,
 		"url":                tenant.URL,
 		"user":               tenant.User,
@@ -122,7 +122,7 @@ func CreateZabbixInstanceGin(c *gin.Context) {
 		return
 	}
 	m := &model.ZabbixInstance{
-		InstanceID:   gjson.Get(string(body), "instance_id").String(),
+		Instance:     gjson.Get(string(body), "instance").String(),
 		Name:         gjson.Get(string(body), "name").String(),
 		URL:          gjson.Get(string(body), "url").String(),
 		User:         gjson.Get(string(body), "user").String(),
@@ -201,7 +201,7 @@ func UpdateZabbixInstanceGin(c *gin.Context) {
 	}
 
 	patch := &model.ZabbixInstance{
-		InstanceID:   gjson.Get(string(body), "tenant_id").String(),
+		Instance:     gjson.Get(string(body), "tenant_id").String(),
 		Name:         gjson.Get(string(body), "name").String(),
 		URL:          gjson.Get(string(body), "url").String(),
 		User:         gjson.Get(string(body), "user").String(),
@@ -349,7 +349,7 @@ func GenerateMSAgentInstallScriptGin(c *gin.Context) {
 	// 生成安装脚本
 	config := &model.MSAgentConfig{
 		ZbxTableURL:  zbxtableURL,
-		InstanceID:   tenant.InstanceID,
+		Instance:     tenant.Instance,
 		WebhookToken: tenant.WebhookToken,
 	}
 
