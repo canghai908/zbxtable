@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -211,7 +210,6 @@ func LoginGin(c *gin.Context) {
 		response.Forbidden(c, "用户已被禁用")
 		return
 	}
-	fmt.Println()
 	// bcrypt encrypt
 	err = utils.ComparePass(user.Password, reqUser.Password)
 	if err == nil {

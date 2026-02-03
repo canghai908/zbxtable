@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 	"zbxtable/internal/model"
@@ -22,7 +21,6 @@ func GetAllTopology(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
-	fmt.Println(hs)
 	response.SuccessWithPage(c, hs, count)
 }
 
