@@ -122,7 +122,6 @@ func UpdateUser(m *User, tuser string) error {
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-
 	//密码不为空更新密码
 	if m.Password != "" {
 		updates := map[string]interface{}{
@@ -135,10 +134,6 @@ func UpdateUser(m *User, tuser string) error {
 			"ding_talk":        m.DingTalk,
 			"status":           m.Status,
 		}
-		// 如果提供了 theme，也更新
-		if m.Theme != "" {
-			updates["theme"] = m.Theme
-		}
 		err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
 		if err != nil {
 			return err
@@ -147,12 +142,15 @@ func UpdateUser(m *User, tuser string) error {
 	}
 	//更新其他字段
 	updates := map[string]interface{}{
-		"role":             m.Role,
 		"email":            m.Email,
 		"phone":            m.Phone,
 		"wechat":           m.Wechat,
 		"wechat_robot_key": m.WechatRobotKey,
 		"ding_talk":        m.DingTalk,
+	}
+	// 如果提供了 role，也更新
+	if m.Role != "" {
+		updates["role"] = m.Role
 	}
 	// 如果提供了 theme，也更新
 	if m.Theme != "" {
