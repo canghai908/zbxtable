@@ -53,18 +53,16 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 2, Name: "Windows主机详情", Path: "windetail", Router: "winDetail", Invisible: true, Highlight: "/host", Role: "admin,user"},
 		//网络管理 (ParentId: 3 对应"网络管理")
 		{ParentId: 3, Name: "网络设备", Path: "list", Router: "netList", Icon: "chrome", Role: "admin,user"},
-		{ParentId: 3, Name: "设备详情", Path: "detail", Router: "netDetail", Invisible: true, Highlight: "/net", Role: "admin,user"},
+		{ParentId: 3, Name: "网络设备详情", Path: "detail", Router: "netDetail", Invisible: true, Highlight: "/net", Role: "admin,user"},
 		//硬件管理 (ParentId: 4 对应"硬件管理")
 		{ParentId: 4, Name: "物理服务器", Path: "list", Router: "srvList", Icon: "mobile", Role: "admin,user"},
 		{ParentId: 4, Name: "光纤交换机", Path: "fiber", Router: "sanList", Icon: "mobile", Role: "admin,user"},
 		{ParentId: 4, Name: "存储设备", Path: "storage", Router: "stoList", Icon: "mobile", Role: "admin,user"},
-		{ParentId: 4, Name: "设备详情", Path: "detail", Router: "srvDetail", Invisible: true, Highlight: "/server", Role: "admin,user"},
+		{ParentId: 4, Name: "物理设备详情", Path: "detail", Router: "srvDetail", Invisible: true, Highlight: "/server", Role: "admin,user"},
 		//告警管理 (ParentId: 5 对应"告警管理")
 		{ParentId: 5, Name: "告警分析", Path: "analysis", Router: "alarmAnalysis", Icon: "hourglass", Role: "admin,user"},
 		{ParentId: 5, Name: "告警查询", Path: "list", Router: "alarmList", Icon: "eye", Role: "admin,user"},
 		{ParentId: 5, Name: "告警分发", Path: "rule", Router: "alarmRule", Icon: "message", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 5, Name: "规则添加", Path: "rule-add", Router: "alarmRuleAdd", Invisible: true, Highlight: "/alarm", Role: "admin,user"},
-		{ParentId: 5, Name: "规则编辑", Path: "rule-edit", Router: "alarmRuleEdit", Invisible: true, Highlight: "/alarm", Role: "admin,user"},
 		{ParentId: 5, Name: "屏蔽规则", Path: "mutes", Router: "alarmMutes", Icon: "stop", Role: "admin,user"},
 		//拓扑管理 (ParentId: 6 对应"拓扑管理")
 		{ParentId: 6, Name: "拓扑维护", Path: "list", Router: "topologyList", Icon: "environment", Role: "admin,user"},
