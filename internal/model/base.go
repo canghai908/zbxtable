@@ -138,7 +138,7 @@ func DatabaseInit() {
 		user.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
 		user.Role = "admin"
 		user.Operation = "['add', 'edit', 'delete','update']"
-		user.Theme = `{"theme":{"color":"#13c2c2","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"}}`
+		user.Theme = `{"theme":{"color":"#1890ff","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"}}`
 		user.Status = 0
 		err := DB.Create(&user).Error
 		if err != nil {
