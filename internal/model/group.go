@@ -62,7 +62,7 @@ func GetGroup(page, limit, tuser, name string) (cnt int64, userlist []UserGroup,
 	}
 
 	//管理员角色
-	var p Manager
+	var p User
 	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return 0, []UserGroup{}, err
@@ -95,7 +95,7 @@ func GetGroup(page, limit, tuser, name string) (cnt int64, userlist []UserGroup,
 // udpate user
 func UpdateUserGroup(m *UserGroup, tuser string) error {
 	//role检查
-	var p Manager
+	var p User
 	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -116,7 +116,7 @@ func UpdateUserGroup(m *UserGroup, tuser string) error {
 // UpdateGroupMember user
 func UpdateGroupMember(m *UserGroup, tuser string) error {
 	//role检查
-	var p Manager
+	var p User
 	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func UpdateGroupMember(m *UserGroup, tuser string) error {
 
 func DeleteGroup(id int, tuser string) (err error) {
 	//role检查
-	var p Manager
+	var p User
 	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err

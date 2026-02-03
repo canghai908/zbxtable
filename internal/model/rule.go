@@ -83,7 +83,7 @@ func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist
 // UpdateRuleStatus rule
 func UpdateRuleStatus(m *Rule, tuser string) error {
 	//role检查
-	var p Manager
+	var p User
 	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func UpdateRuleStatus(m *Rule, tuser string) error {
 // UpdateRule rule
 func UpdateRule(m *Rule, tuser string) error {
 	//role检查
-	var p Manager
+	var p User
 	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func UpdateRule(m *Rule, tuser string) error {
 // DeleteRule status
 func DeleteRule(id int, tuser string) (err error) {
 	//role检查
-	var p Manager
+	var p User
 	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err

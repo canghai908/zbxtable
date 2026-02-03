@@ -118,11 +118,11 @@ func InitWechat() {
 // DatabaseInit 数据初始化
 func DatabaseInit() {
 	//数据初始化操作 - 使用 GORM
-	var v Manager
+	var v User
 	err := DB.Where("username = ?", "admin").First(&v).Error
 	//检查权限
 	if err == nil && v.Operation == "" {
-		err := DB.Model(&Manager{}).Where("id = ?", v.ID).Update("operation", "['add', 'edit', 'delete','update']").Error
+		err := DB.Model(&User{}).Where("id = ?", v.ID).Update("operation", "['add', 'edit', 'delete','update']").Error
 		if err != nil {
 			logger.Log.Info(err)
 			return
@@ -132,19 +132,19 @@ func DatabaseInit() {
 	//添加管理员账号
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Log.Info("the admin user does not exist, create a new admin account later!")
-		var manager Manager
-		manager.Username = "admin"
-		manager.Password, _ = utils.PasswordHash("Zbxtable")
-		manager.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
-		manager.Role = "admin"
-		manager.Operation = "['add', 'edit', 'delete','update']"
-		manager.Status = 0
-		err := DB.Create(&manager).Error
+		var user User
+		user.Username = "admin"
+		user.Password, _ = utils.PasswordHash("Zbxtable")
+		user.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
+		user.Role = "admin"
+		user.Operation = "['add', 'edit', 'delete','update']"
+		user.Status = 0
+		err := DB.Create(&user).Error
 		if err != nil {
 			logger.Log.Info(err)
 			return
 		}
-		logger.Log.Info("create an administrator account successfully, the admin ID is:", manager.ID)
+		logger.Log.Info("create an administrator account successfully, the admin ID is:", user.ID)
 	}
 	//初始化系统数据
 	var cnt []System

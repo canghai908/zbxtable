@@ -31,7 +31,7 @@ func GetUserGin(c *gin.Context) {
 		response.DatabaseError(c, "获取用户列表失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithPage(c, hs, count)
 }
 
@@ -51,7 +51,7 @@ func CreateUserGin(c *gin.Context) {
 	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
 	phone := gjson.Get(string(body), "phone").String()
 	ding_talk := gjson.Get(string(body), "ding_talk").String()
-	
+
 	// 验证必填字段
 	if username == "" {
 		response.ValidationError(c, "用户名不能为空")
@@ -61,7 +61,7 @@ func CreateUserGin(c *gin.Context) {
 		response.ValidationError(c, "密码不能为空")
 		return
 	}
-	
+
 	p, _ := utils.PasswordHash(password)
 	var operation string
 	switch role {
@@ -73,7 +73,7 @@ func CreateUserGin(c *gin.Context) {
 		operation = "[]"
 	}
 
-	v := model.Manager{Username: username, Password: p, Operation: operation,
+	v := model.User{Username: username, Password: p, Operation: operation,
 		Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key, Phone: phone, DingTalk: ding_talk,
 		Status: 0, Role: role, Created: time.Now(),
 		Avatar: "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif",
@@ -83,7 +83,7 @@ func CreateUserGin(c *gin.Context) {
 		response.DatabaseError(c, "创建用户失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "创建用户成功", nil)
 }
 
@@ -116,7 +116,8 @@ func UpdateUserGin(c *gin.Context) {
 	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
 	phone := gjson.Get(string(body), "phone").String()
 	dingTalk := gjson.Get(string(body), "ding_talk").String()
-	
+	theme := gjson.Get(string(body), "theme").String()
+
 	var operation string
 	switch role {
 	case "admin":
@@ -126,7 +127,7 @@ func UpdateUserGin(c *gin.Context) {
 	default:
 		operation = "[]"
 	}
-	
+
 	var pass string
 	if password != "" {
 		pass, _ = utils.PasswordHash(password)
@@ -134,14 +135,14 @@ func UpdateUserGin(c *gin.Context) {
 		pass = ""
 	}
 
-	v := model.Manager{ID: id, Password: pass, Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key,
-		Phone: phone, DingTalk: dingTalk, Role: role, Operation: operation}
+	v := model.User{ID: id, Password: pass, Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key,
+		Phone: phone, DingTalk: dingTalk, Role: role, Operation: operation, Theme: theme}
 	err = model.UpdateUser(&v, tuserStr)
 	if err != nil {
 		response.DatabaseError(c, "更新用户失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
@@ -165,6 +166,6 @@ func DeleteUserGin(c *gin.Context) {
 		response.DatabaseError(c, "删除用户失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "删除成功", nil)
 }

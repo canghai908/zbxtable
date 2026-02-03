@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -177,15 +178,14 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 
 // LoginGin 登录（Gin版本）
 func LoginGin(c *gin.Context) {
-	var manager model.Manager
-
+	var reqUser model.User
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		response.BadRequest(c, "请求体读取失败")
 		return
 	}
 
-	err = json.Unmarshal(body, &manager)
+	err = json.Unmarshal(body, &reqUser)
 	if err != nil {
 		response.BadRequest(c, "用户名或密码错误")
 		return
@@ -200,39 +200,39 @@ func LoginGin(c *gin.Context) {
 	}
 
 	// 使用 GORM 查询
-	var Manager model.Manager
-	err = model.GetDB().Where("username = ?", manager.Username).First(&Manager).Error
+	var user model.User
+	err = model.GetDB().Where("username = ?", reqUser.Username).First(&user).Error
 	if err != nil {
 		response.BadRequest(c, "用户名或密码错误")
 		return
 	}
 
-	if Manager.Status == 1 {
+	if user.Status == 1 {
 		response.Forbidden(c, "用户已被禁用")
 		return
 	}
-
+	fmt.Println()
 	// bcrypt encrypt
-	err = utils.ComparePass(Manager.Password, manager.Password)
+	err = utils.ComparePass(user.Password, reqUser.Password)
 	if err == nil {
 		et := jwtbeego.EasyToken{
-			Username: Manager.Username,
+			Username: user.Username,
 			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
 		}
 		tokenString, _ := et.GetToken()
 		response.SuccessWithMessage(c, "登录成功", gin.H{
 			"token": tokenString,
 			"user": gin.H{
-				"id":      Manager.ID,
-				"name":    Manager.Username,
-				"avatar":  Manager.Avatar,
-				"role":    Manager.Role,
-				"created": Manager.Created,
+				"id":      user.ID,
+				"name":    user.Username,
+				"avatar":  user.Avatar,
+				"role":    user.Role,
+				"created": user.Created,
 			},
 			"roles": []gin.H{
 				{
-					"id":        Manager.Role,
-					"operation": Manager.Operation,
+					"id":        user.Role,
+					"operation": user.Operation,
 				},
 			},
 		})
@@ -240,23 +240,23 @@ func LoginGin(c *gin.Context) {
 	}
 
 	// md5 encrypt
-	if utils.Md5([]byte(manager.Password)) == Manager.Password {
+	if utils.Md5([]byte(reqUser.Password)) == user.Password {
 		et := jwtbeego.EasyToken{
-			Username: Manager.Username,
+			Username: user.Username,
 			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
 		}
 		tokenString, _ := et.GetToken()
 		response.SuccessWithMessage(c, "登录成功", gin.H{
 			"token": tokenString,
 			"user": gin.H{
-				"name":    Manager.Username,
-				"avatar":  Manager.Avatar,
-				"created": Manager.Created,
+				"name":    user.Username,
+				"avatar":  user.Avatar,
+				"created": user.Created,
 			},
 			"roles": []gin.H{
 				{
-					"id":        Manager.Role,
-					"operation": Manager.Operation,
+					"id":        user.Role,
+					"operation": user.Operation,
 				},
 			},
 		})

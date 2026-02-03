@@ -39,7 +39,7 @@ func SendMail(mail *Event) {
 		<-MailWorkerChan
 	}()
 	ids := strings.Split(mail.ToUsers, ",")
-	var plist []Manager
+	var plist []User
 	err := DB.Where("id IN ?", ids).
 		Select("id", "username", "email", "wechat", "phone", "ding_talk").
 		Find(&plist).Error
@@ -76,7 +76,7 @@ func PopAllMail() []*Event {
 	return ret
 }
 
-func SendEmailAlert(event *Event, user Manager) error {
+func SendEmailAlert(event *Event, user User) error {
 	//发邮件
 	var err error
 	var tplname string

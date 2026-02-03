@@ -71,7 +71,7 @@ type Token struct {
 }
 
 // Manager struct
-type Manager struct {
+type User struct {
 	ID             int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Username       string    `gorm:"column:username;size:255;uniqueIndex" json:"username"`
 	Password       string    `gorm:"column:password;size:255" json:"password,omitempty"`
@@ -84,20 +84,21 @@ type Manager struct {
 	WechatRobotKey string    `gorm:"column:wechat_robot_key;size:255" json:"wechat_robot_key"`
 	Phone          string    `gorm:"column:phone;size:255" json:"phone"`
 	DingTalk       string    `gorm:"column:ding_talk;size:255" json:"ding_talk"`
+	Theme          string    `gorm:"column:theme;type:text" json:"theme,omitempty"`
 	Created        time.Time `gorm:"column:created;autoCreateTime" json:"created"`
 	Updated        time.Time `gorm:"column:updated;autoUpdateTime" json:"updated_at"`
 }
 
 // TableName string
-func (t *Manager) TableName() string {
-	return TableName("manager")
+func (t *User) TableName() string {
+	return TableName("user")
 }
 
 // AddManager insert a new Manager into database and returns
 // last inserted Id on success.
-func AddUser(m *Manager) (id int64, err error) {
+func AddUser(m *User) (id int64, err error) {
 	// 检查用户是否已存在
-	var existing Manager
+	var existing User
 	result := DB.Where("username = ?", m.Username).First(&existing)
 	if result.Error == nil {
 		return 0, errors.New("用户已存在")
@@ -111,9 +112,9 @@ func AddUser(m *Manager) (id int64, err error) {
 }
 
 // UpdateUser 更新用户信息
-func UpdateUser(m *Manager, tuser string) error {
+func UpdateUser(m *User, tuser string) error {
 	//role检查
-	var p Manager
+	var p User
 	err := DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -134,7 +135,11 @@ func UpdateUser(m *Manager, tuser string) error {
 			"ding_talk":        m.DingTalk,
 			"status":           m.Status,
 		}
-		err = DB.Model(&Manager{}).Where("id = ?", m.ID).Updates(updates).Error
+		// 如果提供了 theme，也更新
+		if m.Theme != "" {
+			updates["theme"] = m.Theme
+		}
+		err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
 		if err != nil {
 			return err
 		}
@@ -149,7 +154,11 @@ func UpdateUser(m *Manager, tuser string) error {
 		"wechat_robot_key": m.WechatRobotKey,
 		"ding_talk":        m.DingTalk,
 	}
-	err = DB.Model(&Manager{}).Where("id = ?", m.ID).Updates(updates).Error
+	// 如果提供了 theme，也更新
+	if m.Theme != "" {
+		updates["theme"] = m.Theme
+	}
+	err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
 	if err != nil {
 		return err
 	}
@@ -157,9 +166,9 @@ func UpdateUser(m *Manager, tuser string) error {
 }
 
 // udpate user
-func UpdateUserStatus(m *Manager, tuser string) error {
+func UpdateUserStatus(m *User, tuser string) error {
 	//user
-	var v Manager
+	var v User
 	err := DB.First(&v, m.ID).Error
 	if err != nil {
 		return err
@@ -172,7 +181,7 @@ func UpdateUserStatus(m *Manager, tuser string) error {
 	if v.Username == tuser {
 		return errors.New("cannot disable self")
 	}
-	err = DB.Model(&Manager{}).Where("id = ?", m.ID).Update("status", m.Status).Error
+	err = DB.Model(&User{}).Where("id = ?", m.ID).Update("status", m.Status).Error
 	if err != nil {
 		return err
 	}
@@ -181,20 +190,20 @@ func UpdateUserStatus(m *Manager, tuser string) error {
 
 // GetAllAlarm retrieves all Alarm matches certain condition. Returns empty list if
 // no records exist
-func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist []Manager, err error) {
-	var users []Manager
-	var countUsers []Manager
+func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist []User, err error) {
+	var users []User
+	var countUsers []User
 	pages, _ := strconv.Atoi(page)
 	limits, _ := strconv.Atoi(limit)
 
 	// 构建查询
-	query := DB.Model(&Manager{})
+	query := DB.Model(&User{})
 
 	// 管理员角色检查
-	var p Manager
+	var p User
 	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
-		return 0, []Manager{}, err
+		return 0, []User{}, err
 	}
 	if p.Role != "admin" {
 		query = query.Where("username = ?", tuser)
@@ -211,7 +220,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	// 计数
 	err = query.Find(&countUsers).Error
 	if err != nil {
-		return 0, []Manager{}, err
+		return 0, []User{}, err
 	}
 	cnt = int64(len(countUsers))
 
@@ -221,7 +230,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 		"phone", "created", "status", "wechat", "wechat_robot_key").
 		Limit(limits).Offset(offset).Find(&users).Error
 	if err != nil {
-		return 0, []Manager{}, err
+		return 0, []User{}, err
 	}
 
 	return cnt, users, nil
@@ -229,8 +238,8 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 
 // GetManagerByID retrieves Manager by Id. Returns error if
 // Id doesn't exist
-func GetManagerByID(id int) (v *Manager, err error) {
-	v = &Manager{}
+func GetManagerByID(id int) (v *User, err error) {
+	v = &User{}
 	err = DB.First(v, id).Error
 	if err != nil {
 		return nil, err
@@ -240,8 +249,8 @@ func GetManagerByID(id int) (v *Manager, err error) {
 
 // GetManagerByName retrieves User by Username. Returns error if
 // Id doesn't exist
-func GetManagerByName(username string) (v *Manager, err error) {
-	v = &Manager{}
+func GetManagerByName(username string) (v *User, err error) {
+	v = &User{}
 	err = DB.Where("username = ?", username).First(v).Error
 	if err != nil {
 		return nil, err
@@ -258,7 +267,7 @@ func Chanagepwd(old, new string) (err error) {
 	if v.Username != "admin" || v.Password != utils.Md5([]byte(old)) {
 		return errors.New("账号或密码错误")
 	}
-	err = DB.Model(&Manager{}).Where("id = ?", v.ID).Update("password", utils.Md5([]byte(new))).Error
+	err = DB.Model(&User{}).Where("id = ?", v.ID).Update("password", utils.Md5([]byte(new))).Error
 	if err != nil {
 		return errors.New("更新密码出错")
 	}
@@ -267,7 +276,7 @@ func Chanagepwd(old, new string) (err error) {
 
 func DeleteUser(id int, tuser string) (err error) {
 	//role检查
-	var p Manager
+	var p User
 	err = DB.Where("username = ?", tuser).First(&p).Error
 	if err != nil {
 		return err
@@ -281,13 +290,13 @@ func DeleteUser(id int, tuser string) (err error) {
 		return errors.New("admin user cannot delete ")
 	}
 	// ascertain id exists in the database
-	var v Manager
+	var v User
 	err = DB.First(&v, id).Error
 	if err == nil {
 		if v.Username == tuser {
 			return errors.New("cannot delete myself")
 		}
-		err = DB.Delete(&Manager{}, id).Error
+		err = DB.Delete(&User{}, id).Error
 		if err != nil {
 			return err
 		}

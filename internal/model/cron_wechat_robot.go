@@ -39,7 +39,7 @@ func SendWechatRobot(event *Event) {
 		<-WechatRobotWorkerChan
 	}()
 	ids := strings.Split(event.ToUsers, ",")
-	var plist []Manager
+	var plist []User
 	err := DB.Where("id IN ?", ids).
 		Select("id", "username", "email", "wechat", "wechat_robot_key", "phone", "ding_talk").
 		Find(&plist).Error
@@ -93,7 +93,7 @@ type Markdown struct {
 }
 
 // SendWechatRobotAlert 发送企业微信群机器人告警消息
-func SendWechatRobotAlert(user Manager, event *Event, content string) error {
+func SendWechatRobotAlert(user User, event *Event, content string) error {
 	// 构建webhook URL
 	webhookURL := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s", user.WechatRobotKey)
 

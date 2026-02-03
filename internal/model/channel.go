@@ -174,7 +174,7 @@ func GetEventUser(groupIds, userIds string) (list []string, err error) {
 	}
 	//get all userids unique
 	if len(ids) != 0 {
-		var plist []Manager
+		var plist []User
 		err = DB.Where("id IN ?", ids).Select("id", "username",
 			"email", "wechat", "wechat_robot_key", "phone", "ding_talk").Find(&plist).Error
 		if err != nil {

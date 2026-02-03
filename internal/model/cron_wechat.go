@@ -36,7 +36,7 @@ func SendWechat(event *Event) {
 		<-WechatWorkerChan
 	}()
 	ids := strings.Split(event.ToUsers, ",")
-	var plist []Manager
+	var plist []User
 	err := DB.Where("id IN ?", ids).
 		Select("id", "username", "email", "wechat", "phone", "ding_talk").
 		Find(&plist).Error
@@ -66,7 +66,7 @@ func SendWechat(event *Event) {
 		SendWechatAlert(v, event, body.String())
 	}
 }
-func SendWechatAlert(user Manager, event *Event, content string) error {
+func SendWechatAlert(user User, event *Event, content string) error {
 	tos := workwx.Recipient{
 		UserIDs: []string{user.Wechat},
 	}

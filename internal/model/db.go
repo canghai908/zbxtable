@@ -93,7 +93,7 @@ func AutoMigrate() error {
 	// 否则使用默认的命名策略（结构体名的复数形式）
 	return DB.AutoMigrate(
 		&Alarm{},
-		&Manager{},
+		&User{},
 		&Topology{},
 		&System{},
 		&Report{},
