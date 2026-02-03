@@ -94,7 +94,7 @@ func CollectEgressData() error {
 		// 获取实例
 		inst, err := GetZabbixInstanceAPI(zidStr)
 		if err != nil {
-			logger.Log.Errorf("获取实例失败 (zid=%s): %v", config.ZID, err)
+			logger.Log.Errorf("获取实例失败 (zid=%v): %v", config.ZID, err)
 			continue
 		}
 

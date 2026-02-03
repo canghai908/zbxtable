@@ -190,5 +190,5 @@ func GetHostInfoByID(hostid string, wg *sync.WaitGroup, info chan string) {
 		logger.Log.Debug(err)
 	}
 	info <- string(StrP)
-	return
+
 }

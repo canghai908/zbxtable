@@ -7,20 +7,6 @@ import (
 	"zbxtable/pkg/logger"
 )
 
-func getCountByType(hostType string) (int64, error) {
-	inventoryParams := make(map[string]string)
-	inventoryParams["type"] = hostType
-	hostCount, err := API.CallWithError("host.get", Params{
-		"output":          "extend",
-		"searchInventory": inventoryParams,
-		"countOutput":     true})
-	if err != nil {
-		return 0, err
-	}
-	count, _ := strconv.ParseInt(hostCount.Result.(string), 10, 64)
-	return count, nil
-}
-
 // getCountByTypeFromInstance 从指定实例获取主机数量
 func getCountByTypeFromInstance(inst *APIInstance, hostType string) (int64, error) {
 	inventoryParams := make(map[string]string)

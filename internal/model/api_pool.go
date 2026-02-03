@@ -301,7 +301,7 @@ func GetZabbixInstanceAPI(id string) (*APIInstance, error) {
 	// 根据 instance 查询实例
 	instance, err := GetZabbixInstanceByZID(zid)
 	if err != nil {
-		return nil, fmt.Errorf("未找到启用的实例 (zid=%s): %w", zid, err)
+		return nil, fmt.Errorf("未找到启用的实例 (zid=%v): %w", zid, err)
 	}
 
 	if !instance.Enabled {

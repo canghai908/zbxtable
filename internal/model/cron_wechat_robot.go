@@ -116,8 +116,7 @@ func SendWechatRobotAlert(user User, event *Event, content string) error {
 	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(messageBytes))
 	if err != nil {
 		logger.Log.Error("Failed to send wechat robot message:", err)
-		var elog EventLog
-		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
+		elog := EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
 			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
 			NotifyTime: time.Now(), NotifyContent: content,
 			Status: strconv.Itoa(EventFailed), NotifyError: err.Error(),

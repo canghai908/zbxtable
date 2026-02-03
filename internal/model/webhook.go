@@ -71,18 +71,16 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
     req.addHeader('X-Instance: ' + params.instance);
     req.addHeader('X-Token: ' + params.webhook_token);
     
-    // 直接使用 {ALERT.MESSAGE} 作为消息体
     var response = req.post(params.webhook_url, params.message);
     
     if (req.getStatus() !== 200) {
         throw 'Response code: ' + req.getStatus();
     }
-    
-    return 'OK';
-} catch (error) {
-    Zabbix.log(4, 'ZbxTable webhook error: ' + error);
-    throw error;
-}`
+      return 'OK';
+    } catch (error) {
+      Zabbix.log(4, 'ZbxTable webhook error: ' + error);
+      throw error;
+    }`
 
 	// 准备 Media Type 参数
 	mediaParams := make(map[string]interface{})

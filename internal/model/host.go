@@ -409,6 +409,9 @@ func GetNetHostByName(name string) ([]Hosts, error) {
 	}
 	var list []Hosts
 	err = json.Unmarshal([]byte(val), &list)
+	if err != nil {
+		return []Hosts{}, nil
+	}
 	var newlist []Hosts
 	if name == "" {
 		return list, nil

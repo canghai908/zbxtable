@@ -111,7 +111,7 @@ func GetAllHostGroupsList() ([]HostGroupList, int64, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupList{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -131,7 +131,7 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostTree{}, 0, err
 	}
 	return hb, int64(len(hb)), err
@@ -176,7 +176,7 @@ func GetAllGroupsListFromInstance(id string) ([]HostGroupList, error) {
 	}
 	err = json.Unmarshal(hba, &list)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return list, err
 	}
 	return list, err
@@ -192,18 +192,18 @@ func GetHostsInfoByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 		"selectInterfaces": selectInterfaces})
 
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	var hb []HostGroupBYGroupID
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	return hb, err
@@ -217,12 +217,12 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 		"groupids": GroupID, "selectHosts": selectHosts})
 
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 
@@ -230,7 +230,7 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return []HostGroupBYGroupID{}, err
 	}
 	return hb, err

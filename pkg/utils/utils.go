@@ -339,9 +339,6 @@ func ZipFiles(filename string, files []string, oldform, newform string) error {
 		if _, err = io.Copy(writer, zipfile); err != nil {
 			return err
 		}
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
