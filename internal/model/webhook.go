@@ -63,8 +63,15 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
 	webhookURL := fmt.Sprintf("%s/v1/receive", strings.TrimRight(zbxtableURL, "/"))
 	logger.Log.Info("Webhook URL:", webhookURL)
 
-	// Webhook 脚本 - 使用 Parameters 传递配置，消息体使用 {ALERT.MESSAGE}
-	webhookScript := `try {
+	// 根据 Zabbix 版本选择不同的 Webhook 脚本
+	var webhookScript string
+	// Zabbix 5.4+ 使用新版本脚本 (HttpRequest)
+	isNewWebhookVersion := zbxMasterVer >= 6 || (zbxMasterVer == 5 && zbxMiddleVer >= 4)
+
+	fmt.Println(isNewWebhookVersion)
+	if isNewWebhookVersion {
+		// Zabbix 5.4+ 版本脚本
+		webhookScript = `try {
     var params = JSON.parse(value);
     var req = new HttpRequest();
     req.addHeader('Content-Type: application/json');
@@ -76,11 +83,33 @@ func InstallWebhookToZabbix(zid int, zbxtableURL string) error {
     if (req.getStatus() !== 200) {
         throw 'Response code: ' + req.getStatus();
     }
-      return 'OK';
-    } catch (error) {
-      Zabbix.log(4, 'ZbxTable webhook error: ' + error);
-      throw error;
-    }`
+    return 'OK';
+} catch (error) {
+    Zabbix.log(4, 'ZbxTable webhook error: ' + error);
+    throw error;
+}`
+		logger.Log.Info("使用 Zabbix 5.4+ 版本 Webhook 脚本 (HttpRequest)")
+	} else {
+		// Zabbix 5.4 之前版本脚本
+		webhookScript = `try {
+    var params = JSON.parse(value);
+    var req = new CurlHttpRequest();
+    req.AddHeader('Content-Type: application/json');
+    req.AddHeader('X-Instance: ' + params.instance);
+    req.AddHeader('X-Token: ' + params.webhook_token);
+    
+    var response = req.Post(params.webhook_url, params.message);
+    
+    if (req.Status() !== 200) {
+        throw 'Response code: ' + req.Status();
+    }
+    return 'OK';
+} catch (error) {
+    Zabbix.log(4, 'ZbxTable webhook error: ' + error);
+    throw error;
+}`
+		logger.Log.Info("使用 Zabbix 5.4 之前版本 Webhook 脚本 (CurlHttpRequest)")
+	}
 
 	// 准备 Media Type 参数
 	mediaParams := make(map[string]interface{})
