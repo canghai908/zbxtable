@@ -37,7 +37,7 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 		vfun1 = 1024
 		vfun2 = 1024
 	case "disk":
-		// dataname = "磁盘空间"
+		// dataname = "磁盘分区"
 		sourcename = "挂载点"
 		vfun1 = 1024
 		vfun2 = 1024

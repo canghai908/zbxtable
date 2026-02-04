@@ -109,6 +109,7 @@ func InitRouter() *gin.Engine {
 		v1.POST("/logout", handler.LogoutGin)
 		v1.POST("/receive", handler.ReceiveGin)
 		v1.POST("/webhook", handler.WebhookGin)
+		v1.GET("/info", handler.GetPublicSystemInfo)
 
 		// 需要认证的路由
 		api := v1.Group("")
@@ -280,6 +281,7 @@ func InitRouter() *gin.Engine {
 				systemGroup.POST("/init/:id", handler.SystemInit)
 				systemGroup.GET("/config", handler.GetAllConfig)
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
+				systemGroup.POST("/upload-logo", handler.UploadLogo)
 
 				// 系统更新
 				systemGroup.GET("/version", handler.GetCurrentVersion)

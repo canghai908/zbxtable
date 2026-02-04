@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"io"
 	"net/http"
 	"strconv"
@@ -322,4 +323,74 @@ func DeleteEgressConfigHandler(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// UploadLogo 上传系统Logo（存储为base64到数据库）
+func UploadLogo(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		response.BadRequest(c, "文件上传失败: "+err.Error())
+		return
+	}
+
+	// 检查文件类型
+	contentType := file.Header.Get("Content-Type")
+	if contentType != "image/png" && contentType != "image/jpeg" && contentType != "image/jpg" && contentType != "image/svg+xml" {
+		response.BadRequest(c, "只支持 PNG、JPG、JPEG 或 SVG 格式的图片")
+		return
+	}
+
+	// 检查文件大小（限制为2MB）
+	if file.Size > 2*1024*1024 {
+		response.BadRequest(c, "文件大小不能超过2MB")
+		return
+	}
+
+	// 打开文件并读取内容
+	fileContent, err := file.Open()
+	if err != nil {
+		response.InternalError(c, "读取文件失败: "+err.Error())
+		return
+	}
+	defer fileContent.Close()
+
+	// 读取文件字节
+	fileBytes, err := io.ReadAll(fileContent)
+	if err != nil {
+		response.InternalError(c, "读取文件内容失败: "+err.Error())
+		return
+	}
+
+	// 转换为base64
+	base64String := base64.StdEncoding.EncodeToString(fileBytes)
+
+	// 构建完整的Data URL格式（包含MIME类型）
+	var dataURL string
+	switch contentType {
+	case "image/svg+xml":
+		dataURL = "data:image/svg+xml;base64," + base64String
+	case "image/png":
+		dataURL = "data:image/png;base64," + base64String
+	case "image/jpeg", "image/jpg":
+		dataURL = "data:image/jpeg;base64," + base64String
+	default:
+		dataURL = "data:image/png;base64," + base64String
+	}
+
+	// 返回base64编码的图片数据
+	response.SuccessWithMessage(c, "上传成功", gin.H{
+		"url": dataURL,
+	})
+}
+
+// GetPublicSystemInfo 获取系统公开信息（无需认证）
+func GetPublicSystemInfo(c *gin.Context) {
+	// 获取系统名称和Logo配置
+	systemName := model.GetConfigValueByKey("system_name", "ZbxTable")
+	systemLogo := model.GetConfigValueByKey("system_logo", "/static/img/logo.png")
+
+	response.Success(c, gin.H{
+		"system_name": systemName,
+		"system_logo": systemLogo,
+	})
 }

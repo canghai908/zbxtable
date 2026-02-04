@@ -217,6 +217,9 @@ func DatabaseInit() {
 	}
 
 	defaultConfigs := []Config{
+		// 系统外观配置
+		{Name: "系统名称", Key: "system_name", Value: "ZbxTable", Comment: "系统显示的名称"},
+		{Name: "系统Logo", Key: "system_logo", Value: "data:image/png;base64,", Comment: "系统Logo的base64编码数据"},
 		// Dashboard 相关
 		{Name: "数据面板", Key: "zbx_dash", Value: "0", Comment: "是否开启Zabbix看板：1 开启,0 关闭"},
 		{Name: "面板配置", Key: "dash_id", Value: "1", Comment: "需要引入的Zabbix面板的ID，默认为1"},

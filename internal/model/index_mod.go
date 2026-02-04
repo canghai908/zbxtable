@@ -10,7 +10,7 @@ type IndexInfo struct {
 	WinCount int64 `json:"win_count"` //Windows主机
 	LinCount int64 `json:"lin_count"` //Linux主机
 	NETCount int64 `json:"net_count"` //网络设备
-	SRVCount int64 `json:"srv_count"` //硬件服务器
+	SRVCount int64 `json:"srv_count"` //物理机器
 }
 
 type RouRes struct {

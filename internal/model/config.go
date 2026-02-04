@@ -14,7 +14,7 @@ type Config struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Name      string    `gorm:"column:name;size:255" json:"name"`
 	Key       string    `gorm:"column:key;size:255" json:"key"`
-	Value     string    `gorm:"column:value;size:255" json:"value"`
+	Value     string    `gorm:"column:value;type:text" json:"value"`
 	Comment   string    `gorm:"column:comment;size:255" json:"comment"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
