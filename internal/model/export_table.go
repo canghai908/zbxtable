@@ -552,8 +552,8 @@ func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 
 // GetInventoryInfo 导出主机信息获取
 func GetInventoryInfo(HostType string) ([]byte, error) {
-	//获取主机列表
-	hs, count, err := HostsList(HostType, "1", "10000", "", "", "", "")
+	//获取主机列表（使用多实例查询）
+	hs, count, err := HostsListMultiInstance(HostType, "1", "10000", "", "", "", "")
 	if err != nil {
 		return []byte{}, err
 	}
