@@ -129,14 +129,10 @@ func queryHostsFromInstance(inst *APIInstance, HostType string) ([]Hosts, error)
 		d.Ping = v.Inventory.Poc1Name
 		d.PingLoss = v.Inventory.Poc1Email
 		d.PingSec = v.Inventory.Poc1PhoneA
-
-		if HostType == "HW_NET" || HostType == "HW_SRV" {
-			if len(v.Interfaces) != 0 {
-				d.SerialNo = v.Inventory.SerialnoA
-				d.Location = v.Inventory.Location
-				d.Department = v.Inventory.SiteCity
-			}
-		}
+		// 所有类型都读取 Location 和 Department
+		d.SerialNo = v.Inventory.SerialnoA
+		d.Location = v.Inventory.Location
+		d.Department = v.Inventory.SiteCity
 
 		// 处理旧版本的特殊字段
 		if !inst.IsV54OrLater {
@@ -897,6 +893,21 @@ func GetInterfaceData(hostid string) ([]InterfaceData, error) {
 
 // UpdateHost 主机信息更新
 func UpdateHost(Host *Hosts) (MonItemList, error) {
+	// 如果没有提供 ZID，尝试查找主机所属的实例
+	if Host.ZID == 0 {
+		instanceID, err := FindInstanceByHostID(Host.HostID)
+		if err != nil {
+			return MonItemList{}, fmt.Errorf("无法找到主机所属实例: %v", err)
+		}
+		Host.ZID = instanceID
+	}
+
+	// 获取该实例的 API 连接
+	inst, err := GetAPIByZID(Host.ZID)
+	if err != nil {
+		return MonItemList{}, fmt.Errorf("获取实例连接失败: %v", err)
+	}
+
 	InventoryPar := make(map[string]string)
 	InventoryPar["location"] = Host.Location
 	InventoryPar["date_hw_expiry"] = Host.DateHwExpiry
@@ -905,7 +916,7 @@ func UpdateHost(Host *Hosts) (MonItemList, error) {
 	InventoryPar["vendor"] = Host.Vendor
 	InventoryPar["macaddress_a"] = Host.MAC
 	InventoryPar["site_city"] = Host.Department
-	_, err := API.CallWithError("host.update", Params{
+	_, err = inst.API.CallWithError("host.update", Params{
 		"hostid":    Host.HostID,
 		"inventory": InventoryPar})
 	if err != nil {

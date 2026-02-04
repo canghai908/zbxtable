@@ -122,40 +122,47 @@ func UpdateUser(m *User, tuser string) error {
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-	//密码不为空更新密码
+	
+	// 构建更新字段映射，只更新非空字段
+	updates := map[string]interface{}{}
+	
+	// 密码字段
 	if m.Password != "" {
-		updates := map[string]interface{}{
-			"password":         m.Password,
-			"role":             m.Role,
-			"email":            m.Email,
-			"phone":            m.Phone,
-			"wechat":           m.Wechat,
-			"wechat_robot_key": m.WechatRobotKey,
-			"ding_talk":        m.DingTalk,
-			"status":           m.Status,
-		}
-		err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
-		if err != nil {
-			return err
-		}
-		return nil
+		updates["password"] = m.Password
 	}
-	//更新其他字段
-	updates := map[string]interface{}{
-		"email":            m.Email,
-		"phone":            m.Phone,
-		"wechat":           m.Wechat,
-		"wechat_robot_key": m.WechatRobotKey,
-		"ding_talk":        m.DingTalk,
-	}
-	// 如果提供了 role，也更新
+	
+	// 角色字段
 	if m.Role != "" {
 		updates["role"] = m.Role
 	}
-	// 如果提供了 theme，也更新
+	
+	// 联系方式字段 - 允许更新为空字符串（清空）
+	if m.Email != "" {
+		updates["email"] = m.Email
+	}
+	if m.Phone != "" {
+		updates["phone"] = m.Phone
+	}
+	if m.Wechat != "" {
+		updates["wechat"] = m.Wechat
+	}
+	if m.WechatRobotKey != "" {
+		updates["wechat_robot_key"] = m.WechatRobotKey
+	}
+	if m.DingTalk != "" {
+		updates["ding_talk"] = m.DingTalk
+	}
+	
+	// 主题字段
 	if m.Theme != "" {
 		updates["theme"] = m.Theme
 	}
+	
+	// 如果没有任何字段需要更新，直接返回
+	if len(updates) == 0 {
+		return nil
+	}
+	
 	err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
 	if err != nil {
 		return err

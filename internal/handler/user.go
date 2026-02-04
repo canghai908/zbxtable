@@ -109,34 +109,55 @@ func UpdateUserGin(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	password := gjson.Get(string(body), "password").String()
-	role := gjson.Get(string(body), "role").String()
-	email := gjson.Get(string(body), "email").String()
-	wechat := gjson.Get(string(body), "wechat").String()
-	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
-	phone := gjson.Get(string(body), "phone").String()
-	dingTalk := gjson.Get(string(body), "ding_talk").String()
-	theme := gjson.Get(string(body), "theme").String()
-
-	var operation string
-	switch role {
-	case "admin":
-		operation = "['add', 'edit', 'delete','update']"
-	case "user":
-		operation = "[]"
-	default:
-		operation = "[]"
+	// 解析 JSON 以检查哪些字段实际存在
+	bodyJSON := gjson.Parse(string(body))
+	
+	// 构建用户对象，只设置请求中实际包含的字段
+	v := model.User{ID: id}
+	
+	// 密码处理
+	if bodyJSON.Get("password").Exists() {
+		password := bodyJSON.Get("password").String()
+		if password != "" {
+			pass, _ := utils.PasswordHash(password)
+			v.Password = pass
+		}
+	}
+	
+	// 角色处理
+	if bodyJSON.Get("role").Exists() {
+		role := bodyJSON.Get("role").String()
+		v.Role = role
+		switch role {
+		case "admin":
+			v.Operation = "['add', 'edit', 'delete','update']"
+		case "user":
+			v.Operation = "[]"
+		default:
+			v.Operation = "[]"
+		}
+	}
+	
+	// 其他字段 - 只有在请求中存在时才设置
+	if bodyJSON.Get("email").Exists() {
+		v.Email = bodyJSON.Get("email").String()
+	}
+	if bodyJSON.Get("wechat").Exists() {
+		v.Wechat = bodyJSON.Get("wechat").String()
+	}
+	if bodyJSON.Get("wechat_robot_key").Exists() {
+		v.WechatRobotKey = bodyJSON.Get("wechat_robot_key").String()
+	}
+	if bodyJSON.Get("phone").Exists() {
+		v.Phone = bodyJSON.Get("phone").String()
+	}
+	if bodyJSON.Get("ding_talk").Exists() {
+		v.DingTalk = bodyJSON.Get("ding_talk").String()
+	}
+	if bodyJSON.Get("theme").Exists() {
+		v.Theme = bodyJSON.Get("theme").String()
 	}
 
-	var pass string
-	if password != "" {
-		pass, _ = utils.PasswordHash(password)
-	} else {
-		pass = ""
-	}
-
-	v := model.User{ID: id, Password: pass, Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key,
-		Phone: phone, DingTalk: dingTalk, Role: role, Operation: operation, Theme: theme}
 	err = model.UpdateUser(&v, tuserStr)
 	if err != nil {
 		response.DatabaseError(c, "更新用户失败: "+err.Error())
