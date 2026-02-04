@@ -136,10 +136,17 @@ func queryHostsFromInstance(inst *APIInstance, HostType string) ([]Hosts, error)
 
 		// 处理旧版本的特殊字段
 		if !inst.IsV54OrLater {
+			//网络和设备
 			if HostType == "HW_NET" || HostType == "HW_SRV" {
 				d.Available = v.SnmpAvailable
 				d.Error = v.SnmpError
+
+			} else {
+				//主机设备
+				d.Available = v.Available
+				d.Error = v.Error
 			}
+
 		}
 
 		hosts = append(hosts, d)

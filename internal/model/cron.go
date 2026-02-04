@@ -624,6 +624,19 @@ func getOverviewHostsFromInstance(inst *APIInstance, hostType string) ([]Hosts, 
 			d.Department = v.Inventory.SiteCity
 		}
 
+		if !inst.IsV54OrLater {
+			//网络和设备
+			if hostType == "HW_NET" || hostType == "HW_SRV" {
+				d.Available = v.SnmpAvailable
+				d.Error = v.SnmpError
+
+			} else {
+				//主机设备
+				d.Available = v.Available
+				d.Error = v.Error
+			}
+
+		}
 		hosts = append(hosts, d)
 	}
 
