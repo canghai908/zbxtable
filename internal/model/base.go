@@ -237,9 +237,15 @@ func DatabaseInit() {
 		{Name: "企业微信 AgentID", Key: "wechat_agentid", Value: "", Comment: "企业微信应用的 AgentID"},
 		{Name: "企业微信 CorpID", Key: "wechat_corpid", Value: "", Comment: "企业微信企业ID"},
 		{Name: "企业微信 Secret", Key: "wechat_secret", Value: "", Comment: "企业微信应用的 Secret"},
+		// AI 配置
+		{Name: "AI 类型", Key: "ai_type", Value: "ollama", Comment: "选择使用的 AI 服务类型：ollama 或 deepseek"},
 		// Ollama 配置
 		{Name: "Ollama Host", Key: "ollama_host", Value: "http://localhost:11434", Comment: "Ollama 服务地址，如 http://127.0.0.1:11434"},
 		{Name: "Ollama Model", Key: "ollama_model", Value: "deepseek-r1:32b", Comment: "默认使用的大模型名称"},
+		// Deepseek 配置
+		{Name: "Deepseek API Key", Key: "deepseek_api_key", Value: "", Comment: "Deepseek API 密钥"},
+		{Name: "Deepseek Model", Key: "deepseek_model", Value: "deepseek-chat", Comment: "Deepseek 模型名称，如 deepseek-chat"},
+		{Name: "Deepseek Base URL", Key: "deepseek_base_url", Value: "https://api.deepseek.com", Comment: "Deepseek API 地址，默认为 https://api.deepseek.com"},
 	}
 
 	for _, cfgItem := range defaultConfigs {
