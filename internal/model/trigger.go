@@ -104,10 +104,15 @@ func GetTriggerList(hostid string) ([]TriggerListStr, int64, error) {
 
 // GetTriggerListFromInstance 从指定实例根据主机ID获取Trigger列表
 func GetTriggerListFromInstance(zid string, hostid string) ([]TriggerListStr, int64, error) {
-	inst, err := GetZabbixInstanceAPI(zid)
+	var list []TriggerListStr
+	id, err := strconv.Atoi(zid)
+	if err != nil {
+		return list, 0, err
+	}
+	inst, err := GetAPIByZID(id)
 	if err != nil {
 		logger.Log.Errorf("获取实例API失败: %v", err)
-		return []TriggerListStr{}, 0, err
+		return list, 0, err
 	}
 
 	triggers, err := inst.API.CallWithError("trigger.get", Params{"output": "extend",
@@ -117,20 +122,19 @@ func GetTriggerListFromInstance(zid string, hostid string) ([]TriggerListStr, in
 		"expandDescription": true})
 	if err != nil {
 		logger.Log.Debug(err)
-		return []TriggerListStr{}, 0, err
+		return list, 0, err
 	}
 	hba, err := json.Marshal(triggers.Result)
 	if err != nil {
 		logger.Log.Debug(err)
-		return []TriggerListStr{}, 0, err
+		return list, 0, err
 	}
-	var hb []TriggerListStr
-	err = json.Unmarshal(hba, &hb)
+	err = json.Unmarshal(hba, &list)
 	if err != nil {
 		logger.Log.Debug(err)
 		return []TriggerListStr{}, 0, err
 	}
-	return hb, int64(len(hb)), nil
+	return list, int64(len(list)), nil
 }
 
 // GetTriggerList get porblems

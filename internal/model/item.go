@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
@@ -59,33 +60,35 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 }
 
 // GetAllItemByHostIDFromInstance 从指定实例根据hostid获取监控项
-func GetAllItemByHostIDFromInstance(instanceID, hostid string) (item []Items, count int64, err error) {
+func GetAllItemByHostIDFromInstance(zid, hostid string) (item []Items, count int64, err error) {
 	// 获取实例API
-	inst, err := GetZabbixInstanceAPI(instanceID)
+	var list []Items
+	id, err := strconv.Atoi(zid)
 	if err != nil {
-		return []Items{}, 0, fmt.Errorf("获取实例API失败: %v", err)
+		return list, 0, err
 	}
-
+	inst, err := GetAPIByZID(id)
+	if err != nil {
+		return list, 0, fmt.Errorf("获取实例API失败: %v", err)
+	}
 	output := []string{"itemid", "name", "key_", "value_type", "units", "hostid"}
 	rep, err := inst.API.Call("item.get", Params{"output": output, "sortfield": "name",
 		"hostids": hostid})
 	if err != nil {
 		logger.Log.Error(err)
-		return []Items{}, 0, err
+		return list, 0, err
 	}
 	hba, err := json.Marshal(rep.Result)
 	if err != nil {
 		logger.Log.Error(err)
-		return []Items{}, 0, err
+		return list, 0, err
 	}
-
-	var hb []Items
-	err = json.Unmarshal(hba, &hb)
+	err = json.Unmarshal(hba, &list)
 	if err != nil {
 		logger.Log.Error(err)
 		return []Items{}, 0, err
 	}
-	return hb, int64(len(hb)), err
+	return list, int64(len(list)), err
 }
 
 // GetAllTrafficItemByHostID 根据hostid获取逐渐流量接口
@@ -165,7 +168,11 @@ func GetAllTrafficItemByHostID(hostid string) (item []interface{}, count int64, 
 // GetAllTrafficItemByHostIDFromInstance 从指定实例根据hostid获取流量监控项
 func GetAllTrafficItemByHostIDFromInstance(zid, hostid string) (item []interface{}, count int64, err error) {
 	// 获取实例API
-	inst, err := GetZabbixInstanceAPI(zid)
+	id, err := strconv.Atoi(zid)
+	if err != nil {
+		return nil, 0, err
+	}
+	inst, err := GetAPIByZID(id)
 	if err != nil {
 		return []interface{}{}, 0, fmt.Errorf("获取实例API失败: %v", err)
 	}
@@ -320,7 +327,11 @@ func GetReceiveTrafficeItemByHostID(hostid string) (item []interface{}, count in
 // GetReceiveTrafficeItemByHostIDFromInstance 从指定实例根据hostid获取入流量监控项
 func GetReceiveTrafficeItemByHostIDFromInstance(zid, hostid string) (item []interface{}, count int64, err error) {
 	// 获取实例API
-	inst, err := GetZabbixInstanceAPI(zid)
+	id, err := strconv.Atoi(zid)
+	if err != nil {
+		return nil, 0, err
+	}
+	inst, err := GetAPIByZID(id)
 	if err != nil {
 		return []interface{}{}, 0, fmt.Errorf("获取实例API失败: %v", err)
 	}

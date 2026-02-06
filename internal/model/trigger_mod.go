@@ -1,25 +1,5 @@
 package model
 
-// TriggersRes rest
-type TriggersRes struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []EndTrigger `json:"items"`
-		Total int64        `json:"total"`
-	} `json:"data"`
-}
-
-// TriggersRes rest
-type TriggersListRes struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Items []TriggerListStr `json:"items"`
-		Total int64            `json:"total"`
-	} `json:"data"`
-}
-
 // LastTriggers struct
 type LastTriggers struct {
 	Comments        string `json:"comments"`

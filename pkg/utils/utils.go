@@ -7,10 +7,12 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
+
 	"fmt"
 	"io"
 	mathrand "math/rand"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -473,4 +475,24 @@ func GenerateRandomKey() string {
 		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
+}
+
+// GetStrongPasswordString 生成强密码
+func GetStrongPasswordString(l int) string {
+	str := "123456789ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnpqrstuvwxyz!@#$%&*"
+	bytes := []byte(str)
+	result := []byte{}
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < l; i++ {
+		result = append(result, bytes[r.Intn(len(bytes))])
+	}
+
+	ok1, _ := regexp.MatchString(".[1|2|3|4|5|6|7|8|9]", string(result))
+	ok2, _ := regexp.MatchString(".[Z|X|C|V|B|N|M|A|S|D|F|G|H|J|K|L|Q|W|E|R|T|Y|U|I|P]", string(result))
+	ok3, _ := regexp.MatchString(".[z|x|c|v|b|n|m|a|s|d|f|g|h|j|k|l|q|w|e|r|t|y|u|i|p]", string(result))
+	ok4, _ := regexp.MatchString(".[!|@|#|$|%|&|*]", string(result))
+	if ok1 && ok2 && ok3 && ok4 {
+		return string(result)
+	}
+	return GetStrongPasswordString(l)
 }

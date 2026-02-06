@@ -2,16 +2,12 @@ package cmd
 
 import (
 	"bufio"
-	"crypto/tls"
 	"database/sql"
-	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
-	"time"
 	v1 "zbxtable/api/v1"
 	"zbxtable/pkg/assets"
 	"zbxtable/pkg/logger"
@@ -268,69 +264,6 @@ func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) err
 		}
 	}
 	return nil
-}
-
-// LoginZabbixAPI Check
-func CheckZabbixAPI(args ...string) (string, error) {
-	address := args[0]
-	user := args[1]
-	pass := args[2]
-	token := args[3]
-
-	//TLS SkipVerify
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	//判断API地址是否正确，http get访问访问api地址判断状态码是不是412
-	addURL := address + "/api_jsonrpc.php"
-	dClient := http.Client{
-		Transport: transport,
-		Timeout:   3 * time.Second, // 设置超时时间为 3 秒
-	}
-	resp, err := dClient.Get(addURL)
-	if err != nil {
-		logger.Log.Error("Zabbix Web get request failed:", err)
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusPreconditionFailed {
-		logger.Log.Error("Zabbix Web is incorrectly!")
-		return "", errors.New("Zabbix Web is incorrectly")
-	}
-	// api定义
-	webAPI = zabbix.NewAPI(address + "/api_jsonrpc.php")
-	if token != "" {
-		webAPI.SetAuth(token)
-	} else {
-		_, err := webAPI.Login(user, pass)
-		if err != nil {
-			logger.Log.Error("connect Zabbix API failed", err)
-			return "", err
-		}
-	}
-	//zabbix api data get test
-	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
-	type params map[string]interface{}
-	_, err = webAPI.CallWithError("host.get", params{
-		"output":  OutputPar,
-		"hostids": "10084",
-	})
-	if err != nil {
-		logger.Log.Error("connect Zabbix API failed", err)
-		return "", err
-	}
-	//version get
-	version, err := webAPI.Version()
-	if err != nil {
-		logger.Log.Error("connect Zabbix API failed", err)
-		return "", err
-	}
-	return version, nil
-}
-
-// CheckConfExist config (已废弃，改为在 runWeb 中检查安装状态)
-func CheckConfExist() {
-	// 此函数已废弃，保留以兼容旧代码
 }
 
 // init config files

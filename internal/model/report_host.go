@@ -27,9 +27,9 @@ import (
 
 // HostReportConfig 主机报表配置结构
 type HostReportConfig struct {
+	ZID     string   `json:"zid"`
 	HostID  string   `json:"host_id"`
 	ItemIDs []string `json:"item_ids"`
-	ZID     string   `json:"zid"`
 }
 
 // ItemData 指标数据结构，用于生成多sheet Excel
@@ -130,29 +130,34 @@ func TaskHostReport(m Report) error {
 	var allItemsData []ItemData
 
 	// 遍历每个主机配置
-	for _, hostConfig := range hostConfigs {
+	for _, v := range hostConfigs {
 		// 检查实例ID是否存在
-		if hostConfig.ZID == "" {
+		if v.ZID == "" {
 			logger.Log.Error("主机配置缺少实例ID")
 			continue
 		}
 
-		// 获取该实例的 API 连接（使用 tenant_id 字符串）
-		inst, err := GetZabbixInstanceAPI(hostConfig.ZID)
+		// 获取该实例的 API 连接（使用 zid)
+		id, err := strconv.Atoi(v.ZID)
+		if err != nil {
+			logger.Log.Error(err)
+			continue
+		}
+		inst, err := GetAPIByZID(id)
 		if err != nil {
 			logger.Log.Error("获取实例API失败:", err)
 			continue
 		}
 
 		// 获取主机信息（使用该实例的API）
-		hostInfo, err := GetHostFromInstance(inst, hostConfig.HostID)
+		hostInfo, err := GetHostFromInstance(inst, v.HostID)
 		if err != nil {
 			logger.Log.Error("获取主机信息失败:", err)
 			continue
 		}
 
 		// 遍历每个指标
-		for _, itemID := range hostConfig.ItemIDs {
+		for _, itemID := range v.ItemIDs {
 			// 获取指标信息（使用该实例的API）
 			itemInfo, err := GetItemByIDFromInstance(inst, itemID)
 			if err != nil || len(itemInfo) == 0 {

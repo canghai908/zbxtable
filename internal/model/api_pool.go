@@ -283,8 +283,8 @@ func loginToZabbixWeb(webURL, user, pass string, jar *Jar) error {
 }
 
 // GetAPIByZID 便捷函数：根据实例 ZID 获取 API 连接
-func GetAPIByZID(zid int) (*APIInstance, error) {
-	return GetAPIPool().GetOrCreateAPI(zid)
+func GetAPIByZID(id int) (*APIInstance, error) {
+	return GetAPIPool().GetOrCreateAPI(id)
 }
 
 // GetAllEnabledAPIInstances 便捷函数：获取所有启用的 API 实例
@@ -293,26 +293,26 @@ func GetAllEnabledAPIInstances() ([]*APIInstance, error) {
 }
 
 // GetZabbixInstanceAPI 根据 instance 字符串获取 API 实例
-func GetZabbixInstanceAPI(id string) (*APIInstance, error) {
-	if id == "" {
-		return nil, errors.New("id 不能为空")
-	}
-	zid, _ := strconv.Atoi(id)
-	// 根据 instance 查询实例
-	instance, err := GetZabbixInstanceByZID(zid)
-	if err != nil {
-		return nil, fmt.Errorf("未找到启用的实例 (zid=%v): %w", zid, err)
-	}
+// func GetZabbixInstanceAPI(id string) (*APIInstance, error) {
+// 	if id == "" {
+// 		return nil, errors.New("id 不能为空")
+// 	}
+// 	zid, _ := strconv.Atoi(id)
+// 	// 根据 instance 查询实例
+// 	instance, err := GetZabbixInstanceByZID(zid)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("未找到启用的实例 (zid=%v): %w", zid, err)
+// 	}
 
-	if !instance.Enabled {
-		return nil, fmt.Errorf("实例已禁用 (id=%s)", id)
-	}
+// 	if !instance.Enabled {
+// 		return nil, fmt.Errorf("实例已禁用 (id=%s)", id)
+// 	}
 
-	// 获取或创建 API 连接
-	return GetAPIPool().GetOrCreateAPI(instance.ID)
-}
+// 	// 获取或创建 API 连接
+// 	return GetAPIPool().GetOrCreateAPI(instance.ID)
+// }
 
 // GetZabbixInstanceAPIByZID 根据 ZID 获取 API 实例（新增便捷函数）
-func GetZabbixInstanceAPIByZID(zid int) (*APIInstance, error) {
-	return GetAPIByZID(zid)
-}
+// func GetZabbixInstanceAPIByZID(zid int) (*APIInstance, error) {
+// 	return GetAPIByZID(zid)
+// }

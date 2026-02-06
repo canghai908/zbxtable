@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strconv"
 	"time"
 	"zbxtable/pkg/logger"
 )
@@ -90,9 +89,9 @@ func CollectEgressData() error {
 	var egressDataList []map[string]interface{}
 
 	for _, config := range configs {
-		zidStr := strconv.Itoa(config.ZID)
+		//zidStr := strconv.Itoa(config.ZID)
 		// 获取实例
-		inst, err := GetZabbixInstanceAPI(zidStr)
+		inst, err := GetAPIByZID(config.ZID)
 		if err != nil {
 			logger.Log.Errorf("获取实例失败 (zid=%v): %v", config.ZID, err)
 			continue

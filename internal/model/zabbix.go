@@ -303,7 +303,6 @@ func UninstallMSAgentFromZabbixInstance(zid int) error {
 
 	// 解密密码和Token
 	decryptedPass, decryptedToken := DecryptInstanceCredentials(instance)
-
 	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
 	if decryptedToken != "" {
 		api.Auth = decryptedToken

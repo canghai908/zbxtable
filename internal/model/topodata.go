@@ -2,7 +2,6 @@
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"sync"
 	"zbxtable/pkg/logger"
@@ -45,7 +44,7 @@ func GetTriggerValueByTriggerIDFromInstance(zid int, TriggerID string) (value st
 		return GetTriggerValueByTriggerID(TriggerID)
 	}
 
-	inst, err := GetZabbixInstanceAPI(strconv.Itoa(zid))
+	inst, err := GetAPIByZID(zid)
 	if err != nil {
 		logger.Log.Errorf("获取实例API失败: %v", err)
 		return "2", err
@@ -110,7 +109,7 @@ func GetFlowByFlowIDFromInstance(zid int, FLowID string) (flow string, err error
 		return GetFlowByFlowID(FLowID)
 	}
 
-	inst, err := GetZabbixInstanceAPI(strconv.Itoa(zid))
+	inst, err := GetAPIByZID(zid)
 	if err != nil {
 		logger.Log.Errorf("获取实例API失败: %v", err)
 		return "", err

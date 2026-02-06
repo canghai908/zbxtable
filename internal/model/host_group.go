@@ -1,13 +1,10 @@
 package model
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
 	"zbxtable/pkg/logger"
-
-	zabbix "github.com/canghai908/zabbix-go"
 )
 
 // GetAllHostGroups func
@@ -140,33 +137,17 @@ func GetAllGroupsList() ([]HostTree, int64, error) {
 // GetAllGroupsListFromInstance 从指定实例获取所有组列表
 func GetAllGroupsListFromInstance(id string) ([]HostGroupList, error) {
 	// 如果没有指定实例ID，使用全局API
-	var instance *ZabbixInstance
-	var err error
-	zid, _ := strconv.Atoi(id)
 	var list []HostGroupList
-	instance, err = GetZabbixInstanceByZID(zid)
+	zid, err := strconv.Atoi(id)
 	if err != nil {
-		return list, fmt.Errorf("未找到启用的实例 (zid=%s): %w", id, err)
+		return list, err
 	}
-	// 检查实例是否启用
-	if !instance.Enabled {
-		return list, fmt.Errorf("实例未启用 (zid=%d, instance=%s)", instance.ID, instance.Instance)
-	}
-	// 创建 Zabbix API 实例
-	apiURL := instance.URL + "/api_jsonrpc.php"
-	api := zabbix.NewAPI(apiURL)
-
-	// 设置认证
-	if instance.Token != "" {
-		api.Auth = instance.Token
-	} else {
-		_, err := api.Login(instance.User, instance.Pass)
-		if err != nil {
-			return list, fmt.Errorf("登录 Zabbix 失败: %w", err)
-		}
+	inst, err := GetAPIByZID(zid)
+	if err != nil {
+		return list, err
 	}
 	// 调用 Zabbix API 获取主机组
-	rep, err := api.Call("hostgroup.get", Params{"output": "extend"})
+	rep, err := inst.API.Call("hostgroup.get", Params{"output": "extend"})
 	if err != nil {
 		return list, err
 	}

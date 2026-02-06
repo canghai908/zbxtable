@@ -260,27 +260,6 @@ func EnableZabbixInstanceGin(c *gin.Context) {
 	response.Success(c, toTenantSafeResponse(tenant))
 }
 
-// InstallMSAgentGin 在 Zabbix 中安装 MS-Agent 配置
-func InstallMSAgentGin(c *gin.Context) {
-	idStr := c.Param("id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-
-	// 获取租户信息
-	instance, err := model.GetZabbixInstanceByZID(int(id))
-	if err != nil {
-		response.InternalError(c, "实例不存在")
-		return
-	}
-
-	// 在 Zabbix 中安装 MS-Agent 配置
-	if err := model.InstallMSAgentToZabbix(instance.ID); err != nil {
-		response.InternalError(c, fmt.Sprintf("安装失败: %v", err))
-		return
-	}
-
-	response.SuccessWithMessage(c, "MS-Agent 配置安装成功", nil)
-}
-
 // InstallWebhookGin 在 Zabbix 中安装 Webhook 配置
 func InstallWebhookGin(c *gin.Context) {
 	idStr := c.Param("id")
@@ -313,53 +292,6 @@ func InstallWebhookGin(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "Webhook 配置安装成功", nil)
-}
-
-// GenerateMSAgentInstallScriptGin 生成 MS-Agent 安装脚本
-func GenerateMSAgentInstallScriptGin(c *gin.Context) {
-	idStr := c.Param("id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-
-	// 获取租户信息
-	tenant, err := model.GetZabbixInstanceByZID(int(id))
-	if err != nil {
-		response.InternalError(c, "租户不存在")
-		return
-	}
-
-	// 检查是否已安装
-	if !tenant.MSAgentInstalled {
-		response.BadRequest(c, "请先在 Zabbix 中安装 MS-Agent 配置")
-		return
-	}
-
-	// 获取 ZbxTable 服务地址
-	zbxtableURL := model.GetConfigValueByKey("webhook_url", "")
-	if zbxtableURL == "" {
-		zbxtableURL = os.Getenv("ZBXTABLE_URL")
-	}
-	if zbxtableURL == "" {
-		scheme := "http"
-		if c.Request.TLS != nil {
-			scheme = "https"
-		}
-		zbxtableURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
-	}
-
-	// 生成安装脚本
-	config := &model.MSAgentConfig{
-		ZbxTableURL:  zbxtableURL,
-		Instance:     tenant.Instance,
-		WebhookToken: tenant.WebhookToken,
-	}
-
-	script, err := model.GenerateMSAgentInstallScript(config)
-	if err != nil {
-		response.InternalError(c, fmt.Sprintf("生成脚本失败: %v", err))
-		return
-	}
-
-	response.Success(c, script)
 }
 
 // GetWebhookInfoGin 获取 Webhook 配置信息

@@ -127,12 +127,6 @@ func InitRouter() *gin.Engine {
 				zabbixGroup.PUT("/instance/:id", handler.UpdateZabbixInstanceGin)
 				zabbixGroup.DELETE("/instance/:id", handler.DeleteZabbixInstanceGin)
 				zabbixGroup.PUT("/instance/:id/enabled", handler.EnableZabbixInstanceGin)
-
-				// MS-Agent 安装相关
-				zabbixGroup.POST("/instance/:id/install-msagent", handler.InstallMSAgentGin)
-				zabbixGroup.GET("/instance/:id/msagent-script", handler.GenerateMSAgentInstallScriptGin)
-				zabbixGroup.DELETE("/instance/:id/uninstall-msagent", handler.UninstallMSAgentGin)
-
 				// Webhook 安装相关
 				zabbixGroup.POST("/instance/:id/install-webhook", handler.InstallWebhookGin)
 				zabbixGroup.GET("/instance/:id/webhook-info", handler.GetWebhookInfoGin)
@@ -215,9 +209,7 @@ func InitRouter() *gin.Engine {
 			// 模板管理
 			templateGroup := api.Group("/template")
 			{
-				templateGroup.GET("", handler.GetAllTemplateList)
-				// templateGroup.GET("/all", handler.GetAllTemplateAll)
-				// templateGroup.GET("/list", handler.GetAllTemplateList)
+				templateGroup.GET("", handler.GetTemplateList)
 				templateGroup.GET("/item/:templateid", handler.GetItemByTemplateID)
 			}
 

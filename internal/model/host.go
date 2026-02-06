@@ -369,17 +369,22 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 }
 
 // HostsListFromInstance 从指定实例获取主机列表
-func HostsListFromInstance(instanceID, HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
+func HostsListFromInstance(zidStr, HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
 	// 获取实例API
-	inst, err := GetZabbixInstanceAPI(instanceID)
+	var list []Hosts
+	zid, err := strconv.Atoi(zidStr)
 	if err != nil {
-		return []Hosts{}, 0, fmt.Errorf("获取实例API失败: %v", err)
+		return list, 0, err
+	}
+	inst, err := GetAPIByZID(zid)
+	if err != nil {
+		return list, 0, fmt.Errorf("获取实例API失败: %v", err)
 	}
 
 	// 查询该实例的主机列表
 	allHosts, err := queryHostsFromInstance(inst, HostType)
 	if err != nil {
-		return []Hosts{}, 0, fmt.Errorf("查询实例主机失败: %v", err)
+		return list, 0, fmt.Errorf("查询实例主机失败: %v", err)
 	}
 
 	// 过滤数据
