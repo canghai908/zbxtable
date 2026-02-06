@@ -226,6 +226,7 @@ func LoginGin(c *gin.Context) {
 				"avatar":  user.Avatar,
 				"role":    user.Role,
 				"created": user.Created,
+				"theme":   user.Theme, // 添加主题配置
 			},
 			"roles": []gin.H{
 				{
@@ -247,9 +248,12 @@ func LoginGin(c *gin.Context) {
 		response.SuccessWithMessage(c, "登录成功", gin.H{
 			"token": tokenString,
 			"user": gin.H{
+				"id":      user.ID,
 				"name":    user.Username,
 				"avatar":  user.Avatar,
+				"role":    user.Role,
 				"created": user.Created,
+				"theme":   user.Theme, // 添加主题配置
 			},
 			"roles": []gin.H{
 				{
