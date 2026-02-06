@@ -277,8 +277,6 @@ func loginToZabbixWeb(webURL, user, pass string, jar *Jar) error {
 	if strings.Contains(string(data), "blocked") {
 		return errors.New("登录被阻止，请检查用户名和密码")
 	}
-
-	logger.Log.Debugf("Zabbix Web 登录成功: %s", webURL)
 	return nil
 }
 

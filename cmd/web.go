@@ -229,7 +229,6 @@ func initLoggerSafe() error {
 
 	// 记录当前运行模式和日志级别
 	logger.Log.Infof("System running in %s mode", runmode)
-
 	return nil
 }
 

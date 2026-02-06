@@ -62,7 +62,6 @@ func RestoreAssets() error {
 				logger.Log.Errorf("Failed to create directory %s: %v", targetPath, err)
 				return err
 			}
-			logger.Log.Debugf("Created directory: %s", targetPath)
 		} else {
 			// 检查文件是否已存在
 			if _, err := os.Stat(targetPath); err == nil {
