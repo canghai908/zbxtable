@@ -8,18 +8,18 @@ import (
 )
 
 type Menu struct {
-	Id          int    `gorm:"column:id;primaryKey;autoIncrement"`
-	ParentId    int    `gorm:"column:parent_id;default:0"`
-	Name        string `gorm:"column:name;size:50"`
-	Path        string `gorm:"column:path;size:100"`
-	Router      string `gorm:"column:router;size:100"`
-	Icon        string `gorm:"column:icon;size:50"`
-	Role        string `gorm:"column:role;size:50"`
-	Permission  string `gorm:"column:permission;size:100"`
-	Invisible   bool   `gorm:"column:in_visible;default:false"`
-	IsAvailable bool   `gorm:"column:is_available;default:false"`
-	Highlight   string `gorm:"column:highlight;size:100"`
-	CacheAble   bool   `gorm:"column:cacheAble;default:false"`
+	Id          int    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ParentId    int    `gorm:"column:parent_id;default:0" json:"parent_id"`
+	Name        string `gorm:"column:name;size:50" json:"name"`
+	Path        string `gorm:"column:path;size:100" json:"path"`
+	Router      string `gorm:"column:router;size:100" json:"router"`
+	Icon        string `gorm:"column:icon;size:50" json:"icon"`
+	Role        string `gorm:"column:role;size:50" json:"role"`
+	Permission  string `gorm:"column:permission;size:100" json:"permission"`
+	Invisible   bool   `gorm:"column:in_visible;default:false" json:"invisible"`
+	IsAvailable bool   `gorm:"column:is_available;default:false" json:"is_available"`
+	Highlight   string `gorm:"column:highlight;size:100" json:"highlight"`
+	CacheAble   bool   `gorm:"column:cacheAble;default:false" json:"cacheable"`
 }
 
 func (t *Menu) TableName() string {
@@ -71,13 +71,14 @@ func getMenuDefinitions() []Menu {
 		//报表管理 (ParentId: 7 对应"报表管理")
 		{ParentId: 7, Name: "指标报表", Path: "host", Router: "hostReport", Icon: "file-excel", Role: "admin,user"},
 		//系统管理 (ParentId: 8 对应"系统管理")
-		{ParentId: 8, Name: "用户管理", Path: "users", Router: "systemUsers", Icon: "meh", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 8, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbix", Icon: "smile", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "用户管理", Path: "users", Router: "systemUsers", Icon: "user", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "team", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "菜单管理", Path: "menu", Router: "menuManagement", Icon: "menu", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbix", Icon: "cloud-server", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "指标映射", Path: "mapping", Router: "metricMapping", Icon: "interaction", Role: "admin,user"},
-		{ParentId: 8, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "api", Role: "admin,user"},
-		{ParentId: 8, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "api", Role: "admin"},
-		{ParentId: 8, Name: "版本信息", Path: "version", Router: "version", Icon: "info", Role: "admin,user"},
+		{ParentId: 8, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "swap", Role: "admin,user"},
+		{ParentId: 8, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "control", Role: "admin"},
+		{ParentId: 8, Name: "版本信息", Path: "version", Router: "version", Icon: "info-circle", Role: "admin,user"},
 	}
 }
 
@@ -273,4 +274,58 @@ func getChildMenus(menus []Menu, parentId int, role string) []MenuItem {
 		}
 	}
 	return childMenus
+}
+
+// ============ 菜单管理 CRUD 方法 ============
+
+// GetAllMenus 获取所有菜单（用于管理界面）
+func GetAllMenus() ([]Menu, error) {
+	var menus []Menu
+	err := DB.Order("parent_id, id").Find(&menus).Error
+	return menus, err
+}
+
+// GetMenuByID 根据ID获取菜单
+func GetMenuByID(id int) (*Menu, error) {
+	var menu Menu
+	err := DB.Where("id = ?", id).First(&menu).Error
+	if err != nil {
+		return nil, err
+	}
+	return &menu, nil
+}
+
+// CreateMenu 创建菜单
+func CreateMenu(menu *Menu) error {
+	return DB.Create(menu).Error
+}
+
+// UpdateMenu 更新菜单
+func UpdateMenu(menu *Menu) error {
+	return DB.Model(&Menu{}).Where("id = ?", menu.Id).Updates(menu).Error
+}
+
+// DeleteMenu 删除菜单（级联删除子菜单）
+func DeleteMenu(id int) error {
+	// 先删除所有子菜单
+	err := DB.Where("parent_id = ?", id).Delete(&Menu{}).Error
+	if err != nil {
+		return err
+	}
+	// 再删除菜单本身
+	return DB.Where("id = ?", id).Delete(&Menu{}).Error
+}
+
+// GetParentMenus 获取所有父菜单（一级菜单）
+func GetParentMenus() ([]Menu, error) {
+	var menus []Menu
+	err := DB.Where("parent_id = ?", 0).Order("id").Find(&menus).Error
+	return menus, err
+}
+
+// GetMenusByParentID 根据父菜单ID获取子菜单
+func GetMenusByParentID(parentId int) ([]Menu, error) {
+	var menus []Menu
+	err := DB.Where("parent_id = ?", parentId).Order("id").Find(&menus).Error
+	return menus, err
 }

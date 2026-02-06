@@ -371,6 +371,18 @@ func InitRouter() *gin.Engine {
 			{
 				aiGroup.POST("/chat", handler.AIChat)
 			}
+
+			// 菜单管理
+			menuGroup := api.Group("/menu")
+			{
+				menuGroup.GET("", handler.GetAllMenus)
+				menuGroup.GET("/parents", handler.GetParentMenus)
+				menuGroup.GET("/children/:id", handler.GetMenusByParentID)
+				menuGroup.GET("/:id", handler.GetMenuByID)
+				menuGroup.POST("", handler.CreateMenu)
+				menuGroup.PUT("/:id", handler.UpdateMenu)
+				menuGroup.DELETE("/:id", handler.DeleteMenu)
+			}
 		}
 	}
 

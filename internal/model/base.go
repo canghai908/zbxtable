@@ -132,15 +132,40 @@ func DatabaseInit() {
 	//添加管理员账号
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Log.Info("the admin user does not exist, create a new admin account later!")
+
+		// 构建默认主题配置（使用结构化方式，避免手写 JSON 出错）
+		defaultThemeConfig := map[string]interface{}{
+			"theme": map[string]string{
+				"color":   "#1890ff",
+				"mode":    "dark",
+				"success": "#52c41a",
+				"warning": "#faad14",
+				"error":   "#f5222f",
+			},
+			"animate": map[string]interface{}{
+				"disabled":  true,
+				"name":      "lightSpeed",
+				"direction": "left",
+			},
+		}
+
+		// 将配置转换为 JSON 字符串
+		themeJSON, err := json.Marshal(defaultThemeConfig)
+		if err != nil {
+			logger.Log.Error("Failed to marshal default theme config:", err)
+			// 如果序列化失败，使用备用的硬编码 JSON
+			themeJSON = []byte(`{"theme":{"color":"#1890ff","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"},"animate":{"disabled":true,"name":"lightSpeed","direction":"left"}}`)
+		}
+
 		var user User
 		user.Username = "admin"
 		user.Password, _ = utils.PasswordHash("Zbxtable")
 		user.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
 		user.Role = "admin"
 		user.Operation = "['add', 'edit', 'delete','update']"
-		user.Theme = `{"theme":{"color":"#1890ff","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"}}`
+		user.Theme = string(themeJSON)
 		user.Status = 0
-		err := DB.Create(&user).Error
+		err = DB.Create(&user).Error
 		if err != nil {
 			logger.Log.Info(err)
 			return
