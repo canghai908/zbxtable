@@ -275,6 +275,10 @@ func InitRouter() *gin.Engine {
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 				systemGroup.POST("/upload-logo", handler.UploadLogo)
 
+				// 初始配置状态
+				systemGroup.GET("/setup-status", handler.GetInitialSetupStatus)
+				systemGroup.POST("/complete-setup", handler.CompleteInitialSetup)
+
 				// 系统更新
 				systemGroup.GET("/version", handler.GetCurrentVersion)
 				systemGroup.GET("/check-update", handler.CheckUpdate)

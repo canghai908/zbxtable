@@ -394,3 +394,58 @@ func GetPublicSystemInfo(c *gin.Context) {
 		"system_logo": systemLogo,
 	})
 }
+
+// GetInitialSetupStatus 获取初始配置状态
+func GetInitialSetupStatus(c *gin.Context) {
+	// 检查是否完成初始配置
+	setupCompleted := model.GetConfigValueByKey("initial_setup_completed", "0")
+
+	// 检查webhook_url是否已配置
+	webhookURL := model.GetConfigValueByKey("webhook_url", "")
+	webhookConfigured := webhookURL != ""
+
+	// 检查是否有Zabbix实例
+	instances, err := model.GetAllZabbixInstances()
+	zabbixConfigured := err == nil && len(instances) > 0
+
+	response.Success(c, gin.H{
+		"setup_completed":    setupCompleted == "1",
+		"webhook_configured": webhookConfigured,
+		"zabbix_configured":  zabbixConfigured,
+	})
+}
+
+// CompleteInitialSetup 标记初始配置已完成
+func CompleteInitialSetup(c *gin.Context) {
+	// 查找initial_setup_completed配置项
+	configs, err := model.GetConfigList()
+	if err != nil {
+		response.InternalError(c, "获取配置失败")
+		return
+	}
+
+	var configID int64
+	found := false
+	for _, config := range configs {
+		if config.Key == "initial_setup_completed" {
+			configID = config.ID
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		response.InternalError(c, "配置项不存在")
+		return
+	}
+
+	// 更新配置
+	v := model.Config{ID: configID, Value: "1"}
+	err = model.UpdateConfig(&v)
+	if err != nil {
+		response.InternalError(c, "更新配置失败")
+		return
+	}
+
+	response.SuccessWithMessage(c, "初始配置已完成", nil)
+}

@@ -95,6 +95,11 @@ func ListZabbixInstance() ([]ZabbixInstance, error) {
 	return list, err
 }
 
+// GetAllZabbixInstances 获取所有 Zabbix 实例（别名方法）
+func GetAllZabbixInstances() ([]ZabbixInstance, error) {
+	return ListZabbixInstance()
+}
+
 // GetZabbixInstanceByZID 根据ZID获取实例
 func GetZabbixInstanceByZID(id int) (*ZabbixInstance, error) {
 	var instance ZabbixInstance
