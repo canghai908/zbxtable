@@ -6,6 +6,7 @@ on:
       - main
       - master
       - develop
+      - test-github-actions
     paths:
       - 'zbxtable/**'
       - '.github/workflows/build.yml'
