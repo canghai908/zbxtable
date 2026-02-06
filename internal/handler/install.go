@@ -138,7 +138,7 @@ func writeConfigFile(
 	//cfg.Section("").Key("appname").Comment = "zbxtable"
 	// migrate httpport
 	if httpport == "" {
-		cfg.Section("").NewKey("httpport", "8085")
+		cfg.Section("").NewKey("httpport", "8088")
 	} else {
 		cfg.Section("").NewKey("httpport", httpport)
 	}
@@ -354,7 +354,7 @@ func DoInstall(c *gin.Context) {
 
 	// 设置默认值
 	if req.HTTPPort == "" {
-		req.HTTPPort = "8085"
+		req.HTTPPort = "8088"
 	}
 	if req.RunMode == "" {
 		req.RunMode = "prod"
@@ -405,7 +405,7 @@ func DoInstall(c *gin.Context) {
 	if strings.Contains(currentPort, ":") {
 		currentPort = strings.Split(currentPort, ":")[1]
 	} else {
-		currentPort = "8085" // 默认端口
+		currentPort = "8088" // 默认端口
 	}
 	portChanged := req.HTTPPort != "" && req.HTTPPort != currentPort
 

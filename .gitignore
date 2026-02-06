@@ -41,3 +41,11 @@ TEST_README.md
 /api/v1/web/web/
 /template/assets/
 /assets/
+
+# 构建产物
+/build/
+/dist/
+coverage.out
+coverage.html
+*.tar.gz
+*.zip

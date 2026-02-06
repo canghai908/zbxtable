@@ -106,7 +106,7 @@ func runWeb(*cli.Context) error {
 		logger.Log.Info("系统未安装，启动安装引导模式")
 		// 未安装时，只启动 Web 服务器，不连接数据库
 		r := v1.InitRouter()
-		httpport := "8085"
+		httpport := "8088"
 		logger.Log.Info("Starting Gin server in installation mode on port:", httpport)
 		logger.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
 		r.Run(":" + httpport)
@@ -148,7 +148,7 @@ func runWeb(*cli.Context) error {
 	r := v1.InitRouter()
 	httpport := GetConfKey("httpport")
 	if httpport == "" {
-		httpport = "8085"
+		httpport = "8088"
 	}
 	logger.Log.Info("Starting Gin server on port:", httpport)
 	r.Run(":" + httpport)
