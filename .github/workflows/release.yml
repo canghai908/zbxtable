@@ -1,0 +1,175 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 v* 格式的标签时触发，例如 v1.0.0
+
+permissions:
+  contents: write  # 需要写权限来创建 release
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整的 git 历史，用于生成版本信息
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: zbxtable-web/package-lock.json
+
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: zbxtable/go.sum
+
+      - name: 构建前端
+        working-directory: ./zbxtable-web
+        run: |
+          echo "📦 开始构建前端..."
+          npm ci
+          npm run build
+          echo "✓ 前端构建完成"
+          ls -lh web/
+
+      - name: 复制前端构建产物到后端
+        run: |
+          echo "📋 复制前端文件到后端目录..."
+          mkdir -p zbxtable/api/v1/web/web
+          cp -r zbxtable-web/web/* zbxtable/api/v1/web/web/
+          echo "✓ 前端文件复制完成"
+          ls -lh zbxtable/api/v1/web/web/
+
+      - name: 获取版本信息
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "发布版本: $VERSION"
+
+      - name: 编译多平台二进制文件
+        working-directory: ./zbxtable
+        run: |
+          # 设置版本信息
+          VERSION=${{ steps.version.outputs.version }}
+          GIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+          LDFLAGS="-X main.version=${VERSION} -X main.gitHash=${GIT_HASH} -X main.buildTime=${BUILD_TIME} -w -s"
+          
+          # 创建输出目录
+          mkdir -p dist
+          
+          # 编译 Linux AMD64
+          echo "编译 Linux AMD64..."
+          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-linux-amd64 main.go
+          
+          # 编译 Linux ARM64
+          echo "编译 Linux ARM64..."
+          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-linux-arm64 main.go
+          
+          # 编译 Windows AMD64
+          echo "编译 Windows AMD64..."
+          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-windows-amd64.exe main.go
+          
+          # 编译 macOS AMD64
+          echo "编译 macOS AMD64..."
+          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-darwin-amd64 main.go
+          
+          # 编译 macOS ARM64
+          echo "编译 macOS ARM64..."
+          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-darwin-arm64 main.go
+          
+          echo "编译完成！"
+          ls -lh dist/
+
+      - name: 创建发布包
+        working-directory: ./zbxtable
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          mkdir -p dist/releases
+          
+          # 为每个平台创建压缩包
+          platforms=("linux-amd64" "linux-arm64" "windows-amd64" "darwin-amd64" "darwin-arm64")
+          
+          for platform in "${platforms[@]}"; do
+            echo "打包 $platform..."
+            pkg_name="zbxtable-${VERSION}-${platform}"
+            mkdir -p "dist/${pkg_name}"
+            
+            # 复制二进制文件
+            if [[ $platform == *"windows"* ]]; then
+              cp "dist/zbxtable-${platform}.exe" "dist/${pkg_name}/zbxtable.exe"
+            else
+              cp "dist/zbxtable-${platform}" "dist/${pkg_name}/zbxtable"
+              chmod +x "dist/${pkg_name}/zbxtable"
+            fi
+            
+            # 复制配置文件和文档
+            cp -r config "dist/${pkg_name}/"
+            cp README.md "dist/${pkg_name}/"
+            cp LICENSE "dist/${pkg_name}/" 2>/dev/null || echo "LICENSE 文件不存在，跳过"
+            cp README.zh-CN.md "dist/${pkg_name}/" 2>/dev/null || echo "README.zh-CN.md 文件不存在，跳过"
+            
+            # 创建压缩包
+            cd dist
+            tar -czf "releases/${pkg_name}.tar.gz" "${pkg_name}"
+            cd ..
+            
+            echo "✓ 创建 ${pkg_name}.tar.gz"
+          done
+          
+          # 生成 SHA256 校验和
+          cd dist/releases
+          sha256sum *.tar.gz > SHA256SUMS
+          cd ../..
+          
+          echo "所有发布包创建完成！"
+          ls -lh dist/releases/
+
+      - name: 生成更新日志
+        id: changelog
+        run: |
+          # 获取上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "这是第一个版本发布"
+            CHANGELOG="## 🎉 首次发布\n\n这是 zbxtable 的第一个正式版本。"
+          else
+            echo "生成从 $PREV_TAG 到当前版本的更新日志..."
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            CHANGELOG="## 📝 更新内容\n\n${CHANGELOG}"
+          fi
+          
+          # 保存到文件
+          echo -e "$CHANGELOG" > CHANGELOG.md
+          cat CHANGELOG.md
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          files: |
+            zbxtable/dist/releases/*.tar.gz
+            zbxtable/dist/releases/SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 发布完成
+        run: |
+          echo "🎉 发布成功！"
+          echo "版本: ${{ steps.version.outputs.version }}"
+          echo "下载地址: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
+
