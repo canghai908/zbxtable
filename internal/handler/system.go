@@ -158,10 +158,34 @@ func GetAllConfig(c *gin.Context) {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
 	} else {
+		// 定义敏感字段列表
+		sensitiveKeys := map[string]bool{
+			"email_secret":     true, // SMTP 密码/授权码
+			"wechat_secret":    true, // 企业微信 Secret
+			"deepseek_api_key": true, // Deepseek API Key
+			"encryption_key":   true, // 加密密钥（完全隐藏）
+		}
+		
+		// 过滤和脱敏处理
+		filteredConfigs := []model.Config{}
+		for _, config := range val {
+			// 完全隐藏加密密钥配置项
+			if config.Key == "encryption_key" {
+				continue
+			}
+			
+			// 对敏感字段进行脱敏处理
+			if sensitiveKeys[config.Key] && config.Value != "" {
+				config.Value = "********" // 替换为星号
+			}
+			
+			filteredConfigs = append(filteredConfigs, config)
+		}
+		
 		SystemRes.Code = 200
 		SystemRes.Message = "获取成功"
-		SystemRes.Data.Items = val
-		SystemRes.Data.Total = int64(len(val))
+		SystemRes.Data.Items = filteredConfigs
+		SystemRes.Data.Total = int64(len(filteredConfigs))
 	}
 	c.JSON(http.StatusOK, SystemRes)
 }
@@ -177,6 +201,19 @@ func UpdateConfig(c *gin.Context) {
 	}
 
 	value := gjson.Get(string(body), "value").String()
+	
+	// 如果值是星号（脱敏标记），则不更新
+	// 这表示前端没有修改该敏感字段
+	if value == "********" {
+		var SystemRes model.SystemList
+		SystemRes.Code = 200
+		SystemRes.Message = "未修改敏感字段，保持原值"
+		SystemRes.Data.Items = ""
+		SystemRes.Data.Total = 1
+		c.JSON(http.StatusOK, SystemRes)
+		return
+	}
+	
 	var SystemRes model.SystemList
 	v := model.Config{ID: int64(id), Value: value}
 	err = model.UpdateConfig(&v)
@@ -448,4 +485,52 @@ func CompleteInitialSetup(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "初始配置已完成", nil)
+}
+
+// TestEmailConfig 测试邮件配置
+func TestEmailConfig(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.InternalError(c, "请求体读取失败")
+		return
+	}
+
+	testEmail := gjson.Get(string(body), "test_email").String()
+	if testEmail == "" {
+		response.BadRequest(c, "请输入测试邮箱地址")
+		return
+	}
+
+	// 发送测试邮件
+	err = model.SendTestEmail(testEmail)
+	if err != nil {
+		response.InternalError(c, "邮件发送失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "测试邮件发送成功，请检查邮箱", nil)
+}
+
+// TestWechatConfig 测试企业微信配置
+func TestWechatConfig(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.InternalError(c, "请求体读取失败")
+		return
+	}
+
+	testUserID := gjson.Get(string(body), "test_user_id").String()
+	if testUserID == "" {
+		response.BadRequest(c, "请输入测试用户ID")
+		return
+	}
+
+	// 发送测试企业微信消息
+	err = model.SendTestWechat(testUserID)
+	if err != nil {
+		response.InternalError(c, "企业微信消息发送失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "测试消息发送成功，请检查企业微信", nil)
 }

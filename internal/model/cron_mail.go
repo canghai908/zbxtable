@@ -99,7 +99,7 @@ func SendEmailAlert(event *Event, user User) error {
 	// 邮件配置优先从系统配置表读取，其次回退到 app.conf
 	from := GetConfigValueByKey("email_from", GetConfKey("email_from"))
 	nickname := GetConfigValueByKey("email_nickname", GetConfKey("email_nickname"))
-	secret := GetConfigValueByKey("email_secret", GetConfKey("email_secret"))
+	secret := GetConfigValueByKey("email_secret", GetConfKey("email_secret")) // 这里会自动解密
 	host := GetConfigValueByKey("email_host", GetConfKey("email_host"))
 	portStr := GetConfigValueByKey("email_port", GetConfKey("email_port"))
 	if portStr == "" {

@@ -2,7 +2,7 @@ package model
 
 import (
 	"bytes"
-
+	"fmt"
 	"html/template"
 	"strconv"
 	"strings"
@@ -45,9 +45,9 @@ func SendWechat(event *Event) {
 	}
 	var tplname string
 	if event.Status == "0" {
-		tplname = "./template/wechat_recovery.tpl"
+		tplname = TplPath + "wechat_recovery.tpl"
 	} else {
-		tplname = "./template/wechat_problem.tpl"
+		tplname = TplPath + "/wechat_problem.tpl"
 	}
 	event.Level = utils.AlertSeverityTo(event.Level)
 	event.Status = utils.AlertType(event.Status)
@@ -116,4 +116,54 @@ func PopAllWechat() []*Event {
 		ret = append(ret, &mail)
 	}
 	return ret
+}
+
+// SendTestWechat 发送测试企业微信消息
+func SendTestWechat(userID string) error {
+	// 获取企业微信配置
+	corpID := GetConfigValueByKey("wechat_corp_id", "")
+	agentID := GetConfigValueByKey("wechat_agent_id", "")
+	secret := GetConfigValueByKey("wechat_secret", "")
+
+	// 验证必填配置
+	if corpID == "" || agentID == "" || secret == "" {
+		return fmt.Errorf("企业微信配置不完整，请检查企业ID、应用ID和Secret配置")
+	}
+
+	// 检查 WeApp 是否已初始化
+	if WeApp == nil {
+		return fmt.Errorf("企业微信应用未初始化，请检查配置并重启服务")
+	}
+
+	// 构建测试消息
+	testContent := fmt.Sprintf(`【ZbxTable 企业微信配置测试】
+
+✓ 配置测试成功！
+
+您的企业微信配置已经正常工作，ZbxTable 可以正常发送企业微信通知了。
+
+📋 配置信息：
+企业ID：%s
+应用ID：%s
+测试用户：%s
+
+⏰ 测试时间：%s
+
+此消息由 ZbxTable 监控系统自动发送。`,
+		corpID,
+		agentID,
+		userID,
+		time.Now().Format("2006-01-02 15:04:05"))
+
+	// 发送测试消息
+	tos := workwx.Recipient{
+		UserIDs: []string{userID},
+	}
+
+	err := WeApp.SendTextMessage(&tos, testContent, false)
+	if err != nil {
+		return fmt.Errorf("发送失败: %v", err)
+	}
+
+	return nil
 }

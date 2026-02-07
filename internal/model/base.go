@@ -94,7 +94,7 @@ func InitWechat() {
 	// 开关已启用，从数据库读取企业微信配置
 	agentIDStr := GetConfigValueByKey("wechat_agentid", "")
 	corpid := GetConfigValueByKey("wechat_corpid", "")
-	secret := GetConfigValueByKey("wechat_secret", "")
+	secret := GetConfigValueByKey("wechat_secret", "") // 这里会自动解密
 
 	// 验证必填配置项
 	if agentIDStr == "" || corpid == "" || secret == "" {

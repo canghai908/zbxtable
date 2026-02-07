@@ -279,6 +279,10 @@ func InitRouter() *gin.Engine {
 				systemGroup.GET("/setup-status", handler.GetInitialSetupStatus)
 				systemGroup.POST("/complete-setup", handler.CompleteInitialSetup)
 
+				// 配置测试
+				systemGroup.POST("/test-email", handler.TestEmailConfig)
+				systemGroup.POST("/test-wechat", handler.TestWechatConfig)
+
 				// 系统更新
 				systemGroup.GET("/version", handler.GetCurrentVersion)
 				systemGroup.GET("/check-update", handler.CheckUpdate)

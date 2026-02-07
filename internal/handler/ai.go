@@ -174,7 +174,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 
 // handleDeepseekChat 处理 Deepseek AI 请求
 func handleDeepseekChat(c *gin.Context, message string) {
-	// 从配置获取 Deepseek 参数
+	// 从配置获取 Deepseek 参数（会自动解密）
 	apiKey := model.GetConfigValueByKey("deepseek_api_key", "")
 	if apiKey == "" {
 		var AIRes struct {

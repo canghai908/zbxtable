@@ -103,6 +103,17 @@ func AddUser(m *User) (id int64, err error) {
 	if result.Error == nil {
 		return 0, errors.New("用户已存在")
 	}
+	
+	// 如果有企业微信群机器人Key，进行加密
+	if m.WechatRobotKey != "" {
+		encryptionKey := GetEncryptionKey()
+		encryptedKey, err := utils.EncryptString(m.WechatRobotKey, encryptionKey)
+		if err != nil {
+			return 0, errors.New("加密企业微信群机器人Key失败: " + err.Error())
+		}
+		m.WechatRobotKey = encryptedKey
+	}
+	
 	// 插入
 	result = DB.Create(m)
 	if result.Error != nil {
@@ -147,7 +158,18 @@ func UpdateUser(m *User, tuser string) error {
 		updates["wechat"] = m.Wechat
 	}
 	if m.WechatRobotKey != "" {
-		updates["wechat_robot_key"] = m.WechatRobotKey
+		// 如果是星号，表示前端未修改，跳过更新
+		if m.WechatRobotKey == "********" {
+			// 不更新该字段，保持原值
+		} else {
+			// 对企业微信群机器人Key进行加密
+			encryptionKey := GetEncryptionKey()
+			encryptedKey, err := utils.EncryptString(m.WechatRobotKey, encryptionKey)
+			if err != nil {
+				return errors.New("加密企业微信群机器人Key失败: " + err.Error())
+			}
+			updates["wechat_robot_key"] = encryptedKey
+		}
 	}
 	if m.DingTalk != "" {
 		updates["ding_talk"] = m.DingTalk
@@ -236,6 +258,14 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 		Limit(limits).Offset(offset).Find(&users).Error
 	if err != nil {
 		return 0, []User{}, err
+	}
+
+	// 对敏感字段进行脱敏处理
+	for i := range users {
+		if users[i].WechatRobotKey != "" {
+			// 替换为星号，隐藏真实的Key
+			users[i].WechatRobotKey = "********"
+		}
 	}
 
 	return cnt, users, nil

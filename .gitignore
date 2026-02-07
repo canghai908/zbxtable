@@ -27,7 +27,7 @@ msty.ttf
 
 # 嵌入的前端文件（构建时从 zbxtable-web/web 复制）
 /api/v1/web/web/
-/template/assets/
+/template/
 /assets/
 
 # 构建产物
@@ -37,3 +37,6 @@ coverage.out
 coverage.html
 *.tar.gz
 *.zip
+REFACTOR_PLAN.md
+.github/MAKEFILE_USAGE.md
+.air.toml

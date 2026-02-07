@@ -66,9 +66,26 @@ func SendWechatRobot(event *Event) {
 		logger.Log.Error(err)
 		return
 	}
+	
+	// 获取加密密钥
+	encryptionKey := GetEncryptionKey()
+	
 	for _, v := range plist {
 		if v.WechatRobotKey != "" {
-			SendWechatRobotAlert(v, event, body.String())
+			// 解密企业微信群机器人Key
+			decryptedKey := v.WechatRobotKey
+			if v.WechatRobotKey != "" {
+				key, err := utils.DecryptString(v.WechatRobotKey, encryptionKey)
+				if err != nil {
+					// 解密失败，可能是旧数据未加密，使用原值
+					logger.Log.Warnf("解密用户 %s 的企业微信群机器人Key失败，使用原值: %v", v.Username, err)
+				} else {
+					decryptedKey = key
+				}
+			}
+			
+			// 使用解密后的Key发送消息
+			SendWechatRobotAlert(v, event, body.String(), decryptedKey)
 		} else {
 			logger.Log.Warningf("User %s does not have wechat_robot_key configured", v.Username)
 		}
@@ -93,9 +110,9 @@ type Markdown struct {
 }
 
 // SendWechatRobotAlert 发送企业微信群机器人告警消息
-func SendWechatRobotAlert(user User, event *Event, content string) error {
+func SendWechatRobotAlert(user User, event *Event, content string, decryptedKey string) error {
 	// 构建webhook URL
-	webhookURL := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s", user.WechatRobotKey)
+	webhookURL := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s", decryptedKey)
 
 	// 构建消息体
 	message := WechatRobotMessage{

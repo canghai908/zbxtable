@@ -3,6 +3,8 @@ package model
 import (
 	"errors"
 	"time"
+	"zbxtable/pkg/logger"
+	"zbxtable/pkg/utils"
 )
 
 // TableName alarm
@@ -54,7 +56,34 @@ func UpdateConfig(m *Config) (err error) {
 		return errors.New("加密密钥不允许修改，如需更换请联系系统管理员")
 	}
 
-	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("value", m.Value).Error
+	// 对敏感字段进行加密
+	valueToSave := m.Value
+	sensitiveKeys := []string{
+		"email_secret",     // SMTP 密码/授权码
+		"wechat_secret",    // 企业微信 Secret
+		"deepseek_api_key", // Deepseek API Key
+	}
+
+	// 检查是否是敏感字段
+	isSensitive := false
+	for _, key := range sensitiveKeys {
+		if v.Key == key {
+			isSensitive = true
+			break
+		}
+	}
+
+	// 如果是敏感字段且值不为空，进行加密
+	if isSensitive && valueToSave != "" {
+		encryptionKey := GetEncryptionKey()
+		encryptedValue, err := utils.EncryptString(valueToSave, encryptionKey)
+		if err != nil {
+			return errors.New("加密失败: " + err.Error())
+		}
+		valueToSave = encryptedValue
+	}
+
+	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("value", valueToSave).Error
 	if err != nil {
 		return err
 	}
@@ -90,11 +119,41 @@ func updateZbxDash(m *Config) (err error) {
 }
 
 // GetConfigValueByKey 根据 key 获取配置值，如果不存在或出错则返回默认值
+// 对于敏感字段会自动解密
 func GetConfigValueByKey(key string, defaultVal string) string {
 	var c Config
 	err := DB.Where("`key` = ?", key).First(&c).Error
-	if err == nil && c.Value != "" {
-		return c.Value
+	if err != nil || c.Value == "" {
+		return defaultVal
 	}
-	return defaultVal
+
+	// 定义需要解密的敏感字段
+	sensitiveKeys := []string{
+		"email_secret",     // SMTP 密码/授权码
+		"wechat_secret",    // 企业微信 Secret
+		"deepseek_api_key", // Deepseek API Key
+	}
+
+	// 检查是否是敏感字段
+	isSensitive := false
+	for _, skey := range sensitiveKeys {
+		if key == skey {
+			isSensitive = true
+			break
+		}
+	}
+
+	// 如果是敏感字段，尝试解密
+	if isSensitive && c.Value != "" {
+		encryptionKey := GetEncryptionKey()
+		decryptedValue, err := utils.DecryptString(c.Value, encryptionKey)
+		if err != nil {
+			// 解密失败，可能是旧数据未加密，直接返回原值
+			logger.Log.Warnf("解密配置 %s 失败，返回原值: %v", key, err)
+			return c.Value
+		}
+		return decryptedValue
+	}
+
+	return c.Value
 }
