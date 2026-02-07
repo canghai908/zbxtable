@@ -47,12 +47,24 @@ func InitLogger(logPath string, logLevel int, maxDays, maxLines, maxSize int, da
 	// 如果未配置日志路径，使用默认路径：./log/yyyy-MM-dd.log
 	if logPath == "" {
 		logPath = filepath.Join(".", "log", fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
-	}
-
-	// 如果启用按天分割，修改日志文件名为日期格式
-	if daily {
-		logDir := filepath.Dir(logPath)
-		logPath = filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
+	} else {
+		// 如果配置的是目录路径（不包含文件扩展名），则在该目录下创建日志文件
+		// 判断是否为目录：没有扩展名或者以 / 结尾
+		if filepath.Ext(logPath) == "" {
+			// 这是一个目录路径，需要在该目录下创建日志文件
+			if daily {
+				logPath = filepath.Join(logPath, fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
+			} else {
+				logPath = filepath.Join(logPath, "app.log")
+			}
+		} else {
+			// 这是一个完整的文件路径
+			if daily {
+				// 如果启用按天分割，修改日志文件名为日期格式
+				logDir := filepath.Dir(logPath)
+				logPath = filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format("2006-01-02")))
+			}
+		}
 	}
 
 	// 确保日志目录存在
