@@ -14,26 +14,10 @@ import (
 
 	model "zbxtable/internal/model"
 
-	zabbix "github.com/canghai908/zabbix-go"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 )
-
-const motd = `
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║   ███████╗██████╗ ██╗  ██╗████████╗ █████╗ ██████╗ ██╗     ║
-║   ╚══███╔╝██╔══██╗╚██╗██╔╝╚══██╔══╝██╔══██╗██╔══██╗██║     ║
-║     ███╔╝ ██████╔╝ ╚███╔╝    ██║   ███████║██████╔╝██║     ║
-║    ███╔╝  ██╔══██╗ ██╔██╗    ██║   ██╔══██║██╔══██╗██║     ║
-║   ███████╗██████╔╝██╔╝ ██╗   ██║   ██║  ██║██████╔╝███████╗║
-║   ╚══════╝╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═════╝ ╚══════╝║
-║                                                               ║
-║              Zabbix Table Management System                   ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-`
 
 var (
 	//Web 配置
@@ -47,7 +31,6 @@ var (
 	initEnvOnce   sync.Once
 	envFileExists bool
 	webCfg        *ini.File
-	webAPI        *zabbix.API
 )
 
 // checkInstallStatus 检查安装状态
@@ -76,13 +59,14 @@ func checkInstallStatus() bool {
 
 // runWeb 启动web
 func runWeb(*cli.Context) error {
+	fmt.Println("🚀 正在启动ZbxTable服务...")
+
 	// 日志初始化（使用默认配置，不依赖配置文件）
-	fmt.Println("Web started!")
 	logErr := initLoggerSafe()
 	if logErr != nil {
 		// 如果日志初始化失败，至少输出到标准输出
-		fmt.Println("Warning: Logger initialization failed:", logErr)
-		fmt.Println("Using stdout for logging")
+		fmt.Println("⚠️  警告: 日志初始化失败:", logErr)
+		fmt.Println("📝 使用标准输出记录日志")
 		// 确保 Log 不为 nil
 		if logger.Log == nil {
 			logger.Log = logrus.New()
@@ -96,61 +80,119 @@ func runWeb(*cli.Context) error {
 	}
 
 	// 释放模板文件、js文件到assets目录下
+	logger.Log.Info("📦 正在释放静态资源文件...")
 	if err := assets.RestoreAssets(); err != nil {
-		logger.Log.Error("Failed to restore template files:", err)
+		logger.Log.Error("❌ 释放模板文件失败:", err)
 		// 不退出程序，继续运行
+	} else {
+		logger.Log.Info("✅ 静态资源文件释放成功")
 	}
+
 	// 检查安装状态
 	installed := checkInstallStatus()
 	if !installed {
-		logger.Log.Info("系统未安装，启动安装引导模式")
+		logger.Log.Info("═══════════════════════════════════════════════════════════")
+		logger.Log.Info("⚙️ 系统未安装，启动安装引导模式")
+		logger.Log.Info("═══════════════════════════════════════════════════════════")
 		// 未安装时，只启动 Web 服务器，不连接数据库
 		r := v1.InitRouter()
 		httpport := "8088"
-		logger.Log.Info("Starting Gin server in installation mode on port:", httpport)
-		logger.Log.Info("Please visit http://localhost:" + httpport + "/install to complete installation")
+
+		fmt.Println("╔═══════════════════════════════════════════════════════════╗")
+		fmt.Printf("║  🌐 服务监听地址: http://0.0.0.0:%-24s ║\n", httpport)
+		fmt.Printf("║  🔗 本地访问地址: http://localhost:%-21s  ║\n", httpport)
+		fmt.Printf("║  📋 安装引导页面: http://localhost:%s/install%-10s ║\n", httpport, "")
+		fmt.Println("║  📊 运行模式: 安装引导模式                                ║")
+		fmt.Println("╚═══════════════════════════════════════════════════════════╝")
+		fmt.Println("✅ ZbxTable服务启动成功，等待安装配置...")
+
 		r.Run(":" + httpport)
 		return nil
 	}
 
 	// 已安装，加载配置文件并连接数据库
-	logger.Log.Info("系统已安装，加载配置并连接数据库")
+	logger.Log.Info("═══════════════════════════════════════════════════════════")
+	logger.Log.Info("✅ 系统已安装，正在加载配置...")
+	logger.Log.Info("═══════════════════════════════════════════════════════════")
+
 	var err error
 	webCfg, err = ini.Load("./config/app.conf")
 	if err != nil {
-		logger.Log.Error("Failed to load config file:", err)
+		logger.Log.Error("❌ 加载配置文件失败:", err)
 		os.Exit(1)
 	}
-	//打印motd
-	logger.Log.Info(motd)
-	//配置文件已经建立，从配置文件读取数据库配置，并初始化数据库
-	model.ModelInit(
-		GetConfKey("dbtype"),
-		GetConfKey("dbhost"),
-		GetConfKey("dbuser"),
-		GetConfKey("dbpass"),
-		GetConfKey("dbname"),
-		GetConfKey("dbport"))
-	//计划任务
-	model.InitTask()
-	//企业微信
-	model.InitWechat()
-	//更新检查器
-	model.InitUpdateChecker()
-	defer model.StopTask()
-	defer model.StopUpdateChecker()
-	model.InitSenderWorker()
-	go model.ConsumeMail()
-	go model.ConsumeWechat()
-	go model.ConsumeWechatRobot()
+	logger.Log.Info("✅ 配置文件加载成功")
 
-	// 直接使用 Gin 框架
-	r := v1.InitRouter()
+	// 获取配置信息
+	dbtype := GetConfKey("dbtype")
+	dbhost := GetConfKey("dbhost")
+	dbport := GetConfKey("dbport")
+	dbname := GetConfKey("dbname")
 	httpport := GetConfKey("httpport")
 	if httpport == "" {
 		httpport = "8088"
 	}
-	logger.Log.Info("Starting Gin server on port:", httpport)
+	runmode := GetConfKey("runmode")
+	if runmode == "" {
+		runmode = "prod"
+	}
+
+	// 打印配置信息
+	logger.Log.Info("📋 系统配置信息:")
+	logger.Log.Infof("   - 运行模式: %s", runmode)
+	logger.Log.Infof("   - 数据库类型: %s", dbtype)
+	logger.Log.Infof("   - 数据库地址: %s:%s", dbhost, dbport)
+	logger.Log.Infof("   - 数据库名称: %s", dbname)
+	logger.Log.Infof("   - HTTP 端口: %s", httpport)
+
+	//配置文件已经建立，从配置文件读取数据库配置，并初始化数据库
+	logger.Log.Info("🔌 正在连接数据库...")
+	model.ModelInit(
+		dbtype,
+		dbhost,
+		GetConfKey("dbuser"),
+		GetConfKey("dbpass"),
+		dbname,
+		dbport)
+	logger.Log.Info("✅ 数据库连接成功")
+
+	//计划任务
+	logger.Log.Info("⏰ 正在初始化计划任务...")
+	model.InitTask()
+	logger.Log.Info("✅ 计划任务初始化完成")
+
+	//企业微信
+	logger.Log.Info("💬 正在初始化企业微信...")
+	model.InitWechat()
+	logger.Log.Info("✅ 企业微信初始化完成")
+
+	//更新检查器
+	logger.Log.Info("🔄 正在初始化更新检查器...")
+	model.InitUpdateChecker()
+	logger.Log.Info("✅ 更新检查器初始化完成")
+
+	defer model.StopTask()
+	defer model.StopUpdateChecker()
+
+	logger.Log.Info("📧 正在初始化消息发送服务...")
+	model.InitSenderWorker()
+	go model.ConsumeMail()
+	go model.ConsumeWechat()
+	go model.ConsumeWechatRobot()
+	logger.Log.Info("✅ 消息发送服务启动成功")
+
+	// 直接使用 Gin 框架
+	logger.Log.Info("🌐 正在启动 Web 服务器...")
+	r := v1.InitRouter()
+
+	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
+	fmt.Printf("║  🌐 服务监听地址: http://0.0.0.0:%-24s ║\n", httpport)
+	fmt.Printf("║  🔗 本地访问地址: http://localhost:%-21s  ║\n", httpport)
+	fmt.Printf("║  📊 运行模式: %-40s    ║\n", runmode)
+	fmt.Printf("║  💾 数据库: %s@%s:%-26s    ║\n", dbtype, dbhost, dbport)
+	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
+	fmt.Println("✅ ZbxTable服务启动成功！")
+
 	r.Run(":" + httpport)
 	return nil
 }
