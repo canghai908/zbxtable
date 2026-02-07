@@ -20,7 +20,7 @@ BUILD_DIR := build
 DIST_DIR := dist
 
 # 平台
-PLATFORMS := linux/amd64 linux/arm64 windows/amd64 darwin/amd64 darwin/arm64
+PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 
 .PHONY: all build clean test coverage lint docker docker-build docker-up docker-down help
 
@@ -183,17 +183,13 @@ package: build-all
 	@for platform in $(PLATFORMS); do \
 		os=$${platform%/*}; \
 		arch=$${platform#*/}; \
-		if [ "$$os" = "windows" ]; then \
-			ext=".exe"; \
-		else \
-			ext=""; \
-		fi; \
 		pkg_name="$(APP_NAME)-$(VERSION)-$$os-$$arch"; \
 		mkdir -p $(DIST_DIR)/$$pkg_name; \
-		cp $(DIST_DIR)/$(APP_NAME)-$$os-$$arch$$ext $(DIST_DIR)/$$pkg_name/$(APP_NAME)$$ext; \
+		cp $(DIST_DIR)/$(APP_NAME)-$$os-$$arch $(DIST_DIR)/$$pkg_name/$(APP_NAME); \
+		chmod +x $(DIST_DIR)/$$pkg_name/$(APP_NAME); \
 		cp -r config $(DIST_DIR)/$$pkg_name/; \
 		cp README.md $(DIST_DIR)/$$pkg_name/; \
-		cp LICENSE $(DIST_DIR)/$$pkg_name/; \
+		cp LICENSE $(DIST_DIR)/$$pkg_name/ 2>/dev/null || true; \
 		cd $(DIST_DIR) && tar -czf releases/$$pkg_name.tar.gz $$pkg_name; \
 		cd ..; \
 		echo "Created $(DIST_DIR)/releases/$$pkg_name.tar.gz"; \
