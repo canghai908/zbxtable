@@ -18,6 +18,7 @@ runtime/*
 /log/
 /logs/
 /web/
+/data/
 /download/
 /config/
 /tmp/
