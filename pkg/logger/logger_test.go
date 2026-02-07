@@ -11,11 +11,11 @@ func TestGetLogLevelByRunMode(t *testing.T) {
 		runmode  string
 		expected int
 	}{
-		{"dev", 5},      // Debug
-		{"test", 4},     // Info
-		{"prod", 3},     // Warn
-		{"unknown", 4},  // Default to Info
-		{"", 4},         // Default to Info
+		{"dev", 5},     // Debug
+		{"test", 4},    // Info
+		{"prod", 3},    // Warn
+		{"unknown", 4}, // Default to Info
+		{"", 4},        // Default to Info
 	}
 
 	for _, tt := range tests {

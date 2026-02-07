@@ -111,10 +111,10 @@ func UpdateUserGin(c *gin.Context) {
 
 	// 解析 JSON 以检查哪些字段实际存在
 	bodyJSON := gjson.Parse(string(body))
-	
+
 	// 构建用户对象，只设置请求中实际包含的字段
 	v := model.User{ID: id}
-	
+
 	// 密码处理
 	if bodyJSON.Get("password").Exists() {
 		password := bodyJSON.Get("password").String()
@@ -123,7 +123,7 @@ func UpdateUserGin(c *gin.Context) {
 			v.Password = pass
 		}
 	}
-	
+
 	// 角色处理
 	if bodyJSON.Get("role").Exists() {
 		role := bodyJSON.Get("role").String()
@@ -137,7 +137,7 @@ func UpdateUserGin(c *gin.Context) {
 			v.Operation = "[]"
 		}
 	}
-	
+
 	// 其他字段 - 只有在请求中存在时才设置
 	if bodyJSON.Get("email").Exists() {
 		v.Email = bodyJSON.Get("email").String()

@@ -27,7 +27,7 @@ func GetAllGroup(c *gin.Context) {
 		response.DatabaseError(c, "获取用户组列表失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithPage(c, hs, count)
 }
 
@@ -41,19 +41,19 @@ func CreateGroup(c *gin.Context) {
 
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
-	
+
 	if name == "" {
 		response.ValidationError(c, "用户组名称不能为空")
 		return
 	}
-	
+
 	v := model.UserGroup{Name: name, Note: note}
 	_, err = model.AddUserGroup(&v)
 	if err != nil {
 		response.DatabaseError(c, "创建用户组失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "创建用户组成功", nil)
 }
 
@@ -74,12 +74,12 @@ func UpdateGroup(c *gin.Context) {
 
 	name := gjson.Get(string(body), "name").String()
 	note := gjson.Get(string(body), "note").String()
-	
+
 	if name == "" {
 		response.ValidationError(c, "用户组名称不能为空")
 		return
 	}
-	
+
 	tuser, _ := c.Get("username")
 	tuserStr := ""
 	if tuser != nil {
@@ -92,7 +92,7 @@ func UpdateGroup(c *gin.Context) {
 		response.DatabaseError(c, "更新用户组失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
@@ -124,7 +124,7 @@ func UpdateGroupMember(c *gin.Context) {
 		response.DatabaseError(c, "更新组成员失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "修改成功", nil)
 }
 
@@ -147,6 +147,6 @@ func DeleteGroup(c *gin.Context) {
 		response.DatabaseError(c, "删除用户组失败: "+err.Error())
 		return
 	}
-	
+
 	response.SuccessWithMessage(c, "删除成功", nil)
 }

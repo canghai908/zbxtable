@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"zbxtable/pkg/response"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"

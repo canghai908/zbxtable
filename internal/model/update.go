@@ -10,8 +10,8 @@ import (
 const UpdateURL = "http://dl.cactifans.com/stable/"
 
 var (
-	updateChecker *selfupdate.Updater
-	updateTicker  *time.Ticker
+	updateChecker   *selfupdate.Updater
+	updateTicker    *time.Ticker
 	stopUpdateCheck chan bool
 )
 

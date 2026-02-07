@@ -1,4 +1,4 @@
-﻿package model
+package model
 
 import (
 	"errors"
@@ -122,20 +122,20 @@ func UpdateUser(m *User, tuser string) error {
 	if p.Role != "admin" && m.Role == "admin" {
 		return errors.New("no permission")
 	}
-	
+
 	// 构建更新字段映射，只更新非空字段
 	updates := map[string]interface{}{}
-	
+
 	// 密码字段
 	if m.Password != "" {
 		updates["password"] = m.Password
 	}
-	
+
 	// 角色字段
 	if m.Role != "" {
 		updates["role"] = m.Role
 	}
-	
+
 	// 联系方式字段 - 允许更新为空字符串（清空）
 	if m.Email != "" {
 		updates["email"] = m.Email
@@ -152,17 +152,17 @@ func UpdateUser(m *User, tuser string) error {
 	if m.DingTalk != "" {
 		updates["ding_talk"] = m.DingTalk
 	}
-	
+
 	// 主题字段
 	if m.Theme != "" {
 		updates["theme"] = m.Theme
 	}
-	
+
 	// 如果没有任何字段需要更新，直接返回
 	if len(updates) == 0 {
 		return nil
 	}
-	
+
 	err = DB.Model(&User{}).Where("id = ?", m.ID).Updates(updates).Error
 	if err != nil {
 		return err
