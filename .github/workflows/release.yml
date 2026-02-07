@@ -14,10 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: 检出代码
+      - name: 检出后端代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 获取完整的 git 历史，用于生成版本信息
+
+      - name: 检出前端代码
+        uses: actions/checkout@v4
+        with:
+          repository: canghai908/zbxtable-web
+          path: zbxtable-web
 
       - name: 设置 Node.js 环境
         uses: actions/setup-node@v4
@@ -30,7 +36,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-          cache-dependency-path: zbxtable/go.sum
+          cache-dependency-path: go.sum
 
       - name: 构建前端
         working-directory: ./zbxtable-web
@@ -44,10 +50,10 @@ jobs:
       - name: 复制前端构建产物到后端
         run: |
           echo "📋 复制前端文件到后端目录..."
-          mkdir -p zbxtable/api/v1/web/web
-          cp -r zbxtable-web/web/* zbxtable/api/v1/web/web/
+          mkdir -p api/v1/web/web
+          cp -r zbxtable-web/web/* api/v1/web/web/
           echo "✓ 前端文件复制完成"
-          ls -lh zbxtable/api/v1/web/web/
+          ls -lh api/v1/web/web/
 
       - name: 获取版本信息
         id: version
@@ -57,7 +63,6 @@ jobs:
           echo "发布版本: $VERSION"
 
       - name: 编译多平台二进制文件
-        working-directory: ./zbxtable
         run: |
           # 设置版本信息
           VERSION=${{ steps.version.outputs.version }}
@@ -92,7 +97,6 @@ jobs:
           ls -lh dist/
 
       - name: 创建发布包
-        working-directory: ./zbxtable
         run: |
           VERSION=${{ steps.version.outputs.version }}
           mkdir -p dist/releases
@@ -162,8 +166,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            zbxtable/dist/releases/*.tar.gz
-            zbxtable/dist/releases/SHA256SUMS
+            dist/releases/*.tar.gz
+            dist/releases/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
