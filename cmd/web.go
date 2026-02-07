@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	//Web 配置
+	//Web config
 	Web = &cli.Command{
 		Name:   "web",
 		Usage:  "Start web server",
@@ -33,7 +33,7 @@ var (
 	webCfg        *ini.File
 )
 
-// checkInstallStatus 检查安装状态
+// checkInstallStatus check installation status
 func checkInstallStatus() bool {
 	confPath := "./config/app.conf"
 	_, err := os.Stat(confPath)
@@ -57,17 +57,17 @@ func checkInstallStatus() bool {
 	return true
 }
 
-// runWeb 启动web
+// runWeb start web server
 func runWeb(*cli.Context) error {
-	fmt.Println("🚀 正在启动ZbxTable服务...")
+	fmt.Println("🚀 Starting ZbxTable service...")
 
-	// 日志初始化（使用默认配置，不依赖配置文件）
+	// Initialize logger (using default config, not dependent on config file)
 	logErr := initLoggerSafe()
 	if logErr != nil {
-		// 如果日志初始化失败，至少输出到标准输出
-		fmt.Println("⚠️  警告: 日志初始化失败:", logErr)
-		fmt.Println("📝 使用标准输出记录日志")
-		// 确保 Log 不为 nil
+		// If logger initialization fails, at least output to stdout
+		fmt.Println("Warning: Logger initialization failed:", logErr)
+		fmt.Println("Using standard output for logging")
+		// Ensure Log is not nil
 		if logger.Log == nil {
 			logger.Log = logrus.New()
 			logger.Log.SetOutput(os.Stdout)
@@ -79,47 +79,45 @@ func runWeb(*cli.Context) error {
 		}
 	}
 
-	// 释放模板文件、js文件到assets目录下
-	logger.Log.Info("📦 正在释放静态资源文件...")
+	// Extract template files and js files to assets directory
+	logger.Log.Info("Extracting static resource files...")
 	if err := assets.RestoreAssets(); err != nil {
-		logger.Log.Error("❌ 释放模板文件失败:", err)
-		// 不退出程序，继续运行
+		logger.Log.Error("Failed to extract template files:", err)
+		// Don't exit, continue running
 	} else {
-		logger.Log.Info("✅ 静态资源文件释放成功")
+		logger.Log.Info("Static resource files extracted successfully")
 	}
 
-	// 检查安装状态
+	// Check installation status
 	installed := checkInstallStatus()
 	if !installed {
-		logger.Log.Info("⚙️ 系统未安装，启动安装引导模式")
-		// 未安装时，只启动 Web 服务器，不连接数据库
+		logger.Log.Info("System not installed, starting installation wizard mode")
+		// When not installed, only start web server, don't connect to database
 		r := v1.InitRouter()
 		httpport := "8088"
-
-		fmt.Println("╔═══════════════════════════════════════════════════════════╗")
-		fmt.Printf("║  🌐 服务监听地址: http://0.0.0.0:%-24s ║\n", httpport)
-		fmt.Printf("║  🔗 本地访问地址: http://localhost:%-21s  ║\n", httpport)
-		fmt.Printf("║  📋 安装引导页面: http://localhost:%s/install%-10s ║\n", httpport, "")
-		fmt.Println("║  📊 运行模式: 安装引导模式                                ║")
-		fmt.Println("╚═══════════════════════════════════════════════════════════╝")
-		fmt.Println("✅ ZbxTable服务启动成功，等待安装配置...")
-
+		fmt.Println("╔══════════════════════════════════════════════════════╗")
+		fmt.Printf("║  Service listening on: http://0.0.0.0:%-11s    ║\n", httpport)
+		fmt.Printf("║  Local access URL: http://localhost:%-13s    ║\n", httpport)
+		fmt.Printf("║  Installation wizard: http://localhost:%s/install  ║\n", httpport)
+		fmt.Println("║  Running mode: Installation wizard mode              ║")
+		fmt.Println("╚══════════════════════════════════════════════════════╝")
+		fmt.Println("ZbxTable service started successfully, waiting for installation configuration...")
 		r.Run(":" + httpport)
 		return nil
 	}
 
-	// 已安装，加载配置文件并连接数据库
-	logger.Log.Info("✅ 系统已安装，正在加载配置...")
+	// Already installed, load config file and connect to database
+	logger.Log.Info("System already installed, loading configuration...")
 
 	var err error
 	webCfg, err = ini.Load("./config/app.conf")
 	if err != nil {
-		logger.Log.Error("❌ 加载配置文件失败:", err)
+		logger.Log.Error("Failed to load config file:", err)
 		os.Exit(1)
 	}
-	logger.Log.Info("✅ 配置文件加载成功")
+	logger.Log.Info("Config file loaded successfully")
 
-	// 获取配置信息
+	// Get configuration information
 	dbtype := GetConfKey("dbtype")
 	dbhost := GetConfKey("dbhost")
 	dbport := GetConfKey("dbport")
@@ -133,16 +131,16 @@ func runWeb(*cli.Context) error {
 		runmode = "prod"
 	}
 
-	// 打印配置信息
-	logger.Log.Info("📋 系统配置信息:")
-	logger.Log.Infof("   - 运行模式: %s", runmode)
-	logger.Log.Infof("   - 数据库类型: %s", dbtype)
-	logger.Log.Infof("   - 数据库地址: %s:%s", dbhost, dbport)
-	logger.Log.Infof("   - 数据库名称: %s", dbname)
-	logger.Log.Infof("   - HTTP 端口: %s", httpport)
+	// Print configuration information
+	logger.Log.Info("System configuration:")
+	logger.Log.Infof("   - Running mode: %s", runmode)
+	logger.Log.Infof("   - Database type: %s", dbtype)
+	logger.Log.Infof("   - Database address: %s:%s", dbhost, dbport)
+	logger.Log.Infof("   - Database name: %s", dbname)
+	logger.Log.Infof("   - HTTP port: %s", httpport)
 
-	//配置文件已经建立，从配置文件读取数据库配置，并初始化数据库
-	logger.Log.Info("🔌 正在连接数据库...")
+	//Config file already created, read database config from config file and initialize database
+	logger.Log.Info("Connecting to database...")
 	model.ModelInit(
 		dbtype,
 		dbhost,
@@ -150,58 +148,57 @@ func runWeb(*cli.Context) error {
 		GetConfKey("dbpass"),
 		dbname,
 		dbport)
-	logger.Log.Info("✅ 数据库连接成功")
+	logger.Log.Info("Database connected successfully")
 
-	//计划任务
-	logger.Log.Info("⏰ 正在初始化计划任务...")
+	//Scheduled tasks
+	logger.Log.Info("Initializing scheduled tasks...")
 	model.InitTask()
-	logger.Log.Info("✅ 计划任务初始化完成")
+	logger.Log.Info("Scheduled tasks initialized successfully")
 
-	//企业微信
-	logger.Log.Info("💬 正在初始化企业微信...")
+	//WeChat Work
+	logger.Log.Info("Initializing WeChat...")
 	model.InitWechat()
-	logger.Log.Info("✅ 企业微信初始化完成")
+	logger.Log.Info("WeChat initialized successfully")
 
-	//更新检查器
-	logger.Log.Info("🔄 正在初始化更新检查器...")
+	//Update checker
+	logger.Log.Info("Initializing update checker...")
 	model.InitUpdateChecker()
-	logger.Log.Info("✅ 更新检查器初始化完成")
+	logger.Log.Info("Update checker initialized successfully")
 
 	defer model.StopTask()
 	defer model.StopUpdateChecker()
 
-	logger.Log.Info("📧 正在初始化消息发送服务...")
+	logger.Log.Info("Initializing message sending service...")
 	model.InitSenderWorker()
 	go model.ConsumeMail()
 	go model.ConsumeWechat()
 	go model.ConsumeWechatRobot()
-	logger.Log.Info("✅ 消息发送服务启动成功")
+	logger.Log.Info("Message sending service started successfully")
 
-	// 直接使用 Gin 框架
-	logger.Log.Info("🌐 正在启动 Web 服务器...")
+	// Use Gin framework directly
 	r := v1.InitRouter()
 
-	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
-	fmt.Printf("║  🌐 服务监听地址: http://0.0.0.0:%-24s ║\n", httpport)
-	fmt.Printf("║  🔗 本地访问地址: http://localhost:%-21s  ║\n", httpport)
-	fmt.Printf("║  📊 运行模式: %-40s    ║\n", runmode)
-	fmt.Printf("║  💾 数据库: %s@%s:%-26s    ║\n", dbtype, dbhost, dbport)
-	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
-	fmt.Println("✅ ZbxTable服务启动成功！")
+	fmt.Println("╔═════════════════════════════════════════════╗")
+	fmt.Printf("║  Service listening on: http://0.0.0.0:%-1s  ║\n", httpport)
+	fmt.Printf("║  Local access URL: http://localhost:%-1s    ║\n", httpport)
+	fmt.Printf("║  Running mode: %-25s    ║\n", runmode)
+	fmt.Printf("║  Database: %s@%s:%-16s║\n", dbtype, dbhost, dbport)
+	fmt.Println("╚═════════════════════════════════════════════╝")
+	fmt.Println("ZbxTable service started successfully!")
 
 	r.Run(":" + httpport)
 	return nil
 }
 
-// initLoggerSafe 安全地初始化日志（不依赖配置文件）
+// initLoggerSafe safely initialize logger (not dependent on config file)
 func initLoggerSafe() error {
-	// 尝试加载配置文件
+	// Try to load config file
 	cfg, err := ini.Load("./config/app.conf")
 	if err != nil {
-		// 配置文件不存在，使用默认日志配置：./log/yyyy-MM-dd.log
+		// Config file doesn't exist, use default log config: ./log/yyyy-MM-dd.log
 		err = logger.InitLoggerWithRunMode("dev", "", 7, 10000, 100, true)
 		if err != nil {
-			// 如果日志初始化失败，使用标准输出
+			// If logger initialization fails, use standard output
 			logger.Log = logrus.New()
 			logger.Log.SetOutput(os.Stdout)
 			logger.Log.SetLevel(logrus.InfoLevel)
@@ -213,17 +210,17 @@ func initLoggerSafe() error {
 		return nil
 	}
 
-	// 配置文件存在，使用配置的日志设置
+	// Config file exists, use configured log settings
 	logPath := cfg.Section("").Key("log_path").String()
 	if logPath == "" {
-		// 如果配置文件中未指定日志路径，使用默认路径：./log/yyyy-MM-dd.log
+		// If log path not specified in config file, use default path: ./log/yyyy-MM-dd.log
 		logPath = ""
 	}
 
-	// 获取 runmode 配置
+	// Get runmode config
 	runmode := cfg.Section("").Key("runmode").String()
 	if runmode == "" {
-		runmode = "prod" // 默认为生产模式
+		runmode = "prod" // Default to production mode
 	}
 
 	maxday, _ := cfg.Section("").Key("maxdays").Int()
@@ -240,21 +237,21 @@ func initLoggerSafe() error {
 	}
 	daily, _ := cfg.Section("").Key("daily").Bool()
 	if !daily {
-		daily = true // 默认启用按天分割
+		daily = true // Enable daily rotation by default
 	}
 
-	// 检查是否手动指定了 log_level，如果指定了则使用手动配置，否则根据 runmode 自动设置
+	// Check if log_level is manually specified, if so use manual config, otherwise auto-set based on runmode
 	level, err := cfg.Section("").Key("log_level").Int()
 	if err != nil || level == 0 {
-		// 未手动指定 log_level，根据 runmode 自动设置
+		// log_level not manually specified, auto-set based on runmode
 		err = logger.InitLoggerWithRunMode(runmode, logPath, maxday, maxlines, maxsize, daily)
 	} else {
-		// 手动指定了 log_level，使用手动配置
+		// log_level manually specified, use manual config
 		err = logger.InitLogger(logPath, level, maxday, maxlines, maxsize, daily)
 	}
 
 	if err != nil {
-		// 如果日志初始化失败，使用标准输出
+		// If logger initialization fails, use standard output
 		logger.Log = logrus.New()
 		logger.Log.SetOutput(os.Stdout)
 		logger.Log.SetLevel(logrus.InfoLevel)
@@ -265,7 +262,7 @@ func initLoggerSafe() error {
 		return nil
 	}
 
-	// 记录当前运行模式和日志级别
+	// Log current running mode and log level
 	logger.Log.Infof("System running in %s mode", runmode)
 	return nil
 }
@@ -303,11 +300,11 @@ func CheckDb(dbdriver, dbhost, dbuser, dbpass, dbname string, dbport string) err
 	return nil
 }
 
-// init config files
+// GetConfKey init config files
 func GetConfKey(v string) string {
-	// 为了与 model.GetConfKey 行为一致，这里也实现：
-	// 1）如果 .env 存在，则所有配置完全由 .env 决定（可以是空字符串），不会再回退到 app.conf
-	// 2）只有当 .env 不存在时，才从 app.conf 读取
+	// To be consistent with model.GetConfKey behavior, implement here:
+	// 1) If .env exists, all configuration is completely determined by .env (can be empty string), will not fall back to app.conf
+	// 2) Only when .env doesn't exist, read from app.conf
 	initEnvOnce.Do(func() {
 		file, err := os.Open(".env")
 		if err != nil {
@@ -346,7 +343,7 @@ func GetConfKey(v string) string {
 		return ""
 	}
 
-	// 回退到 app.conf
+	// Fall back to app.conf
 	if webCfg == nil {
 		return ""
 	}
@@ -358,7 +355,7 @@ func GetConfKey(v string) string {
 	return p.String()
 }
 
-// InitLogger 初始化日志（已废弃，改为使用 initLoggerSafe）
+// InitLogger initialize logger (deprecated, use initLoggerSafe instead)
 func InitLogger() (err error) {
 	return initLoggerSafe()
 }
