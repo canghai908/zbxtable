@@ -33,7 +33,7 @@ var (
 	Version   string
 	GitHash   string
 	BuildTime string
-	WeApp     = &workwx.WorkwxApp{}
+	WeApp     *workwx.WorkwxApp // 不初始化，默认为 nil
 
 	envConfig     map[string]string
 	envConfigOnce sync.Once
@@ -89,6 +89,7 @@ func InitWechat() {
 	wechatEnabled := GetConfigValueByKey("wechat_enabled", "0")
 	if wechatEnabled != "1" {
 		logger.Log.Info("WeChat is disabled in system config, skipping WeChat initialization")
+		WeApp = nil // 明确设置为 nil
 		return
 	}
 	// 开关已启用，从数据库读取企业微信配置
@@ -99,12 +100,14 @@ func InitWechat() {
 	// 验证必填配置项
 	if agentIDStr == "" || corpid == "" || secret == "" {
 		logger.Log.Info("WeChat is enabled but configuration is incomplete (agentid/corpid/secret), WeChat app will not be initialized")
+		WeApp = nil // 明确设置为 nil
 		return
 	}
 	// 解析 AgentID
 	AgentId, err := strconv.ParseInt(agentIDStr, 10, 64)
 	if err != nil {
 		logger.Log.Error("wechat_agentid parse error:", err)
+		WeApp = nil // 明确设置为 nil
 		return
 	}
 

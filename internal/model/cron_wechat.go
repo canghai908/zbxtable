@@ -67,6 +67,27 @@ func SendWechat(event *Event) {
 	}
 }
 func SendWechatAlert(user User, event *Event, content string) error {
+	// 检查企业微信是否已初始化
+	if WeApp == nil {
+		err := fmt.Errorf("企业微信未初始化，请检查配置")
+		logger.Log.Error(err)
+		// 记录失败日志
+		elog := EventLog{
+			AlarmID:       int64(event.ID),
+			EventID:       event.EventID,
+			Rule:          event.Rule,
+			Channel:       "wechat",
+			User:          user.Username,
+			Account:       user.Wechat,
+			NotifyTime:    time.Now(),
+			NotifyContent: content,
+			Status:        strconv.Itoa(EventFailed),
+			NotifyError:   err.Error(),
+		}
+		AddEventLog(&elog)
+		return err
+	}
+
 	tos := workwx.Recipient{
 		UserIDs: []string{user.Wechat},
 	}
@@ -120,9 +141,9 @@ func PopAllWechat() []*Event {
 
 // SendTestWechat 发送测试企业微信消息
 func SendTestWechat(userID string) error {
-	// 获取企业微信配置
-	corpID := GetConfigValueByKey("wechat_corp_id", "")
-	agentID := GetConfigValueByKey("wechat_agent_id", "")
+	// 获取企业微信配置（注意：键名要与数据库中的一致）
+	corpID := GetConfigValueByKey("wechat_corpid", "")
+	agentID := GetConfigValueByKey("wechat_agentid", "")
 	secret := GetConfigValueByKey("wechat_secret", "")
 
 	// 验证必填配置
