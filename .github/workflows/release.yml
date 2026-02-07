@@ -62,81 +62,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "发布版本: $VERSION"
 
-      - name: 编译多平台二进制文件
+      - name: 编译所有平台并打包
         run: |
-          # 设置版本信息
-          VERSION=${{ steps.version.outputs.version }}
-          GIT_HASH=$(git rev-parse --short HEAD)
-          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
-          LDFLAGS="-X main.version=${VERSION} -X main.gitHash=${GIT_HASH} -X main.buildTime=${BUILD_TIME} -w -s"
+          # 设置版本号（Makefile 会自动从 git tag 获取）
+          echo "📦 开始编译所有平台..."
+          make build-all
           
-          # 创建输出目录
-          mkdir -p dist
+          echo "📦 创建发布包..."
+          make package
           
-          # 编译 Linux AMD64
-          echo "编译 Linux AMD64..."
-          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-linux-amd64 main.go
-          
-          # 编译 Linux ARM64
-          echo "编译 Linux ARM64..."
-          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-linux-arm64 main.go
-          
-          # 编译 Windows AMD64
-          echo "编译 Windows AMD64..."
-          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-windows-amd64.exe main.go
-          
-          # 编译 macOS AMD64
-          echo "编译 macOS AMD64..."
-          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-darwin-amd64 main.go
-          
-          # 编译 macOS ARM64
-          echo "编译 macOS ARM64..."
-          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/zbxtable-darwin-arm64 main.go
-          
-          echo "编译完成！"
-          ls -lh dist/
-
-      - name: 创建发布包
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          mkdir -p dist/releases
-          
-          # 为每个平台创建压缩包
-          platforms=("linux-amd64" "linux-arm64" "windows-amd64" "darwin-amd64" "darwin-arm64")
-          
-          for platform in "${platforms[@]}"; do
-            echo "打包 $platform..."
-            pkg_name="zbxtable-${VERSION}-${platform}"
-            mkdir -p "dist/${pkg_name}"
-            
-            # 复制二进制文件
-            if [[ $platform == *"windows"* ]]; then
-              cp "dist/zbxtable-${platform}.exe" "dist/${pkg_name}/zbxtable.exe"
-            else
-              cp "dist/zbxtable-${platform}" "dist/${pkg_name}/zbxtable"
-              chmod +x "dist/${pkg_name}/zbxtable"
-            fi
-            
-            # 复制配置文件和文档
-            cp -r config "dist/${pkg_name}/"
-            cp README.md "dist/${pkg_name}/"
-            cp LICENSE "dist/${pkg_name}/" 2>/dev/null || echo "LICENSE 文件不存在，跳过"
-            cp README.zh-CN.md "dist/${pkg_name}/" 2>/dev/null || echo "README.zh-CN.md 文件不存在，跳过"
-            
-            # 创建压缩包
-            cd dist
-            tar -czf "releases/${pkg_name}.tar.gz" "${pkg_name}"
-            cd ..
-            
-            echo "✓ 创建 ${pkg_name}.tar.gz"
-          done
-          
-          # 生成 SHA256 校验和
-          cd dist/releases
-          sha256sum *.tar.gz > SHA256SUMS
-          cd ../..
-          
-          echo "所有发布包创建完成！"
+          echo "✅ 编译和打包完成！"
           ls -lh dist/releases/
 
       - name: 生成更新日志

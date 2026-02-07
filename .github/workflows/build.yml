@@ -61,10 +61,8 @@ jobs:
           cp -r zbxtable-web/web/* api/v1/web/web/
           echo "✓ 前端文件复制完成"
 
-      - name: 下载依赖
-        run: |
-          go mod download
-          go mod verify
+      - name: 安装依赖
+        run: make install
 
       - name: 代码格式检查
         run: |
@@ -75,10 +73,13 @@ jobs:
           fi
 
       - name: 代码静态检查
-        run: go vet ./...
+        run: make vet
 
       - name: 运行测试
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: make test
+
+      - name: 生成测试覆盖率
+        run: make coverage
 
       - name: 上传测试覆盖率
         uses: codecov/codecov-action@v4
@@ -88,18 +89,18 @@ jobs:
           name: codecov-zbxtable
         continue-on-error: true
 
-      - name: 编译检查
+      - name: 编译应用
+        run: make build
+
+      - name: 验证编译产物
         run: |
-          echo "编译 Linux AMD64..."
-          GOOS=linux GOARCH=amd64 go build -o /dev/null main.go
-          
-          echo "编译 Windows AMD64..."
-          GOOS=windows GOARCH=amd64 go build -o /dev/null main.go
-          
-          echo "编译 macOS ARM64..."
-          GOOS=darwin GOARCH=arm64 go build -o /dev/null main.go
-          
-          echo "✓ 所有平台编译检查通过"
+          if [ -f build/zbxtable ]; then
+            echo "✅ 编译成功"
+            ls -lh build/zbxtable
+          else
+            echo "❌ 编译失败"
+            exit 1
+          fi
 
       - name: 构建成功
         run: echo "✅ 构建和测试全部通过！"
