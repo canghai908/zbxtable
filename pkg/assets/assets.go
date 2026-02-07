@@ -81,10 +81,7 @@ func RestoreAssets() error {
 				logger.Log.Errorf("Failed to write asset file %s: %v", targetPath, err)
 				return err
 			}
-
-			logger.Log.Infof("Restored asset file: %s", targetPath)
 		}
-
 		return nil
 	})
 

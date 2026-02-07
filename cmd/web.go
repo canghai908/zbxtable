@@ -91,9 +91,7 @@ func runWeb(*cli.Context) error {
 	// 检查安装状态
 	installed := checkInstallStatus()
 	if !installed {
-		logger.Log.Info("═══════════════════════════════════════════════════════════")
 		logger.Log.Info("⚙️ 系统未安装，启动安装引导模式")
-		logger.Log.Info("═══════════════════════════════════════════════════════════")
 		// 未安装时，只启动 Web 服务器，不连接数据库
 		r := v1.InitRouter()
 		httpport := "8088"
@@ -111,9 +109,7 @@ func runWeb(*cli.Context) error {
 	}
 
 	// 已安装，加载配置文件并连接数据库
-	logger.Log.Info("═══════════════════════════════════════════════════════════")
 	logger.Log.Info("✅ 系统已安装，正在加载配置...")
-	logger.Log.Info("═══════════════════════════════════════════════════════════")
 
 	var err error
 	webCfg, err = ini.Load("./config/app.conf")

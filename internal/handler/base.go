@@ -288,7 +288,6 @@ func ReceiveGin(c *gin.Context) {
 	}
 	//老系统使用的是ZBX-TenantID
 	TenantID := c.GetHeader("ZBX-TenantID")
-
 	token := c.GetHeader("X-Token")
 	var Instance string
 	//如果为空可能是新webhook

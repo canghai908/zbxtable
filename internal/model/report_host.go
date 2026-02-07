@@ -507,7 +507,7 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 	pdf.AddPage()
 
 	// 添加字体，尝试多个可能的路径
-	fontPaths := []string{"./msty.ttf", "msty.ttf", "./fonts/msty.ttf", "fonts/msty.ttf"}
+	fontPaths := []string{"./msty.ttf", "msty.ttf", "fonts/msty.ttf", "./assets/fonts/msty.ttf"}
 	var fontErr error
 	var fontAdded bool
 
