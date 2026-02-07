@@ -165,7 +165,7 @@ func GetAllConfig(c *gin.Context) {
 			"deepseek_api_key": true, // Deepseek API Key
 			"encryption_key":   true, // 加密密钥（完全隐藏）
 		}
-		
+
 		// 过滤和脱敏处理
 		filteredConfigs := []model.Config{}
 		for _, config := range val {
@@ -173,15 +173,15 @@ func GetAllConfig(c *gin.Context) {
 			if config.Key == "encryption_key" {
 				continue
 			}
-			
+
 			// 对敏感字段进行脱敏处理
 			if sensitiveKeys[config.Key] && config.Value != "" {
 				config.Value = "********" // 替换为星号
 			}
-			
+
 			filteredConfigs = append(filteredConfigs, config)
 		}
-		
+
 		SystemRes.Code = 200
 		SystemRes.Message = "获取成功"
 		SystemRes.Data.Items = filteredConfigs
@@ -201,7 +201,7 @@ func UpdateConfig(c *gin.Context) {
 	}
 
 	value := gjson.Get(string(body), "value").String()
-	
+
 	// 如果值是星号（脱敏标记），则不更新
 	// 这表示前端没有修改该敏感字段
 	if value == "********" {
@@ -213,7 +213,7 @@ func UpdateConfig(c *gin.Context) {
 		c.JSON(http.StatusOK, SystemRes)
 		return
 	}
-	
+
 	var SystemRes model.SystemList
 	v := model.Config{ID: int64(id), Value: value}
 	err = model.UpdateConfig(&v)
@@ -422,9 +422,15 @@ func UploadLogo(c *gin.Context) {
 
 // GetPublicSystemInfo 获取系统公开信息（无需认证）
 func GetPublicSystemInfo(c *gin.Context) {
-	// 获取系统名称和Logo配置
-	systemName := model.GetConfigValueByKey("system_name", "ZbxTable")
-	systemLogo := model.GetConfigValueByKey("system_logo", "/static/img/logo.png")
+	// 默认值
+	systemName := "ZbxTable"
+	systemLogo := "/static/img/logo.png"
+
+	// 尝试从数据库获取配置（如果数据库已初始化）
+	if model.DB != nil {
+		systemName = model.GetConfigValueByKey("system_name", "ZbxTable")
+		systemLogo = model.GetConfigValueByKey("system_logo", "/static/img/logo.png")
+	}
 
 	response.Success(c, gin.H{
 		"system_name": systemName,

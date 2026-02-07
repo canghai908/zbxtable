@@ -297,10 +297,10 @@ func ReceiveGin(c *gin.Context) {
 	}
 	if Instance == "" {
 		response.BadRequest(c, "instanceID not found")
+		return
 	}
 	// instance的token校验
 	//查询instanceid和token,可以一起查询，无需多次查询
-	//
 	instance, err := model.GetZabbixInstanceByInstance(Instance)
 	if err != nil {
 		response.ValidationError(c, err.Error())

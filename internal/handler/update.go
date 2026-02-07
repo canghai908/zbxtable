@@ -110,18 +110,11 @@ func DoUpdate(c *gin.Context) {
 
 	logger.Log.Infof("发现新版本: %s -> %s", model.Version, updater.Info.Version)
 
-	// 备份旧的 web 目录
-	logger.Log.Info("备份旧的 web 目录...")
-	_ = os.RemoveAll("./.web")
-	_ = os.Rename("./web", "./.web")
-
 	// 执行更新
 	logger.Log.Info("下载并安装新版本...")
 	err = updater.Update()
 	if err != nil {
 		logger.Log.Error("更新失败:", err)
-		// 恢复 web 目录
-		_ = os.Rename("./.web", "./web")
 		response.InternalError(c, "更新失败: "+err.Error())
 		return
 	}

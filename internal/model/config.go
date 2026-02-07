@@ -121,6 +121,11 @@ func updateZbxDash(m *Config) (err error) {
 // GetConfigValueByKey 根据 key 获取配置值，如果不存在或出错则返回默认值
 // 对于敏感字段会自动解密
 func GetConfigValueByKey(key string, defaultVal string) string {
+	// 如果数据库未初始化，直接返回默认值
+	if DB == nil {
+		return defaultVal
+	}
+
 	var c Config
 	err := DB.Where("`key` = ?", key).First(&c).Error
 	if err != nil || c.Value == "" {
