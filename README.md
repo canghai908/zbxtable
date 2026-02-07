@@ -2,7 +2,8 @@ English | [简体中文](./README.zh-CN.md)
 
 # ZbxTable
 
-[![Build Status](https://drone.cactifans.org/api/badges/canghai908/zbxtable/status.svg?ref=refs/heads/2.1)](https://drone.cactifans.org/canghai908/zbxtable)
+[![Build and Test](https://github.com/canghai908/zbxtable/actions/workflows/build.yml/badge.svg)](https://github.com/canghai908/zbxtable/actions/workflows/build.yml)
+[![Release](https://github.com/canghai908/zbxtable/actions/workflows/release.yml/badge.svg)](https://github.com/canghai908/zbxtable/actions/workflows/release.yml)
 
 ZbxTable is a Zabbix report system developed using Go language.
 
