@@ -157,7 +157,7 @@ func DatabaseInit() {
 		if err != nil {
 			logger.Log.Error("Failed to marshal default theme config:", err)
 			// 如果序列化失败，使用备用的硬编码 JSON
-			themeJSON = []byte(`{"theme":{"color":"#1890ff","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"},"animate":{"disabled":true,"name":"lightSpeed","direction":"left"}}`)
+			themeJSON = []byte(`{"theme":{"color":"#722ed1","mode":"dark","success":"#52c41a","warning":"#faad14","error":"#f5222f"},"animate":{"disabled":true,"name":"lightSpeed","direction":"left"}}`)
 		}
 
 		var user User
