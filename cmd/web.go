@@ -33,6 +33,13 @@ var (
 	webCfg        *ini.File
 )
 
+// InitVersion 初始化版本信息到 model 包
+func InitVersion(version, gitHash, buildTime string) {
+	model.Version = version
+	model.GitHash = gitHash
+	model.BuildTime = buildTime
+}
+
 // checkInstallStatus check installation status
 func checkInstallStatus() bool {
 	confPath := "./config/app.conf"

@@ -26,6 +26,8 @@ func customVersionPrinter(c *cli.Context) {
 func init() {
 	// RegisterFuzzyDecoders decode input from PHP with tolerance.
 	extra.RegisterFuzzyDecoders()
+	// 初始化版本信息到 model 包
+	cmd.InitVersion(version, gitHash, buildTime)
 }
 
 func main() {

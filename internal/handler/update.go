@@ -1,10 +1,6 @@
 package handler
 
 import (
-	"os"
-	"os/exec"
-	"syscall"
-	"time"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/response"
@@ -113,7 +109,6 @@ func DoUpdate(c *gin.Context) {
 	err = updater.Update()
 	if err != nil {
 		logger.Log.Error("更新失败:", err)
-
 		response.InternalError(c, "更新失败: "+err.Error())
 		return
 	}
@@ -129,91 +124,6 @@ func DoUpdate(c *gin.Context) {
 		RestartDelay: 0, // 不自动重启
 	}
 	response.SuccessWithMessage(c, "更新成功，请手动重启服务以应用更新", updateResult)
-}
-
-// triggerUpdateRestart 触发更新后重启
-func triggerUpdateRestart() {
-	logger.Log.Info("更新完成，触发系统重启...")
-
-	// 检查是否由 systemd 管理
-	// 如果是 systemd 管理，直接退出让 systemd 重启服务
-	// systemd 会设置 NOTIFY_SOCKET 或 INVOCATION_ID 环境变量
-	if os.Getenv("NOTIFY_SOCKET") != "" || os.Getenv("INVOCATION_ID") != "" {
-		logger.Log.Info("检测到 systemd 管理，将退出进程让 systemd 自动重启服务...")
-		// 使用 SIGTERM 优雅退出，systemd 会根据 Restart=always 配置自动重启
-		time.Sleep(500 * time.Millisecond) // 短暂延迟确保日志写入
-		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		return
-	}
-
-	// 如果不是 systemd 管理，尝试自己启动新进程
-	logger.Log.Info("未检测到 systemd 管理，尝试自行重启...")
-
-	// 获取当前工作目录
-	workDir, err := os.Getwd()
-	if err != nil {
-		logger.Log.Error("获取工作目录失败:", err)
-		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		return
-	}
-
-	// 获取当前进程的可执行文件路径
-	executable, err := os.Executable()
-	if err != nil {
-		logger.Log.Error("获取可执行文件路径失败:", err)
-		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		return
-	}
-
-	// 解析符号链接，获取真实路径
-	realExecutable, err := os.Readlink(executable)
-	if err == nil {
-		executable = realExecutable
-	}
-
-	// 检查可执行文件是否存在
-	// 更新后，新的可执行文件应该在工作目录下
-	newExecutable := workDir + "/zbxtable"
-	if _, err := os.Stat(newExecutable); err == nil {
-		// 如果工作目录下存在 zbxtable，使用它
-		executable = newExecutable
-		logger.Log.Info("使用新的可执行文件:", executable)
-	} else if _, err := os.Stat(executable); err != nil {
-		// 如果原路径也不存在，尝试使用 os.Args[0]
-		logger.Log.Warn("可执行文件不存在:", executable)
-		if len(os.Args) > 0 {
-			executable = os.Args[0]
-			logger.Log.Info("尝试使用 os.Args[0]:", executable)
-		}
-	}
-
-	// 获取当前进程的参数
-	args := os.Args
-
-	// 创建新进程
-	cmd := exec.Command(executable, args[1:]...)
-	cmd.Dir = workDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	// 启动新进程
-	err = cmd.Start()
-	if err != nil {
-		logger.Log.Error("启动新进程失败:", err)
-		// 如果启动失败，尝试发送信号让服务管理器重启
-		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		return
-	}
-
-	logger.Log.Info("新进程已启动，PID:", cmd.Process.Pid)
-
-	// 等待一小段时间确保新进程启动成功
-	time.Sleep(1 * time.Second)
-
-	// 退出当前进程
-	logger.Log.Info("当前进程即将退出...")
-	os.Exit(0)
 }
 
 // GetCurrentVersion 获取当前版本信息
