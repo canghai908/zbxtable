@@ -73,10 +73,19 @@ func CreateUserGin(c *gin.Context) {
 		operation = "[]"
 	}
 
-	v := model.User{Username: username, Password: p, Operation: operation,
-		Email: email, Wechat: wechat, WechatRobotKey: wechat_robot_key, Phone: phone, DingTalk: ding_talk,
-		Status: 0, Role: role, Created: time.Now(),
-		Avatar: "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif",
+	v := model.User{
+		Username:       username,
+		Password:       p,
+		Operation:      operation,
+		Email:          email,
+		Wechat:         wechat,
+		WechatRobotKey: wechat_robot_key,
+		Phone:          phone,
+		DingTalk:       ding_talk,
+		Status:         0,
+		Role:           role,
+		Created:        time.Now(),
+		Avatar:         model.DefaultAvatar,
 	}
 	_, err = model.AddUser(&v)
 	if err != nil {

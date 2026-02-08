@@ -103,7 +103,7 @@ func AddUser(m *User) (id int64, err error) {
 	if result.Error == nil {
 		return 0, errors.New("用户已存在")
 	}
-	
+
 	// 如果有企业微信群机器人Key，进行加密
 	if m.WechatRobotKey != "" {
 		encryptionKey := GetEncryptionKey()
@@ -113,7 +113,7 @@ func AddUser(m *User) (id int64, err error) {
 		}
 		m.WechatRobotKey = encryptedKey
 	}
-	
+
 	// 插入
 	result = DB.Create(m)
 	if result.Error != nil {
