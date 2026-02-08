@@ -7,8 +7,6 @@ import (
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
-const UpdateURL = "http://dl.cactifans.com/stable/"
-
 var (
 	updateChecker   *selfupdate.Updater
 	updateTicker    *time.Ticker

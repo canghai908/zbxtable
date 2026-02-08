@@ -111,4 +111,3 @@ jobs:
           echo "🎉 发布成功！"
           echo "版本: ${{ steps.version.outputs.version }}"
           echo "下载地址: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
-

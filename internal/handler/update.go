@@ -13,12 +13,10 @@ import (
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
-const UpdateURL = "http://dl.cactifans.com/stable/"
-
 var updater = &selfupdate.Updater{
-	ApiURL:         UpdateURL,
-	BinURL:         UpdateURL,
-	DiffURL:        UpdateURL,
+	ApiURL:         model.UpdateURL,
+	BinURL:         model.UpdateURL,
+	DiffURL:        model.UpdateURL,
 	Dir:            "update/",
 	CmdName:        "zbxtable",
 	ForceCheck:     true,
@@ -75,7 +73,7 @@ func CheckUpdate(c *gin.Context) {
 		CurrentVersion: model.Version,
 		LatestVersion:  latestVersion,
 		HasUpdate:      hasUpdate,
-		UpdateURL:      UpdateURL,
+		UpdateURL:      model.UpdateURL,
 	}
 
 	if hasUpdate {
@@ -115,6 +113,7 @@ func DoUpdate(c *gin.Context) {
 	err = updater.Update()
 	if err != nil {
 		logger.Log.Error("更新失败:", err)
+
 		response.InternalError(c, "更新失败: "+err.Error())
 		return
 	}

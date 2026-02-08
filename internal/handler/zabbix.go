@@ -211,7 +211,7 @@ func UpdateZabbixInstanceGin(c *gin.Context) {
 		NotifyMethod: gjson.Get(string(body), "notify_method").String(),
 	}
 
-	instance, err := model.UpdateZabbixInstance(int(id), patch)
+	_, err = model.UpdateZabbixInstance(int(id), patch)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -220,7 +220,7 @@ func UpdateZabbixInstanceGin(c *gin.Context) {
 	// 更新成功后，自动测试连接并更新版本信息
 	// 注意：UpdateZabbixInstance 内部已经处理了连接变更时重置版本
 	// 这里再次测试以获取最新版本
-	instance, _, _ = model.TestAndUpdateZabbixInstance(int(id))
+	instance, _, _ := model.TestAndUpdateZabbixInstance(int(id))
 
 	response.Success(c, toTenantSafeResponse(instance))
 }

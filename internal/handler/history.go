@@ -33,13 +33,14 @@ func GetHistoryByItemID(c *gin.Context) {
 		tEnd := time.Now()
 		End = tEnd.Unix()
 		Start = tEnd.Add(-10 * time.Minute).Unix()
+	} else {
+		timeLayout := "2006-01-02 15:04:05"
+		loc, _ := time.LoadLocation("Local")
+		st, _ := time.ParseInLocation(timeLayout, v.Period[0], loc)
+		en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
+		Start = st.Unix()
+		End = en.Unix()
 	}
-	timeLayout := "2006-01-02 15:04:05"
-	loc, _ := time.LoadLocation("Local")
-	st, _ := time.ParseInLocation(timeLayout, v.Period[0], loc)
-	en, _ := time.ParseInLocation(timeLayout, v.Period[1], loc)
-	Start = st.Unix()
-	End = en.Unix()
 	his, err := model.GetHistoryByItemID(v.Itemids, v.History, Start, End)
 	if err != nil {
 		HistoryRes.Code = 500

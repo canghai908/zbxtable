@@ -43,6 +43,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache: true
           cache-dependency-path: go.sum
 
       - name: 构建前端

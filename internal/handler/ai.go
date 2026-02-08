@@ -308,9 +308,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 		}
 
 		// Deepseek 使用 SSE 格式，需要去掉 "data: " 前缀
-		if strings.HasPrefix(lineStr, "data: ") {
-			lineStr = strings.TrimPrefix(lineStr, "data: ")
-		}
+		lineStr = strings.TrimPrefix(lineStr, "data: ")
 
 		// 检查是否是结束标记
 		if lineStr == "[DONE]" {

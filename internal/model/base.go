@@ -57,6 +57,8 @@ const (
 	TplPath      = "./assets/templates/"
 	// 默认用户头像 (空字符串，由前端处理默认头像)
 	DefaultAvatar = ""
+	//默认更新服务器
+	UpdateURL = "http://dl.cactifans.com/stable/"
 )
 
 // TableName 表名前缀

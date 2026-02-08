@@ -22,14 +22,15 @@ func GetAllAlarm(c *gin.Context) {
 	if begin == "" || end == "" {
 		End = time.Now()
 		Begin = End.Add(-168 * time.Hour)
-	}
-	Begin, err = utils.ParseTime(begin)
-	if err != nil {
-		Begin = time.Now().Add(-168 * time.Hour)
-	}
-	End, err = utils.ParseTime(end)
-	if err != nil {
-		End = time.Now()
+	} else {
+		Begin, err = utils.ParseTime(begin)
+		if err != nil {
+			Begin = time.Now().Add(-168 * time.Hour)
+		}
+		End, err = utils.ParseTime(end)
+		if err != nil {
+			End = time.Now()
+		}
 	}
 	page := c.Query("page")
 	limit := c.Query("limit")
@@ -127,14 +128,15 @@ func ExportAlarm(c *gin.Context) {
 	}
 
 	var Start, End time.Time
-	if v.Begin == "" || v.End == "" {
-		End := time.Now()
-		Start = End.Add(-168 * time.Hour)
-	}
 	timeLayout := "2006-01-02 15:04:05"
 	loc, _ := time.LoadLocation("Local")
-	Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
-	End, _ = time.ParseInLocation(timeLayout, v.End, loc)
+	if v.Begin == "" || v.End == "" {
+		End = time.Now()
+		Start = End.Add(-168 * time.Hour)
+	} else {
+		Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
+		End, _ = time.ParseInLocation(timeLayout, v.End, loc)
+	}
 
 	// 支持 instance 参数
 	zid := v.ZID
