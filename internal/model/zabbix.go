@@ -296,6 +296,13 @@ func TestAndUpdateZabbixInstance(zid int) (*ZabbixInstance, string, error) {
 	instance.LastTestMessage = "连接成功"
 	instance.LastTestAt = &now
 	instance.Version = ver
+
+	// 测试成功后，清除该实例在 API 池中的缓存
+	// 这样可以确保下次使用时会用新的认证信息（token 或账号密码）重新创建连接
+	// 特别是当用户从 token 切换到账号密码登录时，需要重新获取 Web cookies
+	logger.Log.Infof("测试成功，清除实例 %s (ZID=%d) 的 API 缓存以刷新认证信息", instance.Name, zid)
+	GetAPIPool().RemoveAPI(zid)
+
 	return &instance, ver, nil
 }
 

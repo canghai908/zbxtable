@@ -570,18 +570,52 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 
 		// 获取图表图片
 		if chartData.ItemID != "" && chartData.Instance != nil {
-			imgHolder, imgErr := GetItemChartImageFromInstance(chartData.Instance, chartData.ItemID, start, end)
-			if imgErr == nil && imgHolder != nil {
-				// 在标题下方添加图表图片
-				imageY := yPos + 20
-				// 使用图片原始尺寸，位置在页面左侧，宽度限制在页面内
-				pdf.ImageByHolder(imgHolder, 10, imageY, nil)
-				// 估算图片高度（根据请求的height=200，加上一些边距）
-				estimatedImageHeight := 250.0
-				yPos = imageY + estimatedImageHeight + 20
+			// 先检查实例是否配置了用户名和密码
+			zbxInstance, err := GetZabbixInstanceByZID(chartData.Instance.ZID)
+			canGetChart := false
+			isTokenOnly := false
+
+			if err == nil && zbxInstance != nil {
+				// 判断是否只配置了Token而没有配置用户名和密码
+				if (zbxInstance.User == "" || zbxInstance.Pass == "") && zbxInstance.Token != "" {
+					isTokenOnly = true
+					canGetChart = false
+				} else if zbxInstance.User != "" && zbxInstance.Pass != "" {
+					canGetChart = true
+				}
+			}
+
+			// 如果只配置了Token，直接显示提示，不尝试获取图表
+			if isTokenOnly {
+				logger.Log.Warn(fmt.Sprintf("实例 %s 只配置了Token认证，无法获取图表图片 (ItemID: %s)", chartData.InstanceName, chartData.ItemID))
+				pdf.SetX(10)
+				pdf.SetY(yPos + 20)
+				pdf.Cell(nil, fmt.Sprintf("提示: 实例 %s 使用Token认证方式，无法获取图表图片。", chartData.InstanceName))
+				pdf.SetX(10)
+				pdf.SetY(yPos + 35)
+				pdf.Cell(nil, "请配置实例的用户名和密码以获取图表图片。")
+				yPos += 70
+			} else if canGetChart {
+				// 尝试获取图表图片
+				imgHolder, imgErr := GetItemChartImageFromInstance(chartData.Instance, chartData.ItemID, start, end)
+				if imgErr == nil && imgHolder != nil {
+					// 在标题下方添加图表图片
+					imageY := yPos + 20
+					// 使用图片原始尺寸，位置在页面左侧，宽度限制在页面内
+					pdf.ImageByHolder(imgHolder, 10, imageY, nil)
+					// 估算图片高度（根据请求的height=200，加上一些边距）
+					estimatedImageHeight := 250.0
+					yPos = imageY + estimatedImageHeight + 20
+				} else {
+					// 如果获取图表失败，在 PDF 中输出提示信息
+					logger.Log.Warn(fmt.Sprintf("获取图表图片失败 (ItemID: %s, Instance: %s): %v", chartData.ItemID, chartData.InstanceName, imgErr))
+					pdf.SetX(10)
+					pdf.SetY(yPos + 20)
+					pdf.Cell(nil, fmt.Sprintf("提示: 无法从实例 %s 获取该指标的图表图片。", chartData.InstanceName))
+					yPos += 60
+				}
 			} else {
-				// 如果获取图表失败，在 PDF 中输出提示信息
-				logger.Log.Warn(fmt.Sprintf("获取图表图片失败 (ItemID: %s, Instance: %s): %v", chartData.ItemID, chartData.InstanceName, imgErr))
+				// 其他情况（无法获取实例信息等）
 				pdf.SetX(10)
 				pdf.SetY(yPos + 20)
 				pdf.Cell(nil, fmt.Sprintf("提示: 无法从实例 %s 获取该指标的图表图片。", chartData.InstanceName))
