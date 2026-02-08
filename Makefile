@@ -20,7 +20,7 @@ BUILD_DIR := build
 DIST_DIR := dist
 
 # 平台
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
+PLATFORMS := linux/amd64 linux/arm64
 
 .PHONY: all build clean test coverage lint docker docker-build docker-up docker-down help
 

@@ -9,9 +9,216 @@ permissions:
   contents: write  # 需要写权限来创建 release
 
 jobs:
+  build-centos7-amd64:
+    name: Build for CentOS 7 AMD64
+    runs-on: ubuntu-latest
+    container:
+      image: centos:7
+    
+    steps:
+      - name: 安装基础工具
+        run: |
+          yum install -y wget git tar gzip make gcc gcc-c++
+          
+      - name: 安装 Go
+        run: |
+          cd /tmp
+          wget https://go.dev/dl/go1.24.0.linux-amd64.tar.gz
+          tar -C /usr/local -xzf go1.24.0.linux-amd64.tar.gz
+          echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+          export PATH=$PATH:/usr/local/go/bin
+          go version
+
+      - name: 安装 Node.js
+        run: |
+          curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+          yum install -y nodejs
+          node --version
+          npm --version
+
+      - name: 检出后端代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检出前端代码
+        uses: actions/checkout@v4
+        with:
+          repository: canghai908/zbxtable-web
+          path: zbxtable-web
+
+      - name: 构建前端
+        working-directory: ./zbxtable-web
+        run: |
+          echo "📦 开始构建前端..."
+          npm ci
+          npm run build
+          echo "✓ 前端构建完成"
+
+      - name: 复制前端构建产物到后端
+        run: |
+          echo "📋 复制前端文件到后端目录..."
+          mkdir -p api/v1/web/web
+          cp -r zbxtable-web/web/* api/v1/web/web/
+          echo "✓ 前端文件复制完成"
+
+      - name: 获取版本信息
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "发布版本: $VERSION"
+
+      - name: 编译 CentOS 7 AMD64 版本
+        run: |
+          export PATH=$PATH:/usr/local/go/bin
+          export CGO_ENABLED=1
+          echo "📦 开始编译 CentOS 7 AMD64 版本..."
+          
+          VERSION=$(git describe --tags --exact-match 2>/dev/null || echo "dev")
+          GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+          LDFLAGS="-ldflags \"-X main.version=$VERSION -X main.gitHash=$GIT_HASH -X main.buildTime=$BUILD_TIME -w -s\""
+          
+          mkdir -p dist
+          eval go build $LDFLAGS -o dist/zbxtable-linux-amd64-centos7 main.go
+          
+          echo "✅ CentOS 7 AMD64 编译完成！"
+          ls -lh dist/
+
+      - name: 打包 CentOS 7 AMD64 版本
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          PKG_NAME="zbxtable-${VERSION}-linux-amd64-centos7"
+          
+          mkdir -p dist/releases
+          mkdir -p dist/$PKG_NAME
+          
+          cp dist/zbxtable-linux-amd64-centos7 dist/$PKG_NAME/zbxtable
+          chmod +x dist/$PKG_NAME/zbxtable
+          cp -r config dist/$PKG_NAME/
+          cp README.md dist/$PKG_NAME/
+          cp LICENSE dist/$PKG_NAME/ 2>/dev/null || true
+          
+          cd dist
+          tar -czf releases/$PKG_NAME.tar.gz $PKG_NAME
+          cd ..
+          
+          echo "✅ CentOS 7 AMD64 打包完成！"
+          ls -lh dist/releases/
+
+      - name: 上传 CentOS 7 AMD64 构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos7-amd64-build
+          path: dist/releases/*.tar.gz
+          retention-days: 1
+
+  build-centos7-arm64:
+    name: Build for CentOS 7 ARM64
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: 检出后端代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检出前端代码
+        uses: actions/checkout@v4
+        with:
+          repository: canghai908/zbxtable-web
+          path: zbxtable-web
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: zbxtable-web/package-lock.json
+
+      - name: 构建前端
+        working-directory: ./zbxtable-web
+        run: |
+          echo "📦 开始构建前端..."
+          npm ci
+          npm run build
+          echo "✓ 前端构建完成"
+
+      - name: 复制前端构建产物到后端
+        run: |
+          echo "📋 复制前端文件到后端目录..."
+          mkdir -p api/v1/web/web
+          cp -r zbxtable-web/web/* api/v1/web/web/
+          echo "✓ 前端文件复制完成"
+
+      - name: 在 CentOS 7 ARM64 容器中编译
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v $PWD:/workspace \
+            -w /workspace \
+            centos:7 \
+            /bin/bash -c "
+              set -e
+              yum install -y wget git tar gzip make gcc gcc-c++
+              
+              cd /tmp
+              wget https://go.dev/dl/go1.24.0.linux-arm64.tar.gz
+              tar -C /usr/local -xzf go1.24.0.linux-arm64.tar.gz
+              export PATH=\$PATH:/usr/local/go/bin
+              
+              cd /workspace
+              export CGO_ENABLED=1
+              export GOARCH=arm64
+              
+              VERSION=\$(git describe --tags --exact-match 2>/dev/null || echo 'dev')
+              GIT_HASH=\$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')
+              BUILD_TIME=\$(date -u '+%Y-%m-%d_%H:%M:%S')
+              
+              mkdir -p dist
+              go build -ldflags \"-X main.version=\$VERSION -X main.gitHash=\$GIT_HASH -X main.buildTime=\$BUILD_TIME -w -s\" -o dist/zbxtable-linux-arm64-centos7 main.go
+              
+              echo '✅ CentOS 7 ARM64 编译完成！'
+              ls -lh dist/
+            "
+
+      - name: 打包 CentOS 7 ARM64 版本
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          PKG_NAME="zbxtable-${VERSION}-linux-arm64-centos7"
+          
+          mkdir -p dist/releases
+          mkdir -p dist/$PKG_NAME
+          
+          cp dist/zbxtable-linux-arm64-centos7 dist/$PKG_NAME/zbxtable
+          chmod +x dist/$PKG_NAME/zbxtable
+          cp -r config dist/$PKG_NAME/
+          cp README.md dist/$PKG_NAME/
+          cp LICENSE dist/$PKG_NAME/ 2>/dev/null || true
+          
+          cd dist
+          tar -czf releases/$PKG_NAME.tar.gz $PKG_NAME
+          cd ..
+          
+          echo "✅ CentOS 7 ARM64 打包完成！"
+          ls -lh dist/releases/
+
+      - name: 上传 CentOS 7 ARM64 构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos7-arm64-build
+          path: dist/releases/*.tar.gz
+          retention-days: 1
+
   build:
     name: Build and Release
     runs-on: ubuntu-latest
+    needs: [build-centos7-amd64, build-centos7-arm64]
     
     steps:
       - name: 检出后端代码
@@ -74,6 +281,21 @@ jobs:
           echo "✅ 编译和打包完成！"
           ls -lh dist/releases/
 
+      - name: 下载 CentOS 7 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          pattern: centos7-*-build
+          path: dist/releases/
+          merge-multiple: true
+
+      - name: 生成校验和
+        run: |
+          cd dist/releases
+          sha256sum *.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+          echo "📋 所有发布包："
+          ls -lh
+
       - name: 生成更新日志
         id: changelog
         run: |
@@ -82,11 +304,11 @@ jobs:
           
           if [ -z "$PREV_TAG" ]; then
             echo "这是第一个版本发布"
-            CHANGELOG="## 🎉 首次发布\n\n这是 zbxtable 的第一个正式版本。"
+            CHANGELOG="## 🎉 首次发布\n\n这是 zbxtable 的第一个正式版本。\n\n### 📦 支持平台\n\n- Linux AMD64\n- Linux ARM64\n- Linux AMD64 (CentOS 7 - CGO 支持)\n- Linux ARM64 (CentOS 7 - CGO 支持)"
           else
             echo "生成从 $PREV_TAG 到当前版本的更新日志..."
             CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
-            CHANGELOG="## 📝 更新内容\n\n${CHANGELOG}"
+            CHANGELOG="## 📝 更新内容\n\n${CHANGELOG}\n\n### 📦 支持平台\n\n- Linux AMD64\n- Linux ARM64\n- Linux AMD64 (CentOS 7 - CGO 支持)\n- Linux ARM64 (CentOS 7 - CGO 支持)"
           fi
           
           # 保存到文件
