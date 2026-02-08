@@ -17,11 +17,21 @@ func GenAlert(alarm *Alarm) {
 	var err error
 
 	if alarm.ZID > 0 {
-		// 使用 FIND_IN_SET 或 LIKE 来匹配实例ID（存储的是数字ID，用逗号分隔）
+		// 根据数据库类型使用不同的查询方式
+		zidStr := strconv.Itoa(alarm.ZID)
 		query := DB.Model(&Rule{}).
 			Where("m_type = ?", "1").
-			Where("status = ?", "0").
-			Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", strconv.Itoa(alarm.ZID), "%"+strconv.Itoa(alarm.ZID)+"%")
+			Where("status = ?", "0")
+
+		// 检查数据库类型
+		if DB.Dialector.Name() == "postgres" {
+			// PostgreSQL: 使用 LIKE 匹配（在逗号分隔的字符串中查找）
+			query = query.Where("(',' || z_ids || ',') LIKE ?", "%,"+zidStr+",%")
+		} else {
+			// MySQL: 使用 FIND_IN_SET
+			query = query.Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", zidStr, "%"+zidStr+"%")
+		}
+
 		err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 			Find(&rules).Error
@@ -256,11 +266,21 @@ func IsMuted(event *Event) bool {
 	var rules []Rule
 	var err error
 	if event.ZID > 0 {
-		// 使用 FIND_IN_SET 或 LIKE 来匹配实例ID
+		// 根据数据库类型使用不同的查询方式
+		zidStr := strconv.Itoa(event.ZID)
 		query := DB.Model(&Rule{}).
 			Where("m_type = ?", "3").
-			Where("status = ?", "0").
-			Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", strconv.Itoa(event.ZID), "%"+strconv.Itoa(event.ZID)+"%")
+			Where("status = ?", "0")
+
+		// 检查数据库类型
+		if DB.Dialector.Name() == "postgres" {
+			// PostgreSQL: 使用 LIKE 匹配（在逗号分隔的字符串中查找）
+			query = query.Where("(',' || z_ids || ',') LIKE ?", "%,"+zidStr+",%")
+		} else {
+			// MySQL: 使用 FIND_IN_SET
+			query = query.Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", zidStr, "%"+zidStr+"%")
+		}
+
 		err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",
 			"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 			Find(&rules).Error
