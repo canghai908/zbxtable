@@ -83,7 +83,6 @@ func WebSocketHandlerGin(c *gin.Context) {
 func PublicWebSocketHandlerGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
-
 	logger.Log.Info("PublicWebSocketHandlerGin called, id:", idStr)
 	logger.Log.Info("Request Headers:", c.Request.Header)
 	logger.Log.Info("Request URL:", c.Request.URL.String())
@@ -93,8 +92,7 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 	topo, err := model.GetTopologyById(id)
 	if err != nil {
 		logger.Log.Error("GetTopologyById failed:", err)
-		// 返回 HTTP 错误，不进行 WebSocket 升级
-		// c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "拓扑不存在"})
+		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "拓扑不存在"})
 		return
 	}
 	logger.Log.Info("Topology found, status:", topo.Status)
@@ -102,7 +100,7 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 	if topo.Status != "1" {
 		logger.Log.Error("Topology not shared, status:", topo.Status)
 		// 返回 HTTP 错误，不进行 WebSocket 升级
-		//	c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "该拓扑未共享，无法公开访问"})
+		c.JSON(http.StatusForbidden, gin.H{"code": 403, "message": "该拓扑未共享，无法公开访问"})
 		return
 	}
 
@@ -114,7 +112,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 		WriteBufferSize:  10240,
 		HandshakeTimeout: 10 * time.Second,
 		CheckOrigin: func(r *http.Request) bool {
-			logger.Log.Info("CheckOrigin called, Origin:", r.Header.Get("Origin"))
 			return true
 		},
 	}
@@ -128,8 +125,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
-	logger.Log.Info("WebSocket connection established successfully")
-
 	for {
 		// 读取数据
 		_, ms, err := ws.ReadMessage()
@@ -137,8 +132,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 			logger.Log.Debug("ReadMessage error:", err)
 			break
 		}
-		logger.Log.Info("Received message:", string(ms))
-
 		// 发送数据
 		if string(ms) == "success" {
 			// 查询数据
@@ -154,14 +147,11 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 			}
 			// write
 			msg, _ := json.Marshal(val)
-			logger.Log.Info("Sending topology data, size:", len(msg))
 			err = ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				logger.Log.Debug("WriteMessage error:", err)
 				continue
 			}
-			logger.Log.Info("Topology data sent successfully")
-
 			// 更新数据
 			err = model.UpdateEdgeDataById(id)
 			if err != nil {
@@ -171,8 +161,6 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 		}
 		time.Sleep(time.Second * 10)
 	}
-
-	logger.Log.Info("WebSocket connection closed")
 }
 
 // LoginGin 登录（Gin版本）
