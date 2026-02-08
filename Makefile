@@ -2,7 +2,7 @@
 
 # 变量定义
 APP_NAME := zbxtable
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION := $(shell git describe --tags --exact-match 2>/dev/null || echo "dev")
 GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.gitHash=$(GIT_HASH) -X main.buildTime=$(BUILD_TIME) -w -s"

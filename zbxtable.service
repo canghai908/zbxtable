@@ -1,5 +1,5 @@
 [Unit]
-Description=ZbxTable - Zabbix Monitoring Table Tool
+Description=ZbxTable - Zabbix Monitoring Tool
 Documentation=https://github.com/canghai908/zbxtable
 After=syslog.target
 After=network.target
