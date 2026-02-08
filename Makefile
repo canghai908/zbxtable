@@ -9,7 +9,7 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.gitHash=$(GIT_HASH) -X m
 
 # Go 相关
 GOCMD := go
-GOBUILD := $(GOCMD) build
+GOBUILD := CGO_ENABLED=0 $(GOCMD) build
 GOCLEAN := $(GOCMD) clean
 GOTEST := $(GOCMD) test
 GOGET := $(GOCMD) get
@@ -59,8 +59,8 @@ build-all:
 	@echo "Building for all platforms..."
 	@mkdir -p $(DIST_DIR)
 	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*} GOARCH=$${platform#*/} \
-		$(GOBUILD) $(LDFLAGS) -o $(DIST_DIR)/$(APP_NAME)-$${platform%/*}-$${platform#*/} main.go; \
+		CGO_ENABLED=0 GOOS=$${platform%/*} GOARCH=$${platform#*/} \
+		$(GOCMD) build $(LDFLAGS) -o $(DIST_DIR)/$(APP_NAME)-$${platform%/*}-$${platform#*/} main.go; \
 		echo "Built $(DIST_DIR)/$(APP_NAME)-$${platform%/*}-$${platform#*/}"; \
 	done
 	@echo "All builds complete!"

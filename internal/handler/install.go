@@ -107,24 +107,6 @@ func checkDatabaseConnection(dbdriver, dbhost, dbuser, dbpass, dbname, dbport st
 		if err != nil {
 			return err
 		}
-	case "sqlite":
-		// SQLite 使用文件路径作为数据库名
-		dbPath := dbname
-		if dbPath == "" {
-			dbPath = "./data/zbxtable.db"
-		}
-		// 确保目录存在
-		dir := "./data"
-		if strings.Contains(dbPath, "/") || strings.Contains(dbPath, "\\") {
-			// 如果路径包含目录，提取目录部分
-			dir = dbPath[:strings.LastIndexAny(dbPath, "/\\")]
-		}
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
-		}
-		// SQLite 不需要连接测试，文件会在首次使用时创建
-		// 这里只检查目录是否可写
-		return nil
 	}
 	return nil
 }
@@ -225,15 +207,13 @@ func GetInstallStatus(c *gin.Context) {
 		})
 		return
 	}
-	// 对于非 SQLite 数据库，还需要检查 dbhost
-	if dbtype != "sqlite" {
-		dbhost := cfg.Section("").Key("dbhost").String()
-		if dbhost == "" {
-			response.Success(c, gin.H{
-				"installed": false,
-			})
-			return
-		}
+	// 检查 dbhost
+	dbhost := cfg.Section("").Key("dbhost").String()
+	if dbhost == "" {
+		response.Success(c, gin.H{
+			"installed": false,
+		})
+		return
 	}
 	// 这里简化处理，实际可以检查特定表是否存在
 	response.Success(c, gin.H{
@@ -259,12 +239,10 @@ func CheckDatabase(c *gin.Context) {
 		return
 	}
 
-	// 对于非 SQLite 数据库，验证必需字段
-	if req.DBType != "sqlite" {
-		if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
-			response.BadRequest(c, "参数错误: "+req.DBType+" 数据库需要 dbhost, dbuser, dbpass, dbport")
-			return
-		}
+	// 验证必需字段
+	if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
+		response.BadRequest(c, "参数错误: 数据库需要 dbhost, dbuser, dbpass, dbport")
+		return
 	}
 
 	err := checkDatabaseConnection(req.DBType, req.DBHost, req.DBUser, req.DBPass, req.DBName, req.DBPort)
@@ -322,12 +300,10 @@ func DoInstall(c *gin.Context) {
 		return
 	}
 
-	// 对于非 SQLite 数据库，验证必需字段
-	if req.DBType != "sqlite" {
-		if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
-			response.BadRequest(c, "参数错误: "+req.DBType+" 数据库需要 dbhost, dbuser, dbpass, dbport")
-			return
-		}
+	// 验证必需字段
+	if req.DBHost == "" || req.DBUser == "" || req.DBPass == "" || req.DBPort == "" {
+		response.BadRequest(c, "参数错误: 数据库需要 dbhost, dbuser, dbpass, dbport")
+		return
 	}
 
 	// 检查是否已安装
@@ -361,22 +337,6 @@ func DoInstall(c *gin.Context) {
 	}
 	if req.Timeout == "" {
 		req.Timeout = "12"
-	}
-
-	// 对于 SQLite，设置默认值
-	if req.DBType == "sqlite" {
-		if req.DBHost == "" {
-			req.DBHost = "localhost"
-		}
-		if req.DBPort == "" {
-			req.DBPort = "0"
-		}
-		if req.DBUser == "" {
-			req.DBUser = ""
-		}
-		if req.DBPass == "" {
-			req.DBPass = ""
-		}
 	}
 
 	// 写入配置文件
