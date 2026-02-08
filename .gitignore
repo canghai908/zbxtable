@@ -29,6 +29,7 @@ msty.ttf
 /api/v1/web/web/
 /template/
 /assets/
+/upload/
 
 # 构建产物
 /build/

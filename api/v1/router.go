@@ -39,6 +39,9 @@ func InitRouter() *gin.Engine {
 	// 下载文件目录（使用文件系统）
 	r.Static("/download", "./download")
 
+	// 上传文件目录（静态文件服务）
+	r.Static("/upload", "./upload")
+
 	// 获取嵌入的前端文件系统
 	distFS := web.GetDistFSRoot()
 	subFS, err := fs.Sub(distFS, "web")
@@ -255,6 +258,9 @@ func InitRouter() *gin.Engine {
 				topologyGroup.PUT("/:id", handler.UpdateTopology)
 				topologyGroup.DELETE("/:id", handler.DeleteTopology)
 				topologyGroup.POST("/status", handler.UpdateTopologyStatus)
+				// 背景图片上传
+				topologyGroup.POST("/upload-background", handler.UploadBackgroundImage)
+				topologyGroup.DELETE("/delete-background", handler.DeleteBackgroundImage)
 			}
 
 			// 拓扑数据

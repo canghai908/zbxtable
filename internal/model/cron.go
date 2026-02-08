@@ -464,7 +464,7 @@ func SyncInventory() error {
 		return nil
 	}
 	//1为开启，其他为关闭
-	if data[0].Value != "1" {
+	if data[0].ConfigValue != "1" {
 		return nil
 	}
 

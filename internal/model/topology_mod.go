@@ -4,14 +4,14 @@ import "time"
 
 type Topology struct {
 	ID              int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Nodes           string    `gorm:"column:nodes;type:longtext" json:"nodes"`
-	Edges           string    `gorm:"column:edges;type:longtext" json:"edges"`
+	Nodes           string    `gorm:"column:nodes;type:text" json:"nodes"`
+	Edges           string    `gorm:"column:edges;type:text" json:"edges"`
 	Topology        string    `gorm:"column:topology;size:200" json:"topology"`
 	Status          string    `gorm:"column:status;size:10" json:"status"`
-	ZID             int       `gorm:"column:zid;default:0" json:"zid"`                               // Zabbix实例主键ID，0表示未指定
-	BackgroundImage string    `gorm:"column:background_image;type:longtext" json:"background_image"` // 背景图配置（JSON格式）
-	CanvasWidth     int       `gorm:"column:canvas_width;default:3000" json:"canvas_width"`          // 画布宽度
-	CanvasHeight    int       `gorm:"column:canvas_height;default:2000" json:"canvas_height"`        // 画布高度
+	ZID             int       `gorm:"column:zid;default:0" json:"zid"`                           // Zabbix实例主键ID，0表示未指定
+	BackgroundImage string    `gorm:"column:background_image;type:text" json:"background_image"` // 背景图片文件路径
+	CanvasWidth     int       `gorm:"column:canvas_width;default:3000" json:"canvas_width"`      // 画布宽度
+	CanvasHeight    int       `gorm:"column:canvas_height;default:2000" json:"canvas_height"`    // 画布高度
 	CreatedAt       time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt       time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }

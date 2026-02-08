@@ -11,8 +11,8 @@ type TaskLog struct {
 	ReportID  int       `gorm:"column:report_id;default:0" json:"report_id"`
 	Name      string    `gorm:"column:name;size:200" json:"name"`
 	Cycle     string    `gorm:"column:cycle;size:64" json:"cycle"`
-	StartTime time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
-	EndTime   time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
+	StartTime time.Time `gorm:"column:start_time;type:timestamp" json:"start_time"`
+	EndTime   time.Time `gorm:"column:end_time;type:timestamp" json:"end_time"`
 	Status    int       `gorm:"column:status;default:0" json:"status"`
 	Result    string    `gorm:"column:result;size:200" json:"result"`
 	Files     string    `gorm:"column:files;size:200" json:"files"`

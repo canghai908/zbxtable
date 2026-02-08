@@ -67,7 +67,7 @@ func CreateReportGin(c *gin.Context) {
 	endTimeStr := gjson.Get(string(body), "end").String()
 
 	var startTime, endTime *time.Time
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	loc, _ := time.LoadLocation("Local")
 	if startTimeStr != "" {
 		t, _ := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
 		startTime = &t
@@ -145,7 +145,7 @@ func UpdateReportGin(c *gin.Context) {
 	endTimeStr := gjson.Get(string(body), "end").String()
 
 	var startTime, endTime *time.Time
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	loc, _ := time.LoadLocation("Local")
 	if startTimeStr != "" {
 		t, _ := time.ParseInLocation("2006-01-02 15:04:05", startTimeStr, loc)
 		startTime = &t

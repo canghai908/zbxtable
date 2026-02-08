@@ -28,7 +28,7 @@ type EventLog struct {
 	Channel       string    `gorm:"column:channel;size:100" json:"channel"`
 	User          string    `gorm:"column:user;size:100" json:"user"`
 	Account       string    `gorm:"column:account;size:100" json:"account"`
-	NotifyTime    time.Time `gorm:"column:notify_time;type:datetime" json:"notify_time"`
+	NotifyTime    time.Time `gorm:"column:notify_time;type:timestamp" json:"notify_time"`
 	NotifyContent string    `gorm:"column:notify_content;type:text" json:"notify_content"`
 	NotifyError   string    `gorm:"column:notify_error;type:text" json:"notify_error"`
 	Status        string    `gorm:"column:status;size:10" json:"status"`
@@ -72,7 +72,7 @@ type Event struct {
 	ItemName      string    `gorm:"column:item_name;size:3000" json:"item_name"`
 	ItemValue     string    `gorm:"column:item_value;size:3000" json:"item_value"`
 	Hgroup        string    `gorm:"column:hgroup;size:200" json:"hgroup"`
-	OccurTime     time.Time `gorm:"column:occur_time;type:datetime" json:"occur_time"`
+	OccurTime     time.Time `gorm:"column:occur_time;type:timestamp" json:"occur_time"`
 	Level         string    `gorm:"column:level;size:200" json:"level"`
 	Message       string    `gorm:"column:message;size:3000" json:"message"`
 	Hkey          string    `gorm:"column:hkey;size:3000" json:"hkey"`

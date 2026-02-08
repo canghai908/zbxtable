@@ -33,11 +33,9 @@ func main() {
 	app.Name = "ZbxTable"
 	app.Usage = "A Zabbix Table tools"
 	cli.VersionPrinter = customVersionPrinter
-	cmd.GetVersion(version, gitHash, buildTime)
 	app.Version = version
 	app.Commands = []*cli.Command{
 		cmd.Web,
-		cmd.Update,
 	}
 	app.Run(os.Args)
 }

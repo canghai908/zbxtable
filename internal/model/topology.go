@@ -2,7 +2,6 @@ package model
 
 import (
 	"bufio"
-
 	"os"
 	"strconv"
 	"strings"

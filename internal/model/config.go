@@ -13,13 +13,13 @@ func (t *Config) TableName() string {
 }
 
 type Config struct {
-	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Name      string    `gorm:"column:name;size:255" json:"name"`
-	Key       string    `gorm:"column:key;size:255" json:"key"`
-	Value     string    `gorm:"column:value;type:text" json:"value"`
-	Comment   string    `gorm:"column:comment;size:255" json:"comment"`
-	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name        string    `gorm:"column:name;size:255" json:"name"`
+	ConfigKey   string    `gorm:"column:config_key;size:255" json:"config_key"`
+	ConfigValue string    `gorm:"column:config_value;type:text" json:"config_value"`
+	Comment     string    `gorm:"column:comment;size:255" json:"comment"`
+	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 // GetConfigList 获取系统配置
@@ -52,12 +52,12 @@ func UpdateConfig(m *Config) (err error) {
 	}
 
 	// 禁止修改加密密钥
-	if v.Key == "encryption_key" {
+	if v.ConfigKey == "encryption_key" {
 		return errors.New("加密密钥不允许修改，如需更换请联系系统管理员")
 	}
 
 	// 对敏感字段进行加密
-	valueToSave := m.Value
+	valueToSave := m.ConfigValue
 	sensitiveKeys := []string{
 		"email_secret",     // SMTP 密码/授权码
 		"wechat_secret",    // 企业微信 Secret
@@ -67,7 +67,7 @@ func UpdateConfig(m *Config) (err error) {
 	// 检查是否是敏感字段
 	isSensitive := false
 	for _, key := range sensitiveKeys {
-		if v.Key == key {
+		if v.ConfigKey == key {
 			isSensitive = true
 			break
 		}
@@ -83,7 +83,7 @@ func UpdateConfig(m *Config) (err error) {
 		valueToSave = encryptedValue
 	}
 
-	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("value", valueToSave).Error
+	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("config_value", valueToSave).Error
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func updateZbxDash(m *Config) (err error) {
 	if err != nil {
 		return err
 	}
-	switch m.Value {
+	switch m.ConfigValue {
 	case "0":
 		menu.IsAvailable = true
 	case "1":
@@ -127,8 +127,8 @@ func GetConfigValueByKey(key string, defaultVal string) string {
 	}
 
 	var c Config
-	err := DB.Where("`key` = ?", key).First(&c).Error
-	if err != nil || c.Value == "" {
+	err := DB.Where("config_key = ?", key).First(&c).Error
+	if err != nil || c.ConfigValue == "" {
 		return defaultVal
 	}
 
@@ -149,16 +149,16 @@ func GetConfigValueByKey(key string, defaultVal string) string {
 	}
 
 	// 如果是敏感字段，尝试解密
-	if isSensitive && c.Value != "" {
+	if isSensitive && c.ConfigValue != "" {
 		encryptionKey := GetEncryptionKey()
-		decryptedValue, err := utils.DecryptString(c.Value, encryptionKey)
+		decryptedValue, err := utils.DecryptString(c.ConfigValue, encryptionKey)
 		if err != nil {
 			// 解密失败，可能是旧数据未加密，直接返回原值
 			logger.Log.Warnf("解密配置 %s 失败，返回原值: %v", key, err)
-			return c.Value
+			return c.ConfigValue
 		}
 		return decryptedValue
 	}
 
-	return c.Value
+	return c.ConfigValue
 }

@@ -25,11 +25,13 @@ func InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport string, runmode s
 
 	switch dbtype {
 	case "mysql":
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Asia%%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci",
+		// 使用 loc=Local 让数据库使用服务器本地时区
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local&timeout=5s&charset=utf8&collation=utf8_general_ci",
 			dbuser, dbpass, dbhost, dbport, dbname)
 		dialector = mysql.Open(dsn)
 	case "postgresql":
-		dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		// PostgreSQL 使用 timezone=Local 参数
+		dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&TimeZone=Asia/Shanghai",
 			dbuser, url.QueryEscape(dbpass), dbhost, dbport, dbname)
 		dialector = postgres.Open(dsn)
 	case "sqlite":
@@ -45,8 +47,8 @@ func InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport string, runmode s
 		}
 		dialector = sqlite.Open(dbPath)
 	default:
-		// 默认使用 MySQL
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Asia%%2FShanghai&timeout=5s&charset=utf8&collation=utf8_general_ci",
+		// 默认使用 MySQL，使用 loc=Local 让数据库使用服务器本地时区
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local&timeout=5s&charset=utf8&collation=utf8_general_ci",
 			dbuser, dbpass, dbhost, dbport, dbname)
 		dialector = mysql.Open(dsn)
 	}

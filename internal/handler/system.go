@@ -170,13 +170,13 @@ func GetAllConfig(c *gin.Context) {
 		filteredConfigs := []model.Config{}
 		for _, config := range val {
 			// 完全隐藏加密密钥配置项
-			if config.Key == "encryption_key" {
+			if config.ConfigKey == "encryption_key" {
 				continue
 			}
 
 			// 对敏感字段进行脱敏处理
-			if sensitiveKeys[config.Key] && config.Value != "" {
-				config.Value = "********" // 替换为星号
+			if sensitiveKeys[config.ConfigKey] && config.ConfigValue != "" {
+				config.ConfigValue = "********" // 替换为星号
 			}
 
 			filteredConfigs = append(filteredConfigs, config)
@@ -200,7 +200,7 @@ func UpdateConfig(c *gin.Context) {
 		return
 	}
 
-	value := gjson.Get(string(body), "value").String()
+	value := gjson.Get(string(body), "config_value").String()
 
 	// 如果值是星号（脱敏标记），则不更新
 	// 这表示前端没有修改该敏感字段
@@ -215,7 +215,7 @@ func UpdateConfig(c *gin.Context) {
 	}
 
 	var SystemRes model.SystemList
-	v := model.Config{ID: int64(id), Value: value}
+	v := model.Config{ID: int64(id), ConfigValue: value}
 	err = model.UpdateConfig(&v)
 	if err != nil {
 		SystemRes.Code = 500
@@ -470,7 +470,7 @@ func CompleteInitialSetup(c *gin.Context) {
 	var configID int64
 	found := false
 	for _, config := range configs {
-		if config.Key == "initial_setup_completed" {
+		if config.ConfigKey == "initial_setup_completed" {
 			configID = config.ID
 			found = true
 			break
@@ -483,7 +483,7 @@ func CompleteInitialSetup(c *gin.Context) {
 	}
 
 	// 更新配置
-	v := model.Config{ID: configID, Value: "1"}
+	v := model.Config{ID: configID, ConfigValue: "1"}
 	err = model.UpdateConfig(&v)
 	if err != nil {
 		response.InternalError(c, "更新配置失败")

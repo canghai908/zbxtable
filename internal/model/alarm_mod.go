@@ -21,7 +21,7 @@ type Alarm struct {
 	ItemName      string    `gorm:"column:item_name;type:text" json:"item_name"`
 	ItemValue     string    `gorm:"column:item_value;type:text" json:"item_value"`
 	Hgroup        string    `gorm:"column:hgroup;size:200" json:"hgroup"`
-	OccurTime     time.Time `gorm:"column:occurtime;type:datetime" json:"occur_time"`
+	OccurTime     time.Time `gorm:"column:occurtime;type:timestamp" json:"occur_time"`
 	Level         string    `gorm:"column:level;size:200" json:"level"`
 	Message       string    `gorm:"column:message;type:text" json:"message"`
 	Hkey          string    `gorm:"column:hkey;size:3000" json:"hkey"`

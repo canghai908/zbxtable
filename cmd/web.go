@@ -59,8 +59,7 @@ func checkInstallStatus() bool {
 
 // runWeb start web server
 func runWeb(*cli.Context) error {
-	fmt.Println("🚀 Starting ZbxTable service...")
-
+	fmt.Println("Starting ZbxTable service...")
 	// Initialize logger (using default config, not dependent on config file)
 	logErr := initLoggerSafe()
 	if logErr != nil {
