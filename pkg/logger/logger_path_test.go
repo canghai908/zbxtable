@@ -146,4 +146,3 @@ func TestInitLoggerWithDifferentPaths(t *testing.T) {
 		})
 	}
 }
-

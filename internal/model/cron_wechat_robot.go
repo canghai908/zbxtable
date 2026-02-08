@@ -66,10 +66,10 @@ func SendWechatRobot(event *Event) {
 		logger.Log.Error(err)
 		return
 	}
-	
+
 	// 获取加密密钥
 	encryptionKey := GetEncryptionKey()
-	
+
 	for _, v := range plist {
 		if v.WechatRobotKey != "" {
 			// 解密企业微信群机器人Key
@@ -83,7 +83,7 @@ func SendWechatRobot(event *Event) {
 					decryptedKey = key
 				}
 			}
-			
+
 			// 使用解密后的Key发送消息
 			SendWechatRobotAlert(v, event, body.String(), decryptedKey)
 		} else {
