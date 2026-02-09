@@ -306,7 +306,7 @@ sudo systemctl status zbxtable
 扫码关注微信公众号，获取最新动态、技术文章和使用技巧：
 
 <div align="center">
-  <img src="docs/wechat.png" alt="微信公众号" width="200"/>
+  <img src="docs/wechat.png" alt="微信公众号" width="400"/>
   <p>微信扫一扫关注公众号</p>
 </div>
 
