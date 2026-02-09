@@ -173,14 +173,56 @@ GRANT ALL PRIVILEGES ON DATABASE zbxtable TO zbxtable;
 
 #### 3. 启动服务
 
-```bash
-# 直接启动
-./zbxtable web
+**创建系统用户：**
 
-# 或配置为系统服务（推荐）
-sudo cp zbxtable /usr/local/bin/
-sudo systemctl enable zbxtable
+```bash
+# 创建 zbxtable 系统用户
+sudo useradd -r -s /sbin/nologin zbxtable
+
+# 创建安装目录
+sudo mkdir -p /usr/local/zbxtable
+
+# 复制二进制文件
+sudo cp zbxtable /usr/local/zbxtable/
+
+# 设置权限
+sudo chown -R zbxtable:zbxtable /usr/local/zbxtable
+sudo chmod +x /usr/local/zbxtable/zbxtable
+```
+
+**配置 systemd 服务：**
+
+```bash
+# 创建 systemd 服务文件
+sudo tee /etc/systemd/system/zbxtable.service > /dev/null << EOF
+[Unit]
+Description=ZbxTable - Zabbix Monitoring Tool
+After=network.target
+
+[Service]
+Type=simple
+User=zbxtable
+Group=zbxtable
+WorkingDirectory=/usr/local/zbxtable
+ExecStart=/usr/local/zbxtable/zbxtable web
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 重载 systemd
+sudo systemctl daemon-reload
+
+# 启动服务
 sudo systemctl start zbxtable
+
+# 设置开机自启
+sudo systemctl enable zbxtable
+
+# 查看服务状态
+sudo systemctl status zbxtable
 ```
 
 #### 4. 访问安装向导

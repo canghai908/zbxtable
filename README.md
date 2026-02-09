@@ -173,14 +173,56 @@ GRANT ALL PRIVILEGES ON DATABASE zbxtable TO zbxtable;
 
 #### 3. Start Service
 
-```bash
-# Start directly
-./zbxtable web
+**Create System User:**
 
-# Or configure as system service (recommended)
-sudo cp zbxtable /usr/local/bin/
-sudo systemctl enable zbxtable
+```bash
+# Create zbxtable system user
+sudo useradd -r -s /sbin/nologin zbxtable
+
+# Create installation directory
+sudo mkdir -p /usr/local/zbxtable
+
+# Copy binary file
+sudo cp zbxtable /usr/local/zbxtable/
+
+# Set permissions
+sudo chown -R zbxtable:zbxtable /usr/local/zbxtable
+sudo chmod +x /usr/local/zbxtable/zbxtable
+```
+
+**Configure systemd Service:**
+
+```bash
+# Create systemd service file
+sudo tee /etc/systemd/system/zbxtable.service > /dev/null << EOF
+[Unit]
+Description=ZbxTable - Zabbix Monitoring Tool
+After=network.target
+
+[Service]
+Type=simple
+User=zbxtable
+Group=zbxtable
+WorkingDirectory=/usr/local/zbxtable
+ExecStart=/usr/local/zbxtable/zbxtable web
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Start service
 sudo systemctl start zbxtable
+
+# Enable auto-start on boot
+sudo systemctl enable zbxtable
+
+# Check service status
+sudo systemctl status zbxtable
 ```
 
 #### 4. Access Installation Wizard
