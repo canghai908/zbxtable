@@ -59,6 +59,15 @@ const (
 	DefaultAvatar = ""
 	//默认更新服务器
 	UpdateURL = "http://dl.cactifans.com/stable/"
+
+	// 上传目录
+	UploadDir = "./upload"
+	// 背景图片上传目录
+	BackgroundImageDir = "./upload/background"
+	// 允许的图片格式
+	AllowedImageExts = ".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+	// 最大文件大小 (10MB)
+	MaxFileSize = 10 * 1024 * 1024
 )
 
 // TableName 表名前缀

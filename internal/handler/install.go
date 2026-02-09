@@ -137,7 +137,7 @@ func writeConfigFile(
 		cfg.Section("").NewKey("timeout", timeout)
 	}
 	// logger defaults (copyrequestbody 已废弃，不再写入)
-	cfg.Section("").NewKey("log_level", "6")
+	cfg.Section("").NewKey("log_level", "3")
 	cfg.Section("").NewKey("log_path", "log")
 	cfg.Section("").NewKey("maxlines", "1000")
 	cfg.Section("").NewKey("maxsize", "0")
