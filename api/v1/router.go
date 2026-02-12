@@ -315,6 +315,18 @@ func InitRouter() *gin.Engine {
 				metricMappingGroup.DELETE("/:id", handler.DeleteMetricMapping)
 				metricMappingGroup.POST("/:id/execute", handler.ExecuteMetricMappingManual)
 				metricMappingGroup.GET("/history", handler.GetMappingHistory)
+
+				// 指标匹配规则
+				metricMappingGroup.GET("/rules", handler.GetMappingRules)
+				metricMappingGroup.POST("/rules", handler.CreateOrUpdateMappingRule)
+				metricMappingGroup.PUT("/rules/:id", handler.CreateOrUpdateMappingRule)
+				metricMappingGroup.DELETE("/rules/:id", handler.DeleteMappingRule)
+
+				// 按模板同步 inventory_link
+				metricMappingGroup.POST("/sync/templates", handler.SyncMetricMappingOnTemplates)
+
+				// Debug：回查模板 items（包含 inventory_link）
+				metricMappingGroup.GET("/debug/template_items", handler.GetTemplateItemsDebug)
 			}
 
 			// 报表管理

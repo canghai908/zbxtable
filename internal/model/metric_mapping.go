@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
@@ -33,13 +34,11 @@ func CreateOrUpdateMetricMapping(m *MetricMapping) error {
 	err := DB.Where("zid = ? AND system_type = ?", m.ZID, m.SystemType).First(&existing).Error
 
 	if err != nil {
-		// 不存在，创建
 		m.CreatedAt = time.Now()
 		m.UpdatedAt = time.Now()
 		return DB.Create(m).Error
 	}
 
-	// 存在，更新
 	m.ID = existing.ID
 	m.CreatedAt = existing.CreatedAt
 	m.UpdatedAt = time.Now()
@@ -49,7 +48,7 @@ func CreateOrUpdateMetricMapping(m *MetricMapping) error {
 // GetMetricMappingsByInstance 获取实例的所有映射配置
 func GetMetricMappingsByInstance(instanceID int) ([]MetricMapping, error) {
 	var mappings []MetricMapping
-	err := DB.Where("instance = ?", instanceID).Find(&mappings).Error
+	err := DB.Where("zid = ?", instanceID).Find(&mappings).Error
 	return mappings, err
 }
 
@@ -88,7 +87,6 @@ func GetFailedMappingsForRetry() ([]MetricMapping, error) {
 
 // ExecuteMetricMapping 执行指标映射
 func ExecuteMetricMapping(mapping *MetricMapping, execType string) error {
-	// 创建执行历史记录
 	history := &MetricMappingHistory{
 		MappingID:  mapping.ID,
 		ZID:        mapping.ZID,
@@ -99,35 +97,29 @@ func ExecuteMetricMapping(mapping *MetricMapping, execType string) error {
 	}
 	DB.Create(history)
 
-	// 获取实例API
 	apiInstance, err := GetAPIByZID(mapping.ZID)
 	if err != nil {
 		return updateMappingError(mapping, history, fmt.Errorf("获取实例API失败: %w", err))
 	}
 
-	// 解析配置
 	config, err := mapping.GetMetricConfig()
 	if err != nil {
 		return updateMappingError(mapping, history, fmt.Errorf("解析配置失败: %w", err))
 	}
 
-	// 执行映射
 	groupIDs := splitGroupIDs(mapping.HostGroupIDs)
 	affectedHosts, err := executeMapping(apiInstance, config, groupIDs)
 	if err != nil {
 		return updateMappingError(mapping, history, err)
 	}
 
-	// 更新成功状态
 	return updateMappingSuccess(mapping, history, affectedHosts)
 }
 
-// 辅助函数：更新失败状态
 func updateMappingError(mapping *MetricMapping, history *MetricMappingHistory, err error) error {
 	now := time.Now()
 	duration := int(now.Sub(history.StartTime).Seconds())
 
-	// 更新历史记录
 	DB.Model(history).Updates(map[string]interface{}{
 		"end_time":      &now,
 		"duration":      duration,
@@ -135,7 +127,6 @@ func updateMappingError(mapping *MetricMapping, history *MetricMappingHistory, e
 		"error_message": err.Error(),
 	})
 
-	// 更新映射配置
 	mapping.Status = 2
 	mapping.LastInitAt = &now
 	mapping.InitError = err.Error()
@@ -146,12 +137,10 @@ func updateMappingError(mapping *MetricMapping, history *MetricMappingHistory, e
 	return err
 }
 
-// 辅助函数：更新成功状态
 func updateMappingSuccess(mapping *MetricMapping, history *MetricMappingHistory, affectedHosts int) error {
 	now := time.Now()
 	duration := int(now.Sub(history.StartTime).Seconds())
 
-	// 更新历史记录
 	DB.Model(history).Updates(map[string]interface{}{
 		"end_time":       &now,
 		"duration":       duration,
@@ -159,7 +148,6 @@ func updateMappingSuccess(mapping *MetricMapping, history *MetricMappingHistory,
 		"affected_hosts": affectedHosts,
 	})
 
-	// 更新映射配置
 	mapping.Status = 1
 	mapping.LastInitAt = &now
 	mapping.LastSuccessAt = &now
@@ -171,7 +159,6 @@ func updateMappingSuccess(mapping *MetricMapping, history *MetricMappingHistory,
 	return nil
 }
 
-// 辅助函数：分割主机组ID
 func splitGroupIDs(groupIDs string) []string {
 	if groupIDs == "" {
 		return []string{}
@@ -179,9 +166,7 @@ func splitGroupIDs(groupIDs string) []string {
 	return strings.Split(groupIDs, ",")
 }
 
-// 辅助函数：执行映射
 func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []string) (int, error) {
-	// 获取主机列表
 	OutputPar := []string{"hostid"}
 	rep, err := apiInstance.API.CallWithError("host.get", Params{
 		"output":   OutputPar,
@@ -202,7 +187,6 @@ func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []s
 		return 0, fmt.Errorf("未在指定的主机组中找到任何主机")
 	}
 
-	// 设置主机类型
 	InventoryPara := make(map[string]string)
 	InventoryPara["type"] = config.HostType
 	_, err = apiInstance.API.CallWithError("host.massupdate", Params{
@@ -214,7 +198,6 @@ func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []s
 		return 0, fmt.Errorf("设置主机类型失败: %w", err)
 	}
 
-	// 绑定指标
 	for fieldName, itemIDs := range config.Metrics {
 		if itemIDs == "" {
 			continue
@@ -227,23 +210,19 @@ func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []s
 		err = bindItemsToInventory(apiInstance, itemIDs, inventoryLink)
 		if err != nil {
 			logger.Log.Errorf("绑定指标失败 [field=%s]: %v", fieldName, err)
-			// 继续执行，不中断
 		}
 	}
 
-	// 绑定ICMP
 	if config.PingTemplateID != "" {
 		err = ICMPToInventoryWithInstance(config.PingTemplateID, apiInstance)
 		if err != nil {
 			logger.Log.Errorf("绑定ICMP失败: %v", err)
-			// 继续执行，不中断
 		}
 	}
 
 	return len(hosts), nil
 }
 
-// 辅助函数：根据字段名获取inventory link
 func getInventoryLinkByField(fieldName string) int {
 	mapping := map[string]int{
 		"uptime":             UptimeID,
@@ -257,7 +236,6 @@ func getInventoryLinkByField(fieldName string) int {
 	return mapping[fieldName]
 }
 
-// 辅助函数：绑定指标到inventory
 func bindItemsToInventory(apiInstance *APIInstance, itemIDs string, inventoryLink int) error {
 	ids := strings.Split(itemIDs, ",")
 	for _, id := range ids {
@@ -276,7 +254,6 @@ func bindItemsToInventory(apiInstance *APIInstance, itemIDs string, inventoryLin
 	return nil
 }
 
-// GetMappingHistory 获取映射执行历史
 func GetMappingHistory(mappingID int64, page, limit int) ([]MetricMappingHistory, int64, error) {
 	var history []MetricMappingHistory
 	var total int64
@@ -294,7 +271,202 @@ func GetMappingHistory(mappingID int64, page, limit int) ([]MetricMappingHistory
 	return history, total, err
 }
 
-// GetAllMappingHistory 获取所有执行历史
 func GetAllMappingHistory(page, limit int) ([]MetricMappingHistory, int64, error) {
 	return GetMappingHistory(0, page, limit)
+}
+
+func GetMappingRules(enabledOnly bool) ([]MappingRule, error) {
+	var rules []MappingRule
+	query := DB.Order("priority asc")
+	if enabledOnly {
+		query = query.Where("is_enabled = ?", 1)
+	}
+	err := query.Find(&rules).Error
+	return rules, err
+}
+
+func CreateOrUpdateMappingRule(r *MappingRule) error {
+	if r.ID > 0 {
+		r.UpdatedAt = time.Now()
+		return DB.Save(r).Error
+	}
+	r.CreatedAt = time.Now()
+	r.UpdatedAt = time.Now()
+	return DB.Create(r).Error
+}
+
+func DeleteMappingRule(id int64) error {
+	return DB.Delete(&MappingRule{}, id).Error
+}
+
+func InitDefaultMappingRules() {
+	defaultRules := []MappingRule{
+		{
+			RuleName:    "内置-CPU使用率",
+			TargetField: "cpu_utilization",
+			MatchType:   "regex",
+			MatchValue:  `^system\.cpu\.util(\[.*\])?$`,
+			Priority:    1,
+			IsBuiltin:   1,
+			IsEnabled:   1,
+		},
+		{
+			RuleName:    "内置-系统运行时间",
+			TargetField: "uptime",
+			MatchType:   "key",
+			MatchValue:  "system.uptime",
+			Priority:    1,
+			IsBuiltin:   1,
+			IsEnabled:   1,
+		},
+		{
+			RuleName:    "内置-内存总量",
+			TargetField: "memory_total",
+			MatchType:   "regex",
+			MatchValue:  `^vm\.memory\.size\[total\]$`,
+			Priority:    1,
+			IsBuiltin:   1,
+			IsEnabled:   1,
+		},
+		{
+			RuleName:    "内置-内存已用",
+			TargetField: "memory_used",
+			MatchType:   "regex",
+			MatchValue:  `^vm\.memory\.size\[used\]$`,
+			Priority:    1,
+			IsBuiltin:   1,
+			IsEnabled:   1,
+		},
+	}
+
+	for _, rule := range defaultRules {
+		var count int64
+		DB.Model(&MappingRule{}).Where("target_field = ? AND is_builtin = 1", rule.TargetField).Count(&count)
+		if count == 0 {
+			DB.Create(&rule)
+		}
+	}
+}
+
+func ExecuteMappingOnTemplates(apiInstance *APIInstance, rules []MappingRule) (int, error) {
+	templateMap := make(map[string]bool)
+	for _, rule := range rules {
+		if rule.TemplateIDs != "" {
+			ids := strings.Split(rule.TemplateIDs, ",")
+			for _, id := range ids {
+				if id = strings.TrimSpace(id); id != "" {
+					templateMap[id] = true
+				}
+			}
+		}
+	}
+
+	var targetTemplateIDs []string
+	for id := range templateMap {
+		targetTemplateIDs = append(targetTemplateIDs, id)
+	}
+
+	params := Params{
+		"output": []string{"itemid", "name", "key_", "templateid", "inventory_link"},
+	}
+	if len(targetTemplateIDs) > 0 {
+		params["templateids"] = targetTemplateIDs
+	} else {
+		params["inherited"] = false
+		params["templated"] = true
+	}
+
+	rep, err := apiInstance.API.CallWithError("item.get", params)
+	if err != nil {
+		return 0, fmt.Errorf("获取模板指标失败: %w", err)
+	}
+
+	type itemData struct {
+		ItemID        string `json:"itemid"`
+		Name          string `json:"name"`
+		Key           string `json:"key_"`
+		TemplateID    string `json:"templateid"`
+		InventoryLink string `json:"inventory_link"`
+	}
+	var items []itemData
+	resByte, _ := json.Marshal(rep.Result)
+	json.Unmarshal(resByte, &items)
+
+	finalBindings := make(map[string]map[string]string)
+	affectedTemplates := make(map[string]bool)
+
+	for _, item := range items {
+		tID := item.TemplateID
+		if tID == "" || tID == "0" {
+			continue
+		}
+
+		if _, ok := finalBindings[tID]; !ok {
+			finalBindings[tID] = make(map[string]string)
+		}
+
+		for _, rule := range rules {
+			if rule.TemplateIDs != "" && !strings.Contains(rule.TemplateIDs, tID) {
+				continue
+			}
+
+			if _, ok := finalBindings[tID][rule.TargetField]; ok {
+				continue
+			}
+
+			isMatch := false
+			switch rule.MatchType {
+			case "key":
+				isMatch = item.Key == rule.MatchValue
+			case "name":
+				isMatch = strings.Contains(item.Name, rule.MatchValue)
+			case "regex":
+				reg, err := regexp.Compile(rule.MatchValue)
+				if err == nil {
+					isMatch = reg.MatchString(item.Key)
+				}
+			}
+
+			if isMatch {
+				finalBindings[tID][rule.TargetField] = item.ItemID
+				affectedTemplates[tID] = true
+				break
+			}
+		}
+	}
+
+	updateCount := 0
+	for tID, fields := range finalBindings {
+		for field, itemID := range fields {
+			inventoryLink := getInventoryLinkByField(field)
+			if inventoryLink == 0 {
+				continue
+			}
+
+			_, err := apiInstance.API.CallWithError("item.update", Params{
+				"itemid":         itemID,
+				"inventory_link": inventoryLink,
+			})
+			if err != nil {
+				logger.Log.Errorf("更新模板 [ID=%s] 指标 [Field=%s] 失败: %v", tID, field, err)
+			} else {
+				updateCount++
+			}
+		}
+	}
+
+	return len(affectedTemplates), nil
+}
+
+// GetTemplateItemsDebug 获取模板 Items 用于调试 (包含 inventory_link)
+func GetTemplateItemsDebug(apiInstance *APIInstance, templateID string) (any, error) {
+	params := Params{
+		"output":      []string{"itemid", "name", "key_", "inventory_link"},
+		"templateids": templateID,
+	}
+	rep, err := apiInstance.API.CallWithError("item.get", params)
+	if err != nil {
+		return nil, err
+	}
+	return rep.Result, nil
 }

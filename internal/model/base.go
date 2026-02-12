@@ -259,6 +259,9 @@ func DatabaseInit() {
 		}
 	}
 
+	// 初始化内置映射规则
+	//InitDefaultMappingRules()
+
 	// 获取结构化的默认配置
 	defaultConfigs := getDefaultConfigs()
 

@@ -72,3 +72,23 @@ func (t *MetricMapping) TableName() string {
 func (t *MetricMappingHistory) TableName() string {
 	return TableName("metric_mapping_history")
 }
+
+// MappingRule 指标匹配规则
+type MappingRule struct {
+	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ZIDs        string    `gorm:"column:zids;type:text" json:"zids"`                        // 生效实例ID列表，逗号分隔，为空表示全局生效
+	TemplateIDs string    `gorm:"column:template_ids;type:text" json:"template_ids"`        // 生效模板ID列表，逗号分隔，为空表示不限制模板
+	TargetField string    `gorm:"column:target_field;size:50;not null" json:"target_field"` // 如 cpu_utilization
+	RuleName    string    `gorm:"column:rule_name;size:100;not null" json:"rule_name"`
+	MatchType   string    `gorm:"column:match_type;size:20;not null" json:"match_type"` // key, name, regex
+	MatchValue  string    `gorm:"column:match_value;size:255;not null" json:"match_value"`
+	Priority    int       `gorm:"column:priority;default:10" json:"priority"`
+	IsEnabled   int       `gorm:"column:is_enabled;default:1" json:"is_enabled"`
+	IsBuiltin   int       `gorm:"column:is_builtin;default:0" json:"is_builtin"` // 是否为内置规则
+	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+}
+
+func (t *MappingRule) TableName() string {
+	return TableName("mapping_rule")
+}
