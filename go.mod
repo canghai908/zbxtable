@@ -6,7 +6,6 @@ toolchain go1.24.3
 
 require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1
-	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e
 	github.com/canghai908/zabbix-go v1.0.1
 	github.com/gin-contrib/cors v1.7.6
