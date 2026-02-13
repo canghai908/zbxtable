@@ -94,7 +94,13 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 	} else {
 		top_n = p
 	}
-	ret, err := CacheZRevRangeWithScores(MetType1+"_"+MetType2, 0, top_n)
+	// A2：返回当前排序维度的 TopN，但每条同时补齐 cpu/mem 两项
+	// 注意：CacheZRevRangeWithScores 的 stop 是包含式，所以 stop=top_n-1
+	stop := top_n - 1
+	if stop < 0 {
+		stop = 0
+	}
+	ret, err := CacheZRevRangeWithScores(MetType1+"_"+MetType2, 0, stop)
 	if err != nil {
 		return []TopList{}, err
 	}
@@ -121,9 +127,17 @@ func GetTopList(host_type, metrics_type, top_num string) (info []TopList, err er
 			}
 		}
 
+		// 从两个 ZSet 补齐 cpu/mem
+		cpuScore, _ := CacheZScore(MetType1+"_CPU", fullKey)
+		memScore, _ := CacheZScore(MetType1+"_MEM", fullKey)
+
+		// 当前排序维度的 score 仍保持兼容（用于前端展示/排序）
+		score := z.Score
 		p1 := TopList{
 			Hostname:     hostname,
-			Score:        z.Score,
+			Score:        score,
+			CPU:          cpuScore,
+			MEM:          memScore,
 			InstanceName: instanceName,
 		}
 		p2 = append(p2, p1)

@@ -164,6 +164,23 @@ type ZMember struct {
 	Score  float64
 }
 
+// CacheZScore 获取排序集合指定成员的分数（兼容Redis ZScore）
+func CacheZScore(key string, member string) (float64, bool) {
+	sortedSetMu.RLock()
+	sortedSet, exists := sortedSetStore[key]
+	sortedSetMu.RUnlock()
+	if !exists {
+		return 0, false
+	}
+	sortedSet.mu.RLock()
+	score, ok := sortedSet.members[member]
+	sortedSet.mu.RUnlock()
+	if !ok {
+		return 0, false
+	}
+	return score, true
+}
+
 // CacheZRevRangeWithScores 获取排序集合的成员（按分数降序，兼容Redis ZRevRangeWithScores）
 func CacheZRevRangeWithScores(key string, start, stop int64) ([]ZMember, error) {
 	sortedSetMu.RLock()

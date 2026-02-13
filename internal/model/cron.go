@@ -21,7 +21,7 @@ func InitTask() {
 
 	// 添加任务
 	// 注意：cron 表达式格式为 "秒 分 时 日 月 周"
-	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = TOP() })
+	cronScheduler.AddFunc("0/10 * * * * *", func() { _ = TOP() })
 	cronScheduler.AddFunc("0 55 23 * * *", func() { _ = CreateDayReport() })  // 每天23:55执行
 	cronScheduler.AddFunc("0 55 17 * * 5", func() { _ = CreateWeekReport() }) // 每周五17:55执行
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
@@ -250,6 +250,13 @@ func TOP() error {
 		return err
 	}
 
+	// 从配置读取 Top 数量，用于控制写入缓存的数据量（兜底 5）
+	topNumStr := GetConfigValueByKey("dash_top_num", "5")
+	topN, err := strconv.ParseInt(topNumStr, 10, 64)
+	if err != nil || topN <= 0 {
+		topN = 5
+	}
+
 	// 清空旧数据
 	_ = CacheDelete("WIN_CPU")
 	_ = CacheDelete("WIN_MEM")
@@ -258,7 +265,7 @@ func TOP() error {
 
 	// 从所有实例收集数据
 	for _, inst := range instances {
-		err := TOPFromInstance(inst)
+		err := TOPFromInstance(inst, topN)
 		if err != nil {
 			logger.Log.Errorf("从实例 %s 收集 TOP 数据失败: %v", inst.Name, err)
 			continue
@@ -269,7 +276,7 @@ func TOP() error {
 }
 
 // TOPFromInstance 从指定实例收集 TOP 数据
-func TOPFromInstance(inst *APIInstance) error {
+func TOPFromInstance(inst *APIInstance, topN int64) error {
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	SearchInventoryKey := []string{"VM_WIN", "VM_LIN"}
@@ -299,72 +306,118 @@ func TOPFromInstance(inst *APIInstance) error {
 	if len(hb) == 0 {
 		return nil // 该实例没有主机，不是错误
 	}
+
+	// 定义临时存储，用于每个分类的排序和截断
+	type hostScore struct {
+		key   string
+		score float64
+	}
+	var winCPUs, winMEMs, linCPUs, linMEMs []hostScore
+
 	for _, v := range hb {
 		if v.Available == "0" {
 			continue
 		}
-		// 使用 "实例名_主机名" 作为唯一标识，避免不同实例的主机名冲突
 		hostKey := inst.Instance + "_" + v.Host
 		switch v.Inventory.Type {
 		case "VM_WIN":
-			var float64CPU float64
-			if v.Inventory.SoftwareAppA == "" {
-				float64CPU = 0
-			} else {
-				float64CPU, err = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppA, " %", "", -1), 64)
-				if err != nil {
-					float64CPU = 0
-				}
+			var cpu, mem float64
+			if v.Inventory.SoftwareAppA != "" {
+				cpu, _ = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppA, " %", "", -1), 64)
 			}
-			err = CacheZAdd("WIN_CPU", hostKey, float64CPU)
-			if err != nil {
-				return err
+			if v.Inventory.SoftwareAppB != "" {
+				mem, _ = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppB, " %", "", -1), 64)
 			}
-			//memory
-			var float64MEM float64
-
-			if v.Inventory.SoftwareAppB == "" {
-				float64MEM = 0
-			} else {
-				float64MEM, err = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppB, " %", "", -1), 64)
-				if err != nil {
-					float64MEM = 0
-				}
-			}
-			err = CacheZAdd("WIN_MEM", hostKey, float64MEM)
-			if err != nil {
-				return err
-			}
+			winCPUs = append(winCPUs, hostScore{hostKey, cpu})
+			winMEMs = append(winMEMs, hostScore{hostKey, mem})
 		case "VM_LIN":
-			var float64CPU float64
-			if v.Inventory.SoftwareAppA == "" {
-				float64CPU = 0
-			} else {
-				float64CPU, err = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppA, " %", "", -1), 64)
-				if err != nil {
-					float64CPU = 0
+			var cpu, mem float64
+			if v.Inventory.SoftwareAppA != "" {
+				cpu, _ = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppA, " %", "", -1), 64)
+			}
+			if v.Inventory.SoftwareAppB != "" {
+				mem, _ = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppB, " %", "", -1), 64)
+			}
+			linCPUs = append(linCPUs, hostScore{hostKey, cpu})
+			linMEMs = append(linMEMs, hostScore{hostKey, mem})
+		}
+	}
+
+	// 将 score 列表转为 map，便于按 key 写入
+	toMap := func(list []hostScore) map[string]float64 {
+		m := make(map[string]float64, len(list))
+		for _, it := range list {
+			m[it.key] = it.score
+		}
+		return m
+	}
+
+	// 取 TopN 的 key 集合（按 score 降序）
+	topKeys := func(list []hostScore, n int64) []string {
+		// 简单排序（数据量通常不大）
+		for i := 0; i < len(list); i++ {
+			for j := i + 1; j < len(list); j++ {
+				if list[i].score < list[j].score {
+					list[i], list[j] = list[j], list[i]
 				}
 			}
-			err = CacheZAdd("LIN_CPU", hostKey, float64CPU)
-			if err != nil {
+		}
+		limit := int(n)
+		if len(list) < limit {
+			limit = len(list)
+		}
+		keys := make([]string, 0, limit)
+		for i := 0; i < limit; i++ {
+			keys = append(keys, list[i].key)
+		}
+		return keys
+	}
+
+	// CPU TopN ∪ MEM TopN，最多 2N
+	union := func(a, b []string) []string {
+		seen := make(map[string]struct{}, len(a)+len(b))
+		out := make([]string, 0, len(a)+len(b))
+		for _, k := range a {
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			out = append(out, k)
+		}
+		for _, k := range b {
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			out = append(out, k)
+		}
+		return out
+	}
+
+	// 写入：对并集内 key，把 CPU/MEM 都写入各自 ZSet，确保前端合并后可切换排序
+	writeUnion := func(cpuKey, memKey string, cpuList, memList []hostScore) error {
+		cpuMap := toMap(cpuList)
+		memMap := toMap(memList)
+		cpuTop := topKeys(append([]hostScore(nil), cpuList...), topN)
+		memTop := topKeys(append([]hostScore(nil), memList...), topN)
+		keys := union(cpuTop, memTop)
+
+		for _, k := range keys {
+			if err := CacheZAdd(cpuKey, k, cpuMap[k]); err != nil {
 				return err
 			}
-			//memory
-			var float64MEM float64
-			if v.Inventory.SoftwareAppB == "" {
-				float64MEM = 0
-			} else {
-				float64MEM, err = strconv.ParseFloat(strings.Replace(v.Inventory.SoftwareAppB, " %", "", -1), 64)
-				if err != nil {
-					float64MEM = 0
-				}
-			}
-			err = CacheZAdd("LIN_MEM", hostKey, float64MEM)
-			if err != nil {
-				logger.Log.Debug(err)
+			if err := CacheZAdd(memKey, k, memMap[k]); err != nil {
 				return err
 			}
 		}
+		return nil
+	}
+
+	if err := writeUnion("WIN_CPU", "WIN_MEM", winCPUs, winMEMs); err != nil {
+		return err
+	}
+	if err := writeUnion("LIN_CPU", "LIN_MEM", linCPUs, linMEMs); err != nil {
+		return err
 	}
 	return nil
 }
