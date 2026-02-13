@@ -454,18 +454,18 @@ func getInitialSetupConfigs() []Config {
 // getDashboardConfigs Dashboard 相关配置
 func getDashboardConfigs() []Config {
 	return []Config{
-		{
-			Name:        "数据面板",
-			ConfigKey:   "zbx_dash",
-			ConfigValue: "0",
-			Comment:     "是否开启Zabbix看板：1 开启,0 关闭",
-		},
-		{
-			Name:        "面板配置",
-			ConfigKey:   "dash_id",
-			ConfigValue: "1",
-			Comment:     "需要引入的Zabbix面板的ID，默认为1",
-		},
+		// {
+		// 	Name:        "数据面板",
+		// 	ConfigKey:   "zbx_dash",
+		// 	ConfigValue: "0",
+		// 	Comment:     "是否开启Zabbix看板：1 开启,0 关闭",
+		// },
+		// {
+		// 	Name:        "面板配置",
+		// 	ConfigKey:   "dash_id",
+		// 	ConfigValue: "1",
+		// 	Comment:     "需要引入的Zabbix面板的ID，默认为1",
+		// },
 		{
 			Name:        "Top数量",
 			ConfigKey:   "dash_top_num",
