@@ -83,26 +83,28 @@ func getMenuDefinitions() []Menu {
 }
 
 // InitMenuData 菜单初始化
-func InitMenuData() {
+func InitMenuData() error {
 	var count int64
 	err := DB.Model(&Menu{}).Count(&count).Error
 	if err != nil {
 		logger.Log.Error(err)
-		return
+		return err
 	}
 	if count > 0 {
-		return
+		return nil
 	}
 	menus := getMenuDefinitions()
 	err = DB.Create(&menus).Error
 	if err != nil {
 		logger.Log.Error(err)
+		return err
 	}
+	return nil
 }
 
 // CheckAndAddMenus 检查并添加缺失的菜单项（用于版本升级）
 // 检查 getMenuDefinitions 中定义的所有菜单是否在数据库中存在，如果不存在则添加
-func CheckAndAddMenus() {
+func CheckAndAddMenus() error {
 	menuDefs := getMenuDefinitions()
 
 	// 建立一级菜单名称到数据库ID的映射
@@ -167,6 +169,7 @@ func CheckAndAddMenus() {
 	}
 
 	logger.Log.Info("菜单检查完成")
+	return nil
 }
 
 type MenuItem struct {

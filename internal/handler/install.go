@@ -350,14 +350,17 @@ func DoInstall(c *gin.Context) {
 	}
 
 	// 初始化数据库
-	model.ModelInit(
+	err = model.ModelInit(
 		req.DBType,
 		req.DBHost,
 		req.DBUser,
 		req.DBPass,
 		req.DBName,
 		req.DBPort)
-
+	if err != nil {
+		response.InternalError(c, "数据库初始化失败: "+err.Error())
+		return
+	}
 	logger.Log.Info("配置文件已生成，数据库已初始化")
 
 	// 检查端口是否发生变化

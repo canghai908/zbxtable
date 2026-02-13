@@ -76,25 +76,32 @@ func TableName(str string) string {
 }
 
 // 接收数据库信息初始化
-func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
+func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) error {
 	// 直接使用 GORM
 	runmode := GetConfKey("runmode")
 	err := InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport, runmode)
 	if err != nil {
 		logger.Log.Error("Failed to connect database: ", err)
-		os.Exit(1)
+		return err
 	}
 	logger.Log.Info("Database connected!")
 	// 自动迁移表
 	err = AutoMigrate()
 	if err != nil {
 		logger.Log.Error("Failed to auto migrate: ", err)
-		os.Exit(1)
+		return err
 	}
 	// 基础数据初始化
-	DatabaseInit()
+	if err := DatabaseInit(); err != nil {
+		logger.Log.Error("Database init failed: ", err)
+		return err
+	}
 	// 使用go-cache替代Redis（不再需要Redis连接）
-	InitCache()
+	if err := InitCache(); err != nil {
+		logger.Log.Error("Cache init failed: ", err)
+		return err
+	}
+	return nil
 }
 
 func InitWechat() {
@@ -132,7 +139,7 @@ func InitWechat() {
 }
 
 // DatabaseInit 数据初始化
-func DatabaseInit() {
+func DatabaseInit() error {
 	//数据初始化操作 - 使用 GORM
 	var v User
 	err := DB.Where("username = ?", "admin").First(&v).Error
@@ -141,7 +148,7 @@ func DatabaseInit() {
 		err := DB.Model(&User{}).Where("id = ?", v.ID).Update("operation", "['add', 'edit', 'delete','update']").Error
 		if err != nil {
 			logger.Log.Info(err)
-			return
+			return fmt.Errorf("update admin operation failed: %w", err)
 		}
 		logger.Log.Info("update admin operation successfully")
 	}
@@ -186,7 +193,7 @@ func DatabaseInit() {
 		err = DB.Create(&user).Error
 		if err != nil {
 			logger.Log.Info(err)
-			return
+			return fmt.Errorf("create admin account failed: %w", err)
 		}
 		logger.Log.Info("create an administrator account successfully, the admin ID is:", user.ID)
 	}
@@ -195,7 +202,7 @@ func DatabaseInit() {
 	err = DB.Find(&cnt).Error
 	if err != nil {
 		logger.Log.Info(err)
-		return
+		return fmt.Errorf("query system data failed: %w", err)
 	}
 	if len(cnt) == 0 {
 		now := time.Now()
@@ -208,7 +215,7 @@ func DatabaseInit() {
 		err := DB.Create(&sys).Error
 		if err != nil {
 			logger.Log.Info("Init system info error！", err)
-			return
+			return fmt.Errorf("init system data failed: %w", err)
 		}
 		logger.Log.Info("Init system data successfully!")
 	}
@@ -217,7 +224,7 @@ func DatabaseInit() {
 	err = DB.Where("m_type = ?", "2").Find(&rules).Error
 	if err != nil {
 		logger.Log.Info(err)
-		return
+		return fmt.Errorf("query default rules failed: %w", err)
 	}
 	if len(rules) == 0 {
 		// 使用 "*" 作为全局默认规则，匹配所有租户
@@ -236,7 +243,7 @@ func DatabaseInit() {
 		err := DB.Create(&defaultRule).Error
 		if err != nil {
 			logger.Log.Info("Init default rule error！", err)
-			return
+			return fmt.Errorf("init default rule failed: %w", err)
 		}
 		logger.Log.Info("Init default rule successfully!")
 	}
@@ -254,6 +261,7 @@ func DatabaseInit() {
 		}
 		if insertErr := DB.Create(&encryptionKeyConfig).Error; insertErr != nil {
 			logger.Log.Error("Init encryption_key error:", insertErr)
+			return fmt.Errorf("init encryption_key failed: %w", insertErr)
 		} else {
 			logger.Log.Info("Init encryption_key successfully! Key length:", len(randomKey))
 		}
@@ -271,19 +279,24 @@ func DatabaseInit() {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if insertErr := DB.Create(&cfgItem).Error; insertErr != nil {
 				logger.Log.Infof("Init config key %s error: %v", cfgItem.ConfigKey, insertErr)
-				continue
+				return fmt.Errorf("init config key %s failed: %w", cfgItem.ConfigKey, insertErr)
 			}
 			logger.Log.Infof("Init config key %s successfully!", cfgItem.ConfigKey)
-		} else {
+		} else if err != nil {
 			logger.Log.Infof("Init config key %s error: %v", cfgItem.ConfigKey, err)
-			continue
+			return fmt.Errorf("check config key %s failed: %w", cfgItem.ConfigKey, err)
 		}
 	}
 	//默认菜单初始化
-	InitMenuData()
+	if err := InitMenuData(); err != nil {
+		return fmt.Errorf("init menu data failed: %w", err)
+	}
 	//检查并添加缺失的菜单项（用于版本升级）
-	CheckAndAddMenus()
+	if err := CheckAndAddMenus(); err != nil {
+		return fmt.Errorf("check and add menus failed: %w", err)
+	}
 
+	return nil
 }
 
 func GetConfKey(v string) string {

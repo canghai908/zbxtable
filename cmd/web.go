@@ -143,13 +143,16 @@ func runWeb(*cli.Context) error {
 
 	//Config file already created, read database config from config file and initialize database
 	logger.Log.Info("Connecting to database...")
-	model.ModelInit(
+	if err := model.ModelInit(
 		dbtype,
 		dbhost,
 		GetConfKey("dbuser"),
 		GetConfKey("dbpass"),
 		dbname,
-		dbport)
+		dbport); err != nil {
+		logger.Log.Error("Database initialization failed:", err)
+		os.Exit(1)
+	}
 	logger.Log.Info("Database connected successfully")
 
 	//Scheduled tasks

@@ -33,10 +33,11 @@ type SortedSet struct {
 }
 
 // InitCache 初始化缓存（使用go-cache替代Redis）
-func InitCache() {
+func InitCache() error {
 	// 默认过期时间5分钟，清理间隔10分钟
 	Cache = cache.New(5*time.Minute, 10*time.Minute)
 	logger.Log.Info("Cache initialized (using go-cache)")
+	return nil
 }
 
 // ========== 键值存储操作（兼容Redis接口）==========
