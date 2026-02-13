@@ -21,7 +21,7 @@ func InitTask() {
 
 	// 添加任务
 	// 注意：cron 表达式格式为 "秒 分 时 日 月 周"
-	cronScheduler.AddFunc("0/10 * * * * *", func() { _ = TOP() })
+	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = TOP() })
 	cronScheduler.AddFunc("0 55 23 * * *", func() { _ = CreateDayReport() })  // 每天23:55执行
 	cronScheduler.AddFunc("0 55 17 * * 5", func() { _ = CreateWeekReport() }) // 每周五17:55执行
 	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
