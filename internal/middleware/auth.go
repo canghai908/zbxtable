@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"zbxtable/internal/model"
+
 	jwtbeego "github.com/canghai908/jwt-beego"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/ini.v1"
@@ -53,6 +55,49 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// 将用户名存储到上下文中
 		c.Set("username", username)
 		c.Next()
+	}
+}
+
+// DemoModeMiddleware 演示模式中间件
+// 需求：演示模式配置在配置文件中，不额外创建演示账号；仍使用 admin 登录
+// 行为：开启 demo_mode=true 时，拦截所有“可能修改数据”的请求（非 GET），从而保护演示环境数据
+func DemoModeMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 优先从 app.conf / .env 读取（model.GetConfKey 会优先读取 .env，其次 app.conf）
+		demoMode := model.GetConfKey("demo_mode")
+		if demoMode == "" {
+			// 如果配置文件没配置，则回退到数据库配置（可选）
+			demoMode = model.GetConfigValueByKey("demo_mode", "false")
+		}
+
+		// 统一转换成 bool 语义（仅识别 "true"）
+		isDemo := strings.EqualFold(strings.TrimSpace(demoMode), "true")
+		if !isDemo {
+			c.Next()
+			return
+		}
+
+		// 允许 GET 请求（只读）
+		if c.Request.Method == http.MethodGet {
+			c.Next()
+			return
+		}
+
+		// 允许演示环境的必要写入：登录/注销、告警接收/webhook
+		path := c.Request.URL.Path
+		if strings.HasPrefix(path, "/v1/login") ||
+			strings.HasPrefix(path, "/v1/logout") ||
+			strings.HasPrefix(path, "/v1/receive") ||
+			strings.HasPrefix(path, "/v1/webhook") {
+			c.Next()
+			return
+		}
+
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "演示模式已开启：禁止修改数据",
+		})
+		c.Abort()
 	}
 }
 

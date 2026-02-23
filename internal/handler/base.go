@@ -206,8 +206,16 @@ func LoginGin(c *gin.Context) {
 			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
 		}
 		tokenString, _ := et.GetToken()
+
+		// 获取演示模式开关
+		demoMode := model.GetConfKey("demo_mode")
+		if demoMode == "" {
+			demoMode = model.GetConfigValueByKey("demo_mode", "false")
+		}
+
 		response.SuccessWithMessage(c, "登录成功", gin.H{
-			"token": tokenString,
+			"token":     tokenString,
+			"demo_mode": demoMode == "true",
 			"user": gin.H{
 				"id":      user.ID,
 				"name":    user.Username,

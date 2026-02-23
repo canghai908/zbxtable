@@ -431,7 +431,22 @@ func getDefaultConfigs() []Config {
 	// AI 配置
 	configs = append(configs, getAIConfigs()...)
 
+	// 演示模式配置
+	configs = append(configs, getDemoConfigs()...)
+
 	return configs
+}
+
+// getDemoConfigs 演示模式配置
+func getDemoConfigs() []Config {
+	return []Config{
+		{
+			Name:        "演示模式",
+			ConfigKey:   "demo_mode",
+			ConfigValue: "false",
+			Comment:     "是否开启演示模式（只读）：true 开启, false 关闭",
+		},
+	}
 }
 
 // getSystemAppearanceConfigs 系统外观配置

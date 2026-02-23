@@ -425,16 +425,23 @@ func GetPublicSystemInfo(c *gin.Context) {
 	// 默认值
 	systemName := "ZbxTable"
 	systemLogo := "/static/img/logo.png"
+	demoMode := "false"
 
 	// 尝试从数据库获取配置（如果数据库已初始化）
 	if model.DB != nil {
 		systemName = model.GetConfigValueByKey("system_name", "ZbxTable")
 		systemLogo = model.GetConfigValueByKey("system_logo", "/static/img/logo.png")
+		// 增加 demo_mode 返回
+		demoMode = model.GetConfKey("demo_mode")
+		if demoMode == "" {
+			demoMode = model.GetConfigValueByKey("demo_mode", "false")
+		}
 	}
 
 	response.Success(c, gin.H{
 		"system_name": systemName,
 		"system_logo": systemLogo,
+		"demo_mode":   demoMode == "true",
 	})
 }
 

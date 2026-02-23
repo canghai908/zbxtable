@@ -117,6 +117,7 @@ func InitRouter() *gin.Engine {
 		// 需要认证的路由
 		api := v1.Group("")
 		api.Use(middleware.JWTAuthMiddleware())
+		api.Use(middleware.DemoModeMiddleware())
 		{
 			// Zabbix 租户管理（合并后的统一接口）
 			zabbixGroup := api.Group("/zabbix")
