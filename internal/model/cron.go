@@ -250,11 +250,17 @@ func TOP() error {
 		return err
 	}
 
-	// 从配置读取 Top 数量，用于控制写入缓存的数据量（兜底 5）
-	topNumStr := GetConfigValueByKey("dash_top_num", "5")
-	topN, err := strconv.ParseInt(topNumStr, 10, 64)
-	if err != nil || topN <= 0 {
-		topN = 5
+	// 从配置读取 Top 数量
+	linTopNumStr := GetConfigValueByKey("dash_top_lin_num", "10")
+	linTopN, err := strconv.ParseInt(linTopNumStr, 10, 64)
+	if err != nil || linTopN <= 0 {
+		linTopN = 10
+	}
+
+	winTopNumStr := GetConfigValueByKey("dash_top_win_num", "10")
+	winTopN, err := strconv.ParseInt(winTopNumStr, 10, 64)
+	if err != nil || winTopN <= 0 {
+		winTopN = 10
 	}
 
 	// 清空旧数据
@@ -265,7 +271,7 @@ func TOP() error {
 
 	// 从所有实例收集数据
 	for _, inst := range instances {
-		err := TOPFromInstance(inst, topN)
+		err := TOPFromInstance(inst, linTopN, winTopN)
 		if err != nil {
 			logger.Log.Errorf("从实例 %s 收集 TOP 数据失败: %v", inst.Name, err)
 			continue
@@ -276,7 +282,7 @@ func TOP() error {
 }
 
 // TOPFromInstance 从指定实例收集 TOP 数据
-func TOPFromInstance(inst *APIInstance, topN int64) error {
+func TOPFromInstance(inst *APIInstance, linTopN, winTopN int64) error {
 	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	SearchInventoryKey := []string{"VM_WIN", "VM_LIN"}
@@ -395,7 +401,7 @@ func TOPFromInstance(inst *APIInstance, topN int64) error {
 	}
 
 	// 写入：对并集内 key，把 CPU/MEM 都写入各自 ZSet，确保前端合并后可切换排序
-	writeUnion := func(cpuKey, memKey string, cpuList, memList []hostScore) error {
+	writeUnion := func(cpuKey, memKey string, cpuList, memList []hostScore, topN int64) error {
 		cpuMap := toMap(cpuList)
 		memMap := toMap(memList)
 		cpuTop := topKeys(append([]hostScore(nil), cpuList...), topN)
@@ -413,10 +419,10 @@ func TOPFromInstance(inst *APIInstance, topN int64) error {
 		return nil
 	}
 
-	if err := writeUnion("WIN_CPU", "WIN_MEM", winCPUs, winMEMs); err != nil {
+	if err := writeUnion("WIN_CPU", "WIN_MEM", winCPUs, winMEMs, winTopN); err != nil {
 		return err
 	}
-	if err := writeUnion("LIN_CPU", "LIN_MEM", linCPUs, linMEMs); err != nil {
+	if err := writeUnion("LIN_CPU", "LIN_MEM", linCPUs, linMEMs, linTopN); err != nil {
 		return err
 	}
 	return nil

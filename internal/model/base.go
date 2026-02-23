@@ -480,10 +480,16 @@ func getDashboardConfigs() []Config {
 		// 	Comment:     "需要引入的Zabbix面板的ID，默认为1",
 		// },
 		{
-			Name:        "Top数量",
-			ConfigKey:   "dash_top_num",
+			Name:        "Linux Top数量",
+			ConfigKey:   "dash_top_lin_num",
 			ConfigValue: "10",
-			Comment:     "首页Top列表展示数量",
+			Comment:     "首页 Linux Top 列表展示数量",
+		},
+		{
+			Name:        "Windows Top数量",
+			ConfigKey:   "dash_top_win_num",
+			ConfigValue: "10",
+			Comment:     "首页 Windows Top 列表展示数量",
 		},
 		{
 			Name:        "主机分类同步",
