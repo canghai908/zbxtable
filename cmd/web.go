@@ -101,12 +101,9 @@ func runWeb(*cli.Context) error {
 		// When not installed, only start web server, don't connect to database
 		r := v1.InitRouter()
 		httpport := "8088"
-		fmt.Println("╔══════════════════════════════════════════════════════╗")
-		fmt.Printf("║  Service listening on: http://0.0.0.0:%-11s    ║\n", httpport)
-		fmt.Printf("║  Local access URL: http://localhost:%-13s    ║\n", httpport)
-		fmt.Printf("║  Installation wizard: http://localhost:%s/install  ║\n", httpport)
-		fmt.Println("║  Running mode: Installation wizard mode              ║")
-		fmt.Println("╚══════════════════════════════════════════════════════╝")
+		fmt.Printf("Service listening on: http://0.0.0.0:%s\n", httpport)
+		fmt.Printf("Installation wizard: http://localhost:%s/install\n", httpport)
+		fmt.Println("Running mode: Installation wizard mode")
 		fmt.Println("ZbxTable service started successfully, waiting for installation configuration...")
 		r.Run(":" + httpport)
 		return nil
@@ -114,7 +111,6 @@ func runWeb(*cli.Context) error {
 
 	// Already installed, load config file and connect to database
 	logger.Log.Info("System already installed, loading configuration...")
-
 	var err error
 	webCfg, err = ini.Load("./config/app.conf")
 	if err != nil {
@@ -147,13 +143,16 @@ func runWeb(*cli.Context) error {
 
 	//Config file already created, read database config from config file and initialize database
 	logger.Log.Info("Connecting to database...")
-	model.ModelInit(
+	if err := model.ModelInit(
 		dbtype,
 		dbhost,
 		GetConfKey("dbuser"),
 		GetConfKey("dbpass"),
 		dbname,
-		dbport)
+		dbport); err != nil {
+		logger.Log.Error("Database initialization failed:", err)
+		os.Exit(1)
+	}
 	logger.Log.Info("Database connected successfully")
 
 	//Scheduled tasks
@@ -184,12 +183,9 @@ func runWeb(*cli.Context) error {
 	// Use Gin framework directly
 	r := v1.InitRouter()
 
-	fmt.Println("╔═════════════════════════════════════════════╗")
-	fmt.Printf("║  Service listening on: http://0.0.0.0:%-1s  ║\n", httpport)
-	fmt.Printf("║  Local access URL: http://localhost:%-1s    ║\n", httpport)
-	fmt.Printf("║  Running mode: %-25s    ║\n", runmode)
-	fmt.Printf("║  Database: %s@%s:%-16s║\n", dbtype, dbhost, dbport)
-	fmt.Println("╚═════════════════════════════════════════════╝")
+	fmt.Printf("Service listening on: http://0.0.0.0:%s\n", httpport)
+	fmt.Printf("Running mode: %s\n", runmode)
+	fmt.Printf("Database: %s@%s:%s\n", dbtype, dbhost, dbport)
 	fmt.Println("ZbxTable service started successfully!")
 
 	r.Run(":" + httpport)

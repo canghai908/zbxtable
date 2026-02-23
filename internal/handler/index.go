@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
@@ -44,6 +46,20 @@ func GetResourceTop(c *gin.Context) {
 	host_type := c.Query("host_type")
 	metrics_type := c.Query("metrics_type")
 	top_num := c.Query("top_num")
+	// 兜底：如果未传/非法，则根据 host_type 读取对应的系统配置
+	// - VM_WIN: dash_top_win_num
+	// - VM_LIN: dash_top_lin_num
+	if _, err := strconv.ParseInt(top_num, 10, 64); top_num == "" || err != nil {
+		switch host_type {
+		case "VM_WIN":
+			top_num = model.GetConfigValueByKey("dash_top_win_num", "10")
+		case "VM_LIN":
+			top_num = model.GetConfigValueByKey("dash_top_lin_num", "10")
+		default:
+			// 默认按 Windows 兜底，避免返回空
+			top_num = model.GetConfigValueByKey("dash_top_win_num", "10")
+		}
+	}
 	info, err := model.GetTopList(host_type, metrics_type, top_num)
 	if err != nil {
 		response.InternalError(c, err.Error())

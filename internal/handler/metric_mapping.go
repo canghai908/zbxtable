@@ -3,6 +3,7 @@ package handler
 import (
 	"io"
 	"strconv"
+	"strings"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/response"
@@ -174,4 +175,141 @@ func GetMappingHistory(c *gin.Context) {
 	}
 
 	response.SuccessWithPage(c, history, total)
+}
+
+// GetMappingRules 获取指标匹配规则列表
+func GetMappingRules(c *gin.Context) {
+	enabledOnly := c.Query("enabled_only") == "1"
+	rules, err := model.GetMappingRules(enabledOnly)
+	if err != nil {
+		response.DatabaseError(c, "获取规则失败: "+err.Error())
+		return
+	}
+	response.Success(c, rules)
+}
+
+// CreateOrUpdateMappingRule 创建或更新匹配规则
+func CreateOrUpdateMappingRule(c *gin.Context) {
+	var rule model.MappingRule
+	if err := c.ShouldBindJSON(&rule); err != nil {
+		response.BadRequest(c, "参数解析失败")
+		return
+	}
+
+	if rule.TargetField == "" || rule.MatchValue == "" {
+		response.ValidationError(c, "目标字段和匹配值不能为空")
+		return
+	}
+
+	err := model.CreateOrUpdateMappingRule(&rule)
+	if err != nil {
+		response.DatabaseError(c, "保存规则失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "保存成功", rule)
+}
+
+// DeleteMappingRule 删除匹配规则
+func DeleteMappingRule(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	err = model.DeleteMappingRule(id)
+	if err != nil {
+		response.DatabaseError(c, "删除失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// SyncMetricMappingOnTemplates 手动触发模板级指标同步
+func SyncMetricMappingOnTemplates(c *gin.Context) {
+	instanceIDStr := c.Query("zid")
+	if instanceIDStr == "" {
+		response.BadRequest(c, "请指定 Zabbix 实例 ID")
+		return
+	}
+	zid, _ := strconv.Atoi(instanceIDStr)
+
+	// 获取所有启用的规则
+	allRules, err := model.GetMappingRules(true)
+	if err != nil {
+		response.DatabaseError(c, "获取规则失败")
+		return
+	}
+
+	// 过滤适用于该实例的规则 (全局规则或匹配当前 ZID)
+	var filteredRules []model.MappingRule
+	zidStr := strconv.Itoa(zid)
+	for _, rule := range allRules {
+		isMatch := false
+		if rule.ZIDs == "" {
+			isMatch = true // 全局规则
+		} else {
+			zids := strings.Split(rule.ZIDs, ",")
+			for _, z := range zids {
+				if strings.TrimSpace(z) == zidStr {
+					isMatch = true
+					break
+				}
+			}
+		}
+		if isMatch {
+			filteredRules = append(filteredRules, rule)
+		}
+	}
+
+	if len(filteredRules) == 0 {
+		response.SuccessWithMessage(c, "该实例没有适用的指标映射规则", nil)
+		return
+	}
+
+	// 获取 API 实例
+	apiInstance, err := model.GetAPIByZID(zid)
+	if err != nil {
+		response.DatabaseError(c, "获取 Zabbix API 失败")
+		return
+	}
+
+	// 异步执行同步
+	go func() {
+		count, err := model.ExecuteMappingOnTemplates(apiInstance, filteredRules)
+		if err != nil {
+			logger.Log.Errorf("模板同步失败 [zid=%d, rules=%d]: %v", zid, len(filteredRules), err)
+		} else {
+			logger.Log.Infof("模板同步完成 [zid=%d, rules=%d], 影响模板数: %d", zid, len(filteredRules), count)
+		}
+	}()
+
+	response.SuccessWithMessage(c, "同步任务已在后台启动", nil)
+}
+
+// GetTemplateItemsDebug Debug：回查模板 items（包含 key_ / inventory_link）
+func GetTemplateItemsDebug(c *gin.Context) {
+	instanceIDStr := c.Query("zid")
+	templateID := c.Query("templateid")
+	if instanceIDStr == "" || templateID == "" {
+		response.BadRequest(c, "请指定 zid 和 templateid")
+		return
+	}
+	zid, _ := strconv.Atoi(instanceIDStr)
+
+	apiInstance, err := model.GetAPIByZID(zid)
+	if err != nil {
+		response.DatabaseError(c, "获取 Zabbix API 失败")
+		return
+	}
+
+	items, err := model.GetTemplateItemsDebug(apiInstance, templateID)
+	if err != nil {
+		response.DatabaseError(c, "获取模板 items 失败: "+err.Error())
+		return
+	}
+	response.Success(c, items)
 }

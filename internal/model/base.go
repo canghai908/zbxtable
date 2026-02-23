@@ -59,6 +59,15 @@ const (
 	DefaultAvatar = ""
 	//默认更新服务器
 	UpdateURL = "http://dl.cactifans.com/stable/"
+
+	// 上传目录
+	UploadDir = "./upload"
+	// 背景图片上传目录
+	BackgroundImageDir = "./upload/background"
+	// 允许的图片格式
+	AllowedImageExts = ".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+	// 最大文件大小 (10MB)
+	MaxFileSize = 10 * 1024 * 1024
 )
 
 // TableName 表名前缀
@@ -67,25 +76,32 @@ func TableName(str string) string {
 }
 
 // 接收数据库信息初始化
-func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) {
+func ModelInit(dbtype, dbhost, dbuser, dbpass, dbname, dbport string) error {
 	// 直接使用 GORM
 	runmode := GetConfKey("runmode")
 	err := InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport, runmode)
 	if err != nil {
 		logger.Log.Error("Failed to connect database: ", err)
-		os.Exit(1)
+		return err
 	}
 	logger.Log.Info("Database connected!")
 	// 自动迁移表
 	err = AutoMigrate()
 	if err != nil {
 		logger.Log.Error("Failed to auto migrate: ", err)
-		os.Exit(1)
+		return err
 	}
 	// 基础数据初始化
-	DatabaseInit()
+	if err := DatabaseInit(); err != nil {
+		logger.Log.Error("Database init failed: ", err)
+		return err
+	}
 	// 使用go-cache替代Redis（不再需要Redis连接）
-	InitCache()
+	if err := InitCache(); err != nil {
+		logger.Log.Error("Cache init failed: ", err)
+		return err
+	}
+	return nil
 }
 
 func InitWechat() {
@@ -123,7 +139,7 @@ func InitWechat() {
 }
 
 // DatabaseInit 数据初始化
-func DatabaseInit() {
+func DatabaseInit() error {
 	//数据初始化操作 - 使用 GORM
 	var v User
 	err := DB.Where("username = ?", "admin").First(&v).Error
@@ -132,7 +148,7 @@ func DatabaseInit() {
 		err := DB.Model(&User{}).Where("id = ?", v.ID).Update("operation", "['add', 'edit', 'delete','update']").Error
 		if err != nil {
 			logger.Log.Info(err)
-			return
+			return fmt.Errorf("update admin operation failed: %w", err)
 		}
 		logger.Log.Info("update admin operation successfully")
 	}
@@ -177,7 +193,7 @@ func DatabaseInit() {
 		err = DB.Create(&user).Error
 		if err != nil {
 			logger.Log.Info(err)
-			return
+			return fmt.Errorf("create admin account failed: %w", err)
 		}
 		logger.Log.Info("create an administrator account successfully, the admin ID is:", user.ID)
 	}
@@ -186,7 +202,7 @@ func DatabaseInit() {
 	err = DB.Find(&cnt).Error
 	if err != nil {
 		logger.Log.Info(err)
-		return
+		return fmt.Errorf("query system data failed: %w", err)
 	}
 	if len(cnt) == 0 {
 		now := time.Now()
@@ -199,7 +215,7 @@ func DatabaseInit() {
 		err := DB.Create(&sys).Error
 		if err != nil {
 			logger.Log.Info("Init system info error！", err)
-			return
+			return fmt.Errorf("init system data failed: %w", err)
 		}
 		logger.Log.Info("Init system data successfully!")
 	}
@@ -208,7 +224,7 @@ func DatabaseInit() {
 	err = DB.Where("m_type = ?", "2").Find(&rules).Error
 	if err != nil {
 		logger.Log.Info(err)
-		return
+		return fmt.Errorf("query default rules failed: %w", err)
 	}
 	if len(rules) == 0 {
 		// 使用 "*" 作为全局默认规则，匹配所有租户
@@ -227,7 +243,7 @@ func DatabaseInit() {
 		err := DB.Create(&defaultRule).Error
 		if err != nil {
 			logger.Log.Info("Init default rule error！", err)
-			return
+			return fmt.Errorf("init default rule failed: %w", err)
 		}
 		logger.Log.Info("Init default rule successfully!")
 	}
@@ -245,10 +261,14 @@ func DatabaseInit() {
 		}
 		if insertErr := DB.Create(&encryptionKeyConfig).Error; insertErr != nil {
 			logger.Log.Error("Init encryption_key error:", insertErr)
+			return fmt.Errorf("init encryption_key failed: %w", insertErr)
 		} else {
 			logger.Log.Info("Init encryption_key successfully! Key length:", len(randomKey))
 		}
 	}
+
+	// 初始化内置映射规则
+	//InitDefaultMappingRules()
 
 	// 获取结构化的默认配置
 	defaultConfigs := getDefaultConfigs()
@@ -259,19 +279,24 @@ func DatabaseInit() {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if insertErr := DB.Create(&cfgItem).Error; insertErr != nil {
 				logger.Log.Infof("Init config key %s error: %v", cfgItem.ConfigKey, insertErr)
-				continue
+				return fmt.Errorf("init config key %s failed: %w", cfgItem.ConfigKey, insertErr)
 			}
 			logger.Log.Infof("Init config key %s successfully!", cfgItem.ConfigKey)
-		} else {
+		} else if err != nil {
 			logger.Log.Infof("Init config key %s error: %v", cfgItem.ConfigKey, err)
-			continue
+			return fmt.Errorf("check config key %s failed: %w", cfgItem.ConfigKey, err)
 		}
 	}
 	//默认菜单初始化
-	InitMenuData()
+	if err := InitMenuData(); err != nil {
+		return fmt.Errorf("init menu data failed: %w", err)
+	}
 	//检查并添加缺失的菜单项（用于版本升级）
-	CheckAndAddMenus()
+	if err := CheckAndAddMenus(); err != nil {
+		return fmt.Errorf("check and add menus failed: %w", err)
+	}
 
+	return nil
 }
 
 func GetConfKey(v string) string {
@@ -406,7 +431,22 @@ func getDefaultConfigs() []Config {
 	// AI 配置
 	configs = append(configs, getAIConfigs()...)
 
+	// 演示模式配置
+	configs = append(configs, getDemoConfigs()...)
+
 	return configs
+}
+
+// getDemoConfigs 演示模式配置
+func getDemoConfigs() []Config {
+	return []Config{
+		{
+			Name:        "演示模式",
+			ConfigKey:   "demo_mode",
+			ConfigValue: "false",
+			Comment:     "是否开启演示模式（只读）：true 开启, false 关闭",
+		},
+	}
 }
 
 // getSystemAppearanceConfigs 系统外观配置
@@ -442,17 +482,29 @@ func getInitialSetupConfigs() []Config {
 // getDashboardConfigs Dashboard 相关配置
 func getDashboardConfigs() []Config {
 	return []Config{
+		// {
+		// 	Name:        "数据面板",
+		// 	ConfigKey:   "zbx_dash",
+		// 	ConfigValue: "0",
+		// 	Comment:     "是否开启Zabbix看板：1 开启,0 关闭",
+		// },
+		// {
+		// 	Name:        "面板配置",
+		// 	ConfigKey:   "dash_id",
+		// 	ConfigValue: "1",
+		// 	Comment:     "需要引入的Zabbix面板的ID，默认为1",
+		// },
 		{
-			Name:        "数据面板",
-			ConfigKey:   "zbx_dash",
-			ConfigValue: "0",
-			Comment:     "是否开启Zabbix看板：1 开启,0 关闭",
+			Name:        "Linux Top数量",
+			ConfigKey:   "dash_top_lin_num",
+			ConfigValue: "10",
+			Comment:     "首页 Linux Top 列表展示数量",
 		},
 		{
-			Name:        "面板配置",
-			ConfigKey:   "dash_id",
-			ConfigValue: "1",
-			Comment:     "需要引入的Zabbix面板的ID，默认为1",
+			Name:        "Windows Top数量",
+			ConfigKey:   "dash_top_win_num",
+			ConfigValue: "10",
+			Comment:     "首页 Windows Top 列表展示数量",
 		},
 		{
 			Name:        "主机分类同步",

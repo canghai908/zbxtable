@@ -63,6 +63,8 @@ type TreeRes struct {
 type TopList struct {
 	Hostname     string  `json:"hostname"`
 	Score        float64 `json:"score"`
+	CPU          float64 `json:"cpu"`
+	MEM          float64 `json:"mem"`
 	InstanceName string  `json:"instance_name,omitempty"` // 实例名称
 }
 

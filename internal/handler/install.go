@@ -137,7 +137,7 @@ func writeConfigFile(
 		cfg.Section("").NewKey("timeout", timeout)
 	}
 	// logger defaults (copyrequestbody 已废弃，不再写入)
-	cfg.Section("").NewKey("log_level", "6")
+	cfg.Section("").NewKey("log_level", "3")
 	cfg.Section("").NewKey("log_path", "log")
 	cfg.Section("").NewKey("maxlines", "1000")
 	cfg.Section("").NewKey("maxsize", "0")
@@ -350,14 +350,17 @@ func DoInstall(c *gin.Context) {
 	}
 
 	// 初始化数据库
-	model.ModelInit(
+	err = model.ModelInit(
 		req.DBType,
 		req.DBHost,
 		req.DBUser,
 		req.DBPass,
 		req.DBName,
 		req.DBPort)
-
+	if err != nil {
+		response.InternalError(c, "数据库初始化失败: "+err.Error())
+		return
+	}
 	logger.Log.Info("配置文件已生成，数据库已初始化")
 
 	// 检查端口是否发生变化

@@ -33,10 +33,11 @@ type SortedSet struct {
 }
 
 // InitCache 初始化缓存（使用go-cache替代Redis）
-func InitCache() {
+func InitCache() error {
 	// 默认过期时间5分钟，清理间隔10分钟
 	Cache = cache.New(5*time.Minute, 10*time.Minute)
 	logger.Log.Info("Cache initialized (using go-cache)")
+	return nil
 }
 
 // ========== 键值存储操作（兼容Redis接口）==========
@@ -162,6 +163,23 @@ func CacheZAdd(key string, member string, score float64) error {
 type ZMember struct {
 	Member string
 	Score  float64
+}
+
+// CacheZScore 获取排序集合指定成员的分数（兼容Redis ZScore）
+func CacheZScore(key string, member string) (float64, bool) {
+	sortedSetMu.RLock()
+	sortedSet, exists := sortedSetStore[key]
+	sortedSetMu.RUnlock()
+	if !exists {
+		return 0, false
+	}
+	sortedSet.mu.RLock()
+	score, ok := sortedSet.members[member]
+	sortedSet.mu.RUnlock()
+	if !ok {
+		return 0, false
+	}
+	return score, true
 }
 
 // CacheZRevRangeWithScores 获取排序集合的成员（按分数降序，兼容Redis ZRevRangeWithScores）

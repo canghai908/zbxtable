@@ -206,35 +206,16 @@ func LoginGin(c *gin.Context) {
 			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
 		}
 		tokenString, _ := et.GetToken()
-		response.SuccessWithMessage(c, "登录成功", gin.H{
-			"token": tokenString,
-			"user": gin.H{
-				"id":      user.ID,
-				"name":    user.Username,
-				"avatar":  user.Avatar,
-				"role":    user.Role,
-				"created": user.Created,
-				"theme":   user.Theme, // 添加主题配置
-			},
-			"roles": []gin.H{
-				{
-					"id":        user.Role,
-					"operation": user.Operation,
-				},
-			},
-		})
-		return
-	}
 
-	// md5 encrypt
-	if utils.Md5([]byte(reqUser.Password)) == user.Password {
-		et := jwtbeego.EasyToken{
-			Username: user.Username,
-			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
+		// 获取演示模式开关
+		demoMode := model.GetConfKey("demo_mode")
+		if demoMode == "" {
+			demoMode = model.GetConfigValueByKey("demo_mode", "false")
 		}
-		tokenString, _ := et.GetToken()
+
 		response.SuccessWithMessage(c, "登录成功", gin.H{
-			"token": tokenString,
+			"token":     tokenString,
+			"demo_mode": demoMode == "true",
 			"user": gin.H{
 				"id":      user.ID,
 				"name":    user.Username,
@@ -252,7 +233,6 @@ func LoginGin(c *gin.Context) {
 		})
 		return
 	}
-
 	response.BadRequest(c, "用户名或密码错误")
 }
 
