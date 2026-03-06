@@ -1,338 +1,181 @@
 # ZbxTable Docker 部署指南
 
-本文档介绍如何使用 Docker 和 Docker Compose 部署 ZbxTable。
+本文档介绍如何在 `zbxtable` 项目中使用 Docker / Docker Compose 快速部署，并通过 `deployments/docker/docker.sh` 脚本进行日常运维。
 
 ## 目录
 
 - [前置要求](#前置要求)
-- [快速开始](#快速开始)
+- [目录结构](#目录结构)
+- [快速开始（推荐）](#快速开始推荐)
+- [docker.sh 脚本命令](#dockersh-脚本命令)
+- [手动 Docker Compose 命令](#手动-docker-compose-命令)
 - [配置说明](#配置说明)
-- [常用命令](#常用命令)
+- [备份与恢复](#备份与恢复)
 - [故障排查](#故障排查)
 
 ## 前置要求
 
 - Docker 20.10+
-- Docker Compose 2.0+
+- Docker Compose 2.0+（或兼容 `docker-compose` 命令）
 - 至少 2GB 可用内存
-- 至少 10GB 可用磁盘分区
+- 至少 10GB 可用磁盘空间
 
-## 快速开始
+## 目录结构
 
-### 方式一：使用 Docker Compose（推荐）
+`zbxtable` 项目下与 Docker 相关的核心文件：
 
-1. **克隆项目**
+- `docker-compose.yml`
+- `Dockerfile`
+- `config/`（容器启动后会自动生成 `app.conf`）
+- `deployments/docker/docker.sh`
+- `deployments/docker/mysql/init.sql`
 
-```bash
-git clone https://github.com/canghai908/zbxtable.git
-cd zbxtable/zbxtable
-```
+## 快速开始（推荐）
 
-2. **准备配置文件**
-
-```bash
-# 复制配置文件模板
-cp config/app.conf.example config/app.conf
-
-# 编辑配置文件，修改数据库连接信息
-vim config/app.conf
-```
-
-配置示例：
-
-```ini
-; zbxtable
-appname   = zbxtable
-httpport  = 8085
-runmode   = prod
-timeout   = 12
-token     = ced46eae0ffa411f8e7bbec90cc6e68d
-log_level = 6
-; 日志路径，留空则默认为 ./log/yyyy-MM-dd.log
-log_path  = 
-maxlines  = 1000
-maxsize   = 100
-maxdays   = 10
-daily     = true
-
-; database
-dbtype    = mysql
-dbhost    = mysql
-dbuser    = zbxtable
-dbpass    = zbxtablepwd123
-dbname    = zbxtable
-dbport    = 3306
-```
-
-3. **启动服务**
+1. 进入项目目录
 
 ```bash
-# 启动所有服务（MySQL + ZbxTable）
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f zbxtable
+cd /Users/canghai/dev/code/zbxtable/zbxtable
 ```
 
-4. **访问应用**
-
-打开浏览器访问：`http://localhost:8085`
-
-首次访问会进入安装向导，按照提示完成安装。
-
-### 方式二：仅使用 Docker
-
-1. **构建镜像**
+2. 赋予脚本执行权限（首次）
 
 ```bash
-# 在项目根目录下构建
-docker build -t zbxtable:latest -f zbxtable/Dockerfile .
+chmod +x deployments/docker/docker.sh
 ```
 
-2. **运行容器**
+3. 启动服务
 
 ```bash
-docker run -d \
-  --name zbxtable \
-  -p 8085:8085 \
-  -v $(pwd)/config:/app/config \
-  -v $(pwd)/log:/app/log \
-  -v $(pwd)/download:/app/download \
-  -v $(pwd)/template:/app/template \
-  -e TZ=Asia/Shanghai \
-  zbxtable:latest
+./deployments/docker/docker.sh up
 ```
+
+> 脚本会自动创建运行目录：`config`、`log`、`download`、`template`。
+>
+> 首次启动时，程序会自动生成 `config/app.conf`。
+
+4. 查看日志
+
+```bash
+./deployments/docker/docker.sh logs zbxtable
+```
+
+5. 访问应用
+
+- 地址：`http://localhost:8088`
+- 首次访问会进入安装向导
+
+## docker.sh 脚本命令
+
+在项目根目录执行：
+
+```bash
+./deployments/docker/docker.sh <命令> [参数]
+```
+
+支持命令：
+
+- `up`：启动服务（mysql + zbxtable，自动创建运行目录）
+- `down`：停止并移除容器
+- `restart`：重启服务
+- `ps`：查看服务状态
+- `logs [service]`：查看日志，支持指定服务名（如 `zbxtable` / `mysql`）
+- `build`：重新构建镜像
+- `rebuild`：强制重建并启动（自动创建运行目录 + `down + build --no-cache + up -d`）
+- `pull`：拉取基础镜像
+- `backup [文件路径]`：备份数据库（默认输出 `backup_时间.sql`）
+- `restore <文件路径>`：从 SQL 文件恢复数据库
+- `help`：查看帮助
+
+## 手动 Docker Compose 命令
+
+如需不经过脚本，可直接使用：
+
+```bash
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml logs -f zbxtable
+docker compose -f docker-compose.yml down
+```
+
+> 若你的环境仅支持 `docker-compose`，将 `docker compose` 替换为 `docker-compose` 即可。
 
 ## 配置说明
 
-### 环境变量
+### 1) 端口
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| TZ | 时区设置 | Asia/Shanghai |
+- 应用端口：`8088`
+- 数据库端口：`3306`
 
-### 数据卷
+### 2) 挂载目录
 
-| 容器路径 | 说明 | 建议挂载 |
-|----------|------|----------|
-| /app/config | 配置文件目录 | 是 |
-| /app/log | 日志文件目录 | 是 |
-| /app/download | 下载文件目录 | 是 |
-| /app/template | 模板文件目录 | 可选 |
+`docker-compose.yml` 默认挂载：
 
-### 端口
+- `./config:/app/config`
+- `./log:/app/log`
+- `./download:/app/download`
+- `./template:/app/template`
 
-| 端口 | 说明 |
-|------|------|
-| 8085 | Web 服务端口 |
+### 3) 配置文件
 
-## 常用命令
+- `config/app.conf` 由程序启动后自动生成，无需手动创建。
+- 如需连接 Compose 内置 MySQL，请确保自动生成后的配置中 `dbhost=mysql`、`dbport=3306`。
 
-### Docker Compose 命令
+### 4) 时区
 
-```bash
-# 启动服务
-docker-compose up -d
+默认使用：`Asia/Shanghai`
 
-# 停止服务
-docker-compose stop
+## 备份与恢复
 
-# 重启服务
-docker-compose restart
-
-# 查看日志
-docker-compose logs -f zbxtable
-
-# 查看服务状态
-docker-compose ps
-
-# 停止并删除容器
-docker-compose down
-
-# 停止并删除容器及数据卷
-docker-compose down -v
-```
-
-### Docker 命令
+### 备份数据库
 
 ```bash
-# 查看容器日志
-docker logs -f zbxtable
-
-# 进入容器
-docker exec -it zbxtable sh
-
-# 重启容器
-docker restart zbxtable
-
-# 停止容器
-docker stop zbxtable
-
-# 删除容器
-docker rm zbxtable
-
-# 查看容器状态
-docker ps -a | grep zbxtable
+./deployments/docker/docker.sh backup
 ```
 
-## 数据库初始化
-
-如果使用 Docker Compose，MySQL 会自动初始化。如果使用外部数据库，需要手动创建数据库：
-
-```sql
-CREATE DATABASE IF NOT EXISTS zbxtable DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'zbxtable'@'%' IDENTIFIED BY 'zbxtablepwd123';
-GRANT ALL PRIVILEGES ON zbxtable.* TO 'zbxtable'@'%';
-FLUSH PRIVILEGES;
-```
-
-## 升级
-
-### 使用 Docker Compose 升级
+或指定路径：
 
 ```bash
-# 拉取最新代码
-git pull
-
-# 重新构建镜像
-docker-compose build
-
-# 重启服务
-docker-compose up -d
-
-# 查看日志确认启动成功
-docker-compose logs -f zbxtable
+./deployments/docker/docker.sh backup ./backup/zbxtable_$(date +%F).sql
 ```
 
-### 使用 Docker 升级
+### 恢复数据库
 
 ```bash
-# 停止旧容器
-docker stop zbxtable
-docker rm zbxtable
-
-# 重新构建镜像
-docker build -t zbxtable:latest -f zbxtable/Dockerfile .
-
-# 启动新容器
-docker run -d \
-  --name zbxtable \
-  -p 8085:8085 \
-  -v $(pwd)/config:/app/config \
-  -v $(pwd)/log:/app/log \
-  -v $(pwd)/download:/app/download \
-  zbxtable:latest
+./deployments/docker/docker.sh restore ./backup/zbxtable_2026-03-06.sql
 ```
 
 ## 故障排查
 
-### 1. 容器无法启动
+### 1) 容器启动失败
 
 ```bash
-# 查看容器日志
-docker logs zbxtable
-
-# 检查配置文件
-cat config/app.conf
-
-# 检查端口占用
-netstat -tunlp | grep 8085
+./deployments/docker/docker.sh ps
+./deployments/docker/docker.sh logs zbxtable
+./deployments/docker/docker.sh logs mysql
 ```
 
-### 2. 无法连接数据库
+### 2) 数据库连接失败
+
+请检查：
+
+- `config/app.conf` 中 `dbhost` 是否为 `mysql`
+- `dbuser/dbpass/dbname` 是否与 `docker-compose.yml` 一致
+- MySQL 容器是否正常运行
+
+### 3) 配置文件说明
+
+`config/app.conf` 由程序自动生成；如果未生成，请先查看应用日志定位原因：
 
 ```bash
-# 检查数据库容器状态
-docker-compose ps mysql
-
-# 测试数据库连接
-docker exec -it zbxtable-mysql mysql -uzbxtable -pzbxtablepwd123 -e "SELECT 1"
-
-# 检查网络连接
-docker network inspect zbxtable_zbxtable-network
+./deployments/docker/docker.sh logs zbxtable
 ```
 
-### 3. 日志文件过大
+### 4) 端口冲突
 
-日志文件会自动按天分割并压缩，默认保留 10 天。可以在 `config/app.conf` 中调整：
+如果 8088 或 3306 已被占用，请修改 `docker-compose.yml` 的端口映射。
 
-```ini
-maxdays   = 7    ; 保留7天
-maxsize   = 100  ; 单个文件最大100MB
-```
+---
 
-### 4. 查看健康检查状态
-
-```bash
-# 查看容器健康状态
-docker inspect --format='{{.State.Health.Status}}' zbxtable
-
-# 查看健康检查日志
-docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' zbxtable
-```
-
-## 性能优化
-
-### 1. 调整 MySQL 配置
-
-编辑 `docker-compose.yml`，在 mysql 服务的 command 部分添加：
-
-```yaml
-command:
-  - --character-set-server=utf8mb4
-  - --collation-server=utf8mb4_unicode_ci
-  - --max_connections=1000
-  - --innodb_buffer_pool_size=1G
-```
-
-### 2. 调整应用日志级别
-
-在生产环境建议将日志级别设置为 1（Info）或 2（Error）：
-
-```ini
-log_level = 1
-```
-
-## 安全建议
-
-1. **修改默认密码**：修改 `docker-compose.yml` 中的数据库密码
-2. **使用 HTTPS**：建议在前端配置 Nginx 反向代理并启用 HTTPS
-3. **限制端口访问**：使用防火墙限制 8085 端口的访问
-4. **定期备份**：定期备份数据库和配置文件
-
-## 备份与恢复
-
-### 备份
-
-```bash
-# 备份数据库
-docker exec zbxtable-mysql mysqldump -uzbxtable -pzbxtablepwd123 zbxtable > backup.sql
-
-# 备份配置文件
-tar -czf config_backup.tar.gz config/
-
-# 备份数据卷
-docker run --rm -v zbxtable_mysql_data:/data -v $(pwd):/backup alpine tar -czf /backup/mysql_data_backup.tar.gz /data
-```
-
-### 恢复
-
-```bash
-# 恢复数据库
-docker exec -i zbxtable-mysql mysql -uzbxtable -pzbxtablepwd123 zbxtable < backup.sql
-
-# 恢复配置文件
-tar -xzf config_backup.tar.gz
-```
-
-## 支持
-
-如有问题，请访问：
+如有问题请提交：
 
 - GitHub Issues: https://github.com/canghai908/zbxtable/issues
-- 官方文档: https://zbxtable.com
-
-## 许可证
-
-Apache-2.0 License
-

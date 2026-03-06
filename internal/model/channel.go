@@ -444,8 +444,29 @@ func MeetEventConditions(event *Event, rule *Rule) bool {
 	return GetCELMatcher().Match(conds, matchData)
 }
 
+func normalizeChannel(ch string) string {
+	ch = strings.TrimSpace(strings.ToLower(ch))
+	switch ch {
+	case "wechatrobot", "wechat-robot":
+		return "wechat_robot"
+	default:
+		return ch
+	}
+}
+
 func isMuteChannel(event *Event, rule *Rule) bool {
-	return !strings.Contains(rule.Channel, event.Channel)
+	// 规则未指定渠道时，视为匹配全部渠道（不做渠道限制）
+	if strings.TrimSpace(rule.Channel) == "" {
+		return false
+	}
+
+	eventChannel := normalizeChannel(event.Channel)
+	for _, ch := range strings.Split(rule.Channel, ",") {
+		if normalizeChannel(ch) == eventChannel {
+			return false
+		}
+	}
+	return true
 }
 
 // no alarm
