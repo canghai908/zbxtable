@@ -12,7 +12,6 @@ import (
 	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
 )
 
 var alarmPromptVarPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_]+)\s*\}\}`)
@@ -148,7 +147,7 @@ func AIChat(c *gin.Context) {
 		Message      string               `json:"message"`
 		AlarmContext *AlarmContextPayload `json:"alarm_context"`
 	}
-	if err := jsoniter.Unmarshal(body, &userReq); err != nil {
+	if err := json.Unmarshal(body, &userReq); err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
@@ -223,7 +222,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 		},
 	}
 
-	jsonData, err := jsoniter.Marshal(ollamaReq)
+	jsonData, err := json.Marshal(ollamaReq)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -276,7 +275,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 			} `json:"message"`
 			Done bool `json:"done"`
 		}
-		if err := jsoniter.Unmarshal(line, &response); err != nil {
+		if err := json.Unmarshal(line, &response); err != nil {
 			continue
 		}
 
@@ -345,7 +344,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 		},
 	}
 
-	jsonData, err := jsoniter.Marshal(deepseekReq)
+	jsonData, err := json.Marshal(deepseekReq)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -452,7 +451,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 			} `json:"choices"`
 		}
 
-		if err := jsoniter.Unmarshal([]byte(lineStr), &response); err != nil {
+		if err := json.Unmarshal([]byte(lineStr), &response); err != nil {
 			continue
 		}
 
