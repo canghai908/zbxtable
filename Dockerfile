@@ -36,7 +36,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o 
 FROM alpine:latest
 
 # 安装运行时依赖
-RUN apk --no-cache add ca-certificates tzdata && \
+RUN apk --no-cache add ca-certificates tzdata wget && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
@@ -46,12 +46,6 @@ WORKDIR /app
 COPY --from=backend-builder /app/zbxtable .
 COPY --from=backend-builder /app/web ./web
 
-# 复制配置文件模板
-COPY zbxtable/config/app.conf ./config/app.conf.example
-
-# 复制模板文件
-COPY zbxtable/pkg/templates/files ./pkg/templates/files
-
 # 创建必要的目录
 RUN mkdir -p /app/log /app/download /app/template /app/config
 
@@ -59,11 +53,11 @@ RUN mkdir -p /app/log /app/download /app/template /app/config
 RUN chmod +x /app/zbxtable
 
 # 暴露端口
-EXPOSE 8085
+EXPOSE 8088
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8085/ || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:8088/ || exit 1
 
 # 启动应用
 CMD ["/app/zbxtable", "web"]

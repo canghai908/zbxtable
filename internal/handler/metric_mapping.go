@@ -62,10 +62,15 @@ func CreateOrUpdateMetricMapping(c *gin.Context) {
 
 	var mapping model.MetricMapping
 
-	// 解析基本字段
-	idStr := gjson.Get(string(body), "id").String()
-	if idStr != "" {
-		mapping.ID, _ = strconv.ParseInt(idStr, 10, 64)
+	// 解析基本字段（更新优先使用路径参数 ID，创建时使用 body 中的 id）
+	pathIDStr := c.Param("id")
+	if pathIDStr != "" {
+		mapping.ID, _ = strconv.ParseInt(pathIDStr, 10, 64)
+	} else {
+		idStr := gjson.Get(string(body), "id").String()
+		if idStr != "" {
+			mapping.ID, _ = strconv.ParseInt(idStr, 10, 64)
+		}
 	}
 
 	mapping.ZID, _ = strconv.Atoi(gjson.Get(string(body), "zid").String())

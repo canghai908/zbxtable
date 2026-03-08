@@ -6,13 +6,128 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
 )
+
+var alarmPromptVarPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_]+)\s*\}\}`)
+
+func extractAlarmContext(rawMessage string) (string, string) {
+	parts := strings.SplitN(rawMessage, "\n\n", 2)
+	if len(parts) == 2 {
+		ctx := strings.TrimSpace(parts[0])
+		if strings.Contains(ctx, "告警上下文") || strings.Contains(ctx, "Alarm Context") {
+			return ctx, strings.TrimSpace(parts[1])
+		}
+	}
+	return "", strings.TrimSpace(rawMessage)
+}
+
+type AlarmContextPayload struct {
+	Hostname string `json:"hostname"`
+	HostIP   string `json:"host_ip"`
+	Message  string `json:"message"`
+	Detail   string `json:"detail"`
+	Level    string `json:"level"`
+	Status   string `json:"status"`
+}
+
+func parseContextFields(alarmContext string) map[string]string {
+	fields := map[string]string{}
+	if alarmContext == "" {
+		return fields
+	}
+	for _, line := range strings.Split(alarmContext, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		kv := strings.SplitN(line, ":", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		k := strings.TrimSpace(kv[0])
+		v := strings.TrimSpace(kv[1])
+		switch k {
+		case "设备名称", "Device Name":
+			fields["hostname"] = v
+		case "IP":
+			fields["host_ip"] = v
+		case "告警描述", "Description":
+			fields["message"] = v
+		case "告警详情", "Detail":
+			fields["detail"] = v
+		}
+	}
+	return fields
+}
+
+func renderAlarmPromptTemplate(template string, rawMessage string, alarmCtx *AlarmContextPayload) string {
+	t := strings.TrimSpace(template)
+	if t == "" {
+		return rawMessage
+	}
+
+	alarmContext, userMessage := extractAlarmContext(rawMessage)
+	ctxFields := parseContextFields(alarmContext)
+	if alarmCtx != nil {
+		if alarmCtx.Hostname != "" {
+			ctxFields["hostname"] = alarmCtx.Hostname
+		}
+		if alarmCtx.HostIP != "" {
+			ctxFields["host_ip"] = alarmCtx.HostIP
+		}
+		if alarmCtx.Message != "" {
+			ctxFields["message"] = alarmCtx.Message
+		}
+		if alarmCtx.Detail != "" {
+			ctxFields["detail"] = alarmCtx.Detail
+		}
+		if alarmCtx.Level != "" {
+			ctxFields["level"] = alarmCtx.Level
+		}
+		if alarmCtx.Status != "" {
+			ctxFields["status"] = alarmCtx.Status
+		}
+	}
+	if alarmContext == "" && len(ctxFields) > 0 {
+		alarmContext = strings.TrimSpace(
+			fmt.Sprintf("告警上下文:\n设备名称: %s\nIP: %s\n告警描述: %s\n告警详情: %s",
+				ctxFields["hostname"], ctxFields["host_ip"], ctxFields["message"], ctxFields["detail"]),
+		)
+	}
+
+	mapping := map[string]string{
+		"hostname":      ctxFields["hostname"],
+		"host_ip":       ctxFields["host_ip"],
+		"message":       ctxFields["message"],
+		"detail":        ctxFields["detail"],
+		"level":         ctxFields["level"],
+		"status":        ctxFields["status"],
+		"alarm_context": alarmContext,
+	}
+
+	rendered := alarmPromptVarPattern.ReplaceAllStringFunc(t, func(token string) string {
+		matched := alarmPromptVarPattern.FindStringSubmatch(token)
+		if len(matched) < 2 {
+			return token
+		}
+		key := matched[1]
+		if val, ok := mapping[key]; ok {
+			return val
+		}
+		return token
+	})
+
+	if userMessage != "" {
+		rendered = strings.TrimSpace(rendered + "\n\n" + userMessage)
+	}
+	return rendered
+}
 
 // AIChat 流式聊天接口
 func AIChat(c *gin.Context) {
@@ -29,9 +144,10 @@ func AIChat(c *gin.Context) {
 	}
 
 	var userReq struct {
-		Message string `json:"message"`
+		Message      string               `json:"message"`
+		AlarmContext *AlarmContextPayload `json:"alarm_context"`
 	}
-	if err := jsoniter.Unmarshal(body, &userReq); err != nil {
+	if err := json.Unmarshal(body, &userReq); err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
@@ -43,6 +159,10 @@ func AIChat(c *gin.Context) {
 		return
 	}
 
+	// 告警分析提示词（后端兜底渲染，避免仅依赖前端）
+	alarmPromptTpl := model.GetConfigValueByKey("alarm_analysis_prompt", "")
+	finalMessage := renderAlarmPromptTemplate(alarmPromptTpl, userReq.Message, userReq.AlarmContext)
+
 	// 获取 AI 类型配置
 	aiType := model.GetConfigValueByKey("ai_type", "ollama")
 	if aiType == "" {
@@ -52,12 +172,12 @@ func AIChat(c *gin.Context) {
 	// 根据 AI 类型调用不同的服务
 	switch aiType {
 	case "deepseek":
-		handleDeepseekChat(c, userReq.Message)
+		handleDeepseekChat(c, finalMessage)
 	case "ollama":
-		handleOllamaChat(c, userReq.Message)
+		handleOllamaChat(c, finalMessage)
 	default:
 		// 默认使用 Ollama
-		handleOllamaChat(c, userReq.Message)
+		handleOllamaChat(c, finalMessage)
 	}
 }
 
@@ -84,13 +204,13 @@ func handleOllamaChat(c *gin.Context, message string) {
 
 	// 构造 Ollama 请求
 	ollamaReq := struct {
-		Model    string        `json:"model"`
-		Messages []interface{} `json:"messages"`
-		Stream   bool          `json:"stream"`
+		Model    string `json:"model"`
+		Messages []any  `json:"messages"`
+		Stream   bool   `json:"stream"`
 	}{
 		Model:  ollamaModel,
 		Stream: true,
-		Messages: []interface{}{
+		Messages: []any{
 			systemPrompt,
 			struct {
 				Role    string `json:"role"`
@@ -102,7 +222,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 		},
 	}
 
-	jsonData, err := jsoniter.Marshal(ollamaReq)
+	jsonData, err := json.Marshal(ollamaReq)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -155,7 +275,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 			} `json:"message"`
 			Done bool `json:"done"`
 		}
-		if err := jsoniter.Unmarshal(line, &response); err != nil {
+		if err := json.Unmarshal(line, &response); err != nil {
 			continue
 		}
 
@@ -224,7 +344,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 		},
 	}
 
-	jsonData, err := jsoniter.Marshal(deepseekReq)
+	jsonData, err := json.Marshal(deepseekReq)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -331,7 +451,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 			} `json:"choices"`
 		}
 
-		if err := jsoniter.Unmarshal([]byte(lineStr), &response); err != nil {
+		if err := json.Unmarshal([]byte(lineStr), &response); err != nil {
 			continue
 		}
 

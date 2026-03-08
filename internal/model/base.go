@@ -635,5 +635,11 @@ func getAIConfigs() []Config {
 			ConfigValue: "https://api.deepseek.com",
 			Comment:     "Deepseek API 地址，默认为 https://api.deepseek.com",
 		},
+		{
+			Name:      "告警分析提示词",
+			ConfigKey: "alarm_analysis_prompt",
+			ConfigValue: "你是专业运维分析师。请基于以下告警信息进行分析：\n\n设备名称：{{hostname}}\nIP：{{host_ip}}\n告警描述：{{message}}\n告警详情：{{detail}}\n告警级别：{{level}}\n告警状态：{{status}}\n\n请输出：\n1. 可能根因（按概率排序）\n2. 排查步骤（关键命令/检查项）\n3. 修复方案与风险\n4. 防复发建议",
+			Comment:   "用于AI助手告警分析的提示词模板，支持占位符：{{hostname}} {{host_ip}} {{message}} {{detail}} {{level}} {{status}} {{alarm_context}}",
+		},
 	}
 }

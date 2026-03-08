@@ -30,19 +30,24 @@ func (m *MetricMapping) SetMetricConfig(config *MetricConfig) error {
 
 // CreateOrUpdateMetricMapping 创建或更新映射配置
 func CreateOrUpdateMetricMapping(m *MetricMapping) error {
-	var existing MetricMapping
-	err := DB.Where("zid = ? AND system_type = ?", m.ZID, m.SystemType).First(&existing).Error
+	now := time.Now()
 
-	if err != nil {
-		m.CreatedAt = time.Now()
-		m.UpdatedAt = time.Now()
-		return DB.Create(m).Error
+	// 仅在显式提供 ID 时更新，避免同实例+同系统类型被误覆盖
+	if m.ID > 0 {
+		var existing MetricMapping
+		err := DB.First(&existing, m.ID).Error
+		if err != nil {
+			return err
+		}
+
+		m.CreatedAt = existing.CreatedAt
+		m.UpdatedAt = now
+		return DB.Save(m).Error
 	}
 
-	m.ID = existing.ID
-	m.CreatedAt = existing.CreatedAt
-	m.UpdatedAt = time.Now()
-	return DB.Save(m).Error
+	m.CreatedAt = now
+	m.UpdatedAt = now
+	return DB.Create(m).Error
 }
 
 // GetMetricMappingsByInstance 获取实例的所有映射配置
