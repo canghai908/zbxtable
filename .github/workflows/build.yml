@@ -29,15 +29,15 @@ jobs:
       - name: 检出前端代码
         uses: actions/checkout@v4
         with:
-          repository: canghai908/zbxtable-web
-          path: zbxtable-web
+          repository: canghai908/zbxtable-ui
+          path: zbxtable-ui
 
       - name: 设置 Node.js 环境
         uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '22'
           cache: 'npm'
-          cache-dependency-path: zbxtable-web/package-lock.json
+          cache-dependency-path: zbxtable-ui/package-lock.json
 
       - name: 设置 Go 环境
         uses: actions/setup-go@v5
@@ -47,7 +47,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: 构建前端
-        working-directory: ./zbxtable-web
+        working-directory: ./zbxtable-ui
         run: |
           echo "📦 构建前端..."
           npm ci
@@ -58,7 +58,7 @@ jobs:
         run: |
           echo "📋 复制前端文件..."
           mkdir -p api/v1/web/web
-          cp -r zbxtable-web/web/* api/v1/web/web/
+          cp -r zbxtable-ui/dist/* api/v1/web/web/
           echo "✓ 前端文件复制完成"
 
       - name: 安装依赖
@@ -104,4 +104,3 @@ jobs:
 
       - name: 构建成功
         run: echo "✅ 构建和测试全部通过！"
-

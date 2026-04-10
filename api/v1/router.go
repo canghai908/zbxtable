@@ -49,31 +49,38 @@ func InitRouter() *gin.Engine {
 		panic("Failed to get embedded frontend filesystem: " + err.Error())
 	}
 
-	// 创建 static 和 css 子文件系统
-	staticFS, err := fs.Sub(subFS, "static")
-	if err != nil {
-		panic("Failed to get static filesystem: " + err.Error())
-	}
-
-	cssFS, err := fs.Sub(subFS, "css")
-	if err != nil {
-		panic("Failed to get css filesystem: " + err.Error())
-	}
-
-	// 前端静态文件服务（使用 go:embed，不需要安装检查）
+	// 前端静态文件服务（使用 go:embed，不需要安装检查）。
+	// Vite 默认输出到 /assets，保留 /static 和 /css 兼容旧 Vue CLI 产物。
 	// 注意：这些路由必须在安装检查中间件之前注册
-	r.StaticFS("/static", http.FS(staticFS))
-	r.StaticFS("/css", http.FS(cssFS))
-
-	// favicon.ico
-	r.GET("/favicon.ico", func(c *gin.Context) {
-		data, err := fs.ReadFile(subFS, "favicon.ico")
-		if err != nil {
-			c.Status(404)
+	mountEmbeddedDir := func(urlPath, dir string) {
+		if _, err := fs.Stat(subFS, dir); err != nil {
 			return
 		}
-		c.Data(200, "image/x-icon", data)
-	})
+		dirFS, err := fs.Sub(subFS, dir)
+		if err != nil {
+			panic("Failed to get embedded frontend filesystem: " + err.Error())
+		}
+		r.StaticFS(urlPath, http.FS(dirFS))
+	}
+	mountEmbeddedDir("/assets", "assets")
+	mountEmbeddedDir("/static", "static")
+	mountEmbeddedDir("/css", "css")
+
+	serveFrontendFile := func(path string, contentType string) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			data, err := fs.ReadFile(subFS, path)
+			if err != nil {
+				c.Status(404)
+				return
+			}
+			c.Data(200, contentType, data)
+		}
+	}
+
+	// 根级静态资源
+	r.GET("/favicon.ico", serveFrontendFile("favicon.ico", "image/x-icon"))
+	r.GET("/logo.png", serveFrontendFile("logo.png", "image/png"))
+	r.GET("/vite.svg", serveFrontendFile("vite.svg", "image/svg+xml"))
 
 	// 根路径返回 index.html
 	r.GET("/", func(c *gin.Context) {
@@ -383,6 +390,11 @@ func InitRouter() *gin.Engine {
 				groupGroup.PUT("/:id", handler.UpdateGroup)
 				groupGroup.PUT("/member/:id", handler.UpdateGroupMember)
 				groupGroup.DELETE("/:id", handler.DeleteGroup)
+			}
+
+			managerGroup := api.Group("/manager")
+			{
+				managerGroup.POST("/chpwd", handler.ChangePasswordGin)
 			}
 
 			// AI 聊天
