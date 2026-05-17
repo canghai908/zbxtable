@@ -3,85 +3,93 @@ name: Build and Test
 on:
   push:
     branches:
+      - dev
       - main
       - master
       - 3.0
-    paths:
-      - 'zbxtable/**'
-      - '.github/workflows/build.yml'
   pull_request:
     branches:
+      - dev
       - main
       - master
       - 3.0
-    paths:
-      - 'zbxtable/**'
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: 检出后端代码
+      - name: Checkout backend repository
         uses: actions/checkout@v4
 
-      - name: 检出前端代码
+      - name: Checkout frontend repository
         uses: actions/checkout@v4
         with:
-          repository: canghai908/zbxtable-ui
-          path: zbxtable-ui
+          repository: canghai908/zbxtable-web
+          path: zbxtable-web
 
-      - name: 设置 Node.js 环境
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: zbxtable-ui/package-lock.json
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: zbxtable-web/package-lock.json
 
-      - name: 设置 Go 环境
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: "1.24"
           cache: true
           cache-dependency-path: go.sum
 
-      - name: 构建前端
-        working-directory: ./zbxtable-ui
+      - name: Build frontend
+        working-directory: ./zbxtable-web
+        env:
+          NODE_OPTIONS: --openssl-legacy-provider
         run: |
-          echo "📦 构建前端..."
+          echo "📦 Building frontend..."
           npm ci
           npm run build
-          echo "✓ 前端构建完成"
+          test -f web/index.html
+          echo "✓ Frontend build complete"
 
-      - name: 复制前端构建产物到后端
+      - name: Sync frontend assets into embedded web directory
         run: |
-          echo "📋 复制前端文件..."
+          echo "📋 Syncing frontend assets..."
+          rm -rf api/v1/web/web
           mkdir -p api/v1/web/web
-          cp -r zbxtable-ui/dist/* api/v1/web/web/
-          echo "✓ 前端文件复制完成"
+          cp -R zbxtable-web/web/. api/v1/web/web/
+          test -f api/v1/web/web/index.html
+          echo "✓ Frontend assets synced"
 
-      - name: 安装依赖
+      - name: Install Go dependencies
         run: make install
 
-      - name: 代码格式检查
+      - name: Check Go formatting
         run: |
-          if [ -n "$(gofmt -l .)" ]; then
-            echo "以下文件需要格式化:"
-            gofmt -l .
+          fmt_files="$(git ls-files '*.go' | xargs gofmt -l)"
+          if [ -n "$fmt_files" ]; then
+            echo "The following files need gofmt:"
+            echo "$fmt_files"
             exit 1
           fi
 
-      - name: 代码静态检查
+      - name: Run go vet
         run: make vet
 
-      - name: 运行测试
+      - name: Run tests
         run: make test
 
-      - name: 生成测试覆盖率
+      - name: Generate coverage report
         run: make coverage
 
-      - name: 上传测试覆盖率
+      - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.out
@@ -89,18 +97,17 @@ jobs:
           name: codecov-zbxtable
         continue-on-error: true
 
-      - name: 编译应用
+      - name: Build application
         run: make build
 
-      - name: 验证编译产物
+      - name: Verify build output
         run: |
-          if [ -f build/zbxtable ]; then
-            echo "✅ 编译成功"
-            ls -lh build/zbxtable
-          else
-            echo "❌ 编译失败"
-            exit 1
-          fi
+          test -f build/zbxtable
+          ls -lh build/zbxtable
 
-      - name: 构建成功
-        run: echo "✅ 构建和测试全部通过！"
+      - name: Upload backend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zbxtable-linux-amd64-build
+          path: build/zbxtable
+          if-no-files-found: error
