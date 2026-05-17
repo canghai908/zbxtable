@@ -217,6 +217,20 @@ func GetHostsByGroupID(GroupID string) ([]HostGroupBYGroupID, error) {
 	return hb, err
 }
 
+func GetHostsByGroupIDFromInstance(zidStr, groupID string) ([]Hosts, error) {
+	zid, err := strconv.Atoi(zidStr)
+	if err != nil {
+		return []Hosts{}, err
+	}
+
+	inst, err := GetAPIByZID(zid)
+	if err != nil {
+		return []Hosts{}, err
+	}
+
+	return GetHostsByGroupIDsFromInstance(inst, []string{groupID})
+}
+
 // GetHostsByGroupIDList func
 func GetHostsByGroupIDList(GroupID string) ([]Hosts, error) {
 	output := []string{"groupid", "name"}

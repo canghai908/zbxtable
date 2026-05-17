@@ -22,49 +22,66 @@ func getCountByTypeFromInstance(inst *APIInstance, hostType string) (int64, erro
 	return count, nil
 }
 
-// GetCountHost 获取所有实例的主机统计（多实例聚合版本）
+func buildIndexInfoFromCounts(assetTypes []AssetType, counts map[string]int64) IndexInfo {
+	info := IndexInfo{
+		HostCounts:      make(map[string]int64, len(counts)),
+		AssetTypeCounts: make([]AssetTypeCount, 0, len(assetTypes)),
+	}
+
+	for _, at := range assetTypes {
+		count := counts[at.TypeCode]
+		info.HostCounts[at.TypeCode] = count
+		info.AssetTypeCounts = append(info.AssetTypeCounts, AssetTypeCount{
+			TypeCode: at.TypeCode,
+			Name:     at.Name,
+			Icon:     at.Icon,
+			Count:    count,
+		})
+		info.TotalCount += count
+
+		switch at.TypeCode {
+		case "VM_LIN":
+			info.LinCount = count
+		case "VM_WIN":
+			info.WinCount = count
+		case "HW_SRV":
+			info.SrvCount = count
+		case "HW_NET":
+			info.NetCount = count
+		}
+	}
+
+	return info
+}
+
+// GetCountHost 获取所有实例的主机统计（多实例聚合版本，动态资产类型）
 func GetCountHost() (IndexInfo, error) {
-	// 获取所有启用的实例
 	instances, err := GetAllEnabledAPIInstances()
 	if err != nil {
 		logger.Log.Errorf("获取启用的实例失败: %v", err)
 		return IndexInfo{}, err
 	}
 
-	d := IndexInfo{}
-
-	// 聚合所有实例的数据
-	for _, inst := range instances {
-		linCount, err := getCountByTypeFromInstance(inst, "VM_LIN")
-		if err != nil {
-			logger.Log.Errorf("从实例 %s 获取 Linux 主机数量失败: %v", inst.Name, err)
-		} else {
-			d.LinCount += linCount
-		}
-
-		winCount, err := getCountByTypeFromInstance(inst, "VM_WIN")
-		if err != nil {
-			logger.Log.Errorf("从实例 %s 获取 Windows 主机数量失败: %v", inst.Name, err)
-		} else {
-			d.WinCount += winCount
-		}
-
-		srvCount, err := getCountByTypeFromInstance(inst, "HW_SRV")
-		if err != nil {
-			logger.Log.Errorf("从实例 %s 获取服务器数量失败: %v", inst.Name, err)
-		} else {
-			d.SRVCount += srvCount
-		}
-
-		netCount, err := getCountByTypeFromInstance(inst, "HW_NET")
-		if err != nil {
-			logger.Log.Errorf("从实例 %s 获取网络设备数量失败: %v", inst.Name, err)
-		} else {
-			d.NETCount += netCount
-		}
+	assetTypes, err := GetAllAssetTypes()
+	if err != nil {
+		logger.Log.Errorf("获取资产类型失败: %v", err)
+		return IndexInfo{}, err
 	}
 
-	return d, nil
+	result := make(map[string]int64, len(assetTypes))
+	for _, at := range assetTypes {
+		var total int64
+		for _, inst := range instances {
+			count, cErr := getCountByTypeFromInstance(inst, at.TypeCode)
+			if cErr != nil {
+				logger.Log.Errorf("从实例 %s 获取 %s 主机数量失败: %v", inst.Name, at.TypeCode, cErr)
+				continue
+			}
+			total += count
+		}
+		result[at.TypeCode] = total
+	}
+	return buildIndexInfoFromCounts(assetTypes, result), nil
 }
 
 // GetTopList top数据获取
@@ -171,11 +188,19 @@ func GetInventory() ([]Treeinventory, error) {
 	//	{12, "网络设备", listmap["HW_NET"]},
 	//	{13, "物理服务器", listmap["HW_SRV"]},
 	//}
-	TwoTree := []TwoChildren{
-		{10, "Linux操作系统"},
-		{11, "Windows操作系统"},
-		{12, "网络设备"},
-		{13, "物理服务器"},
+	assetTypes, err := GetAllAssetTypes()
+	if err != nil {
+		logger.Log.Errorf("获取资产类型失败: %v", err)
+		return nil, err
+	}
+	TwoTree := make([]TwoChildren, 0, len(assetTypes))
+	for i, at := range assetTypes {
+		TwoTree = append(TwoTree, TwoChildren{
+			ID:       int64(10 + i),
+			Name:     at.Name,
+			TypeCode: at.TypeCode,
+			Icon:     at.Icon,
+		})
 	}
 	tree := make([]Treeinventory, 1)
 	tree[0].ID = 0
@@ -186,30 +211,28 @@ func GetInventory() ([]Treeinventory, error) {
 
 }
 func GetOverviewData() (OverviewList, error) {
-	var list = []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
-	//var one OverviewList
-	//var datalist []OverviewList
-	listmap := make(map[string][]Hosts)
-	for _, v := range list {
-		var ArrayOne []Hosts
-		p, err := CacheGet(v + "_OVERVIEW")
-		if err != nil || p == "" {
-			logger.Log.Error(err)
-			continue
-		}
-		err = json.Unmarshal([]byte(p), &ArrayOne)
-		if err != nil {
-			logger.Log.Error(err)
-			continue
-		}
-		listmap[v] = ArrayOne
+	assetTypes, err := GetAllAssetTypes()
+	if err != nil {
+		logger.Log.Errorf("获取资产类型失败: %v", err)
+		return OverviewList{}, err
 	}
-	var newList OverviewList
-	newList.Lin = listmap["VM_LIN"]
-	newList.Win = listmap["VM_WIN"]
-	newList.NET = listmap["HW_NET"]
-	newList.SRV = listmap["HW_SRV"]
-	return newList, nil
+
+	result := make(OverviewList)
+	for _, at := range assetTypes {
+		var hosts []Hosts
+		p, cErr := CacheGet(at.TypeCode + "_OVERVIEW")
+		if cErr != nil || p == "" {
+			result[at.TypeCode] = []Hosts{}
+			continue
+		}
+		if uErr := json.Unmarshal([]byte(p), &hosts); uErr != nil {
+			logger.Log.Error(uErr)
+			result[at.TypeCode] = []Hosts{}
+			continue
+		}
+		result[at.TypeCode] = hosts
+	}
+	return result, nil
 }
 func GetEgressData() (EgressList, error) {
 	p, err := CacheGet("Egress")

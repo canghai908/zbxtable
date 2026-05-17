@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 
@@ -198,26 +197,9 @@ func DatabaseInit() error {
 		logger.Log.Info("create an administrator account successfully, the admin ID is:", user.ID)
 	}
 	//初始化系统数据
-	var cnt []System
-	err = DB.Find(&cnt).Error
-	if err != nil {
-		logger.Log.Info(err)
-		return fmt.Errorf("query system data failed: %w", err)
-	}
-	if len(cnt) == 0 {
-		now := time.Now()
-		sys := []System{
-			{Name: "Linux操作系统", Status: 0, InitedAt: &now},
-			{Name: "Windows操作系统", Status: 0, InitedAt: &now},
-			{Name: "网络设备", Status: 0, InitedAt: &now},
-			{Name: "物理服务器", Status: 0, InitedAt: &now},
-		}
-		err := DB.Create(&sys).Error
-		if err != nil {
-			logger.Log.Info("Init system info error！", err)
-			return fmt.Errorf("init system data failed: %w", err)
-		}
-		logger.Log.Info("Init system data successfully!")
+	if err = EnsureSystemBindingsForAssetTypes(); err != nil {
+		logger.Log.Info("Init system info error！", err)
+		return fmt.Errorf("init system data failed: %w", err)
 	}
 	//告警默认规则初始化 default rule
 	var rules []Rule
@@ -294,6 +276,21 @@ func DatabaseInit() error {
 	//检查并添加缺失的菜单项（用于版本升级）
 	if err := CheckAndAddMenus(); err != nil {
 		return fmt.Errorf("check and add menus failed: %w", err)
+	}
+
+	// 存量 asset_type 记录回填 monitor_type（幂等，需在 InitDefaultAssetTypes 之前）
+	_ = MigrateAssetTypeMonitorType()
+	// 初始化默认资产类型（幂等）
+	if err := InitDefaultAssetTypes(); err != nil {
+		return fmt.Errorf("init default asset types failed: %w", err)
+	}
+	// 统一存量默认资产类型名称（幂等）
+	if err := MigrateAssetTypeNames(); err != nil {
+		return fmt.Errorf("migrate asset type names failed: %w", err)
+	}
+	// 回填存量 System 记录的 type_code（幂等）
+	if err := MigrateSystemTypeCodes(); err != nil {
+		return fmt.Errorf("migrate system type codes failed: %w", err)
 	}
 
 	return nil
@@ -422,6 +419,9 @@ func getDefaultConfigs() []Config {
 	// Dashboard 相关配置
 	configs = append(configs, getDashboardConfigs()...)
 
+	// 计划任务配置
+	configs = append(configs, getTaskConfigs()...)
+
 	// 邮件配置
 	configs = append(configs, getEmailConfigs()...)
 
@@ -507,18 +507,36 @@ func getDashboardConfigs() []Config {
 			Comment:     "首页 Windows Top 列表展示数量",
 		},
 		{
-			Name:        "主机分类同步",
-			ConfigKey:   "sync_inventory",
-			ConfigValue: "1",
-			Comment:     "主机分类同步计划任务是否启用：1 启用,0 不启用",
-		},
-		{
 			Name:        "Webhook回调地址",
 			ConfigKey:   "webhook_url",
 			ConfigValue: "",
 			Comment:     "webhook通知地址",
 		},
 	}
+}
+
+// getTaskConfigs 计划任务配置
+func getTaskConfigs() []Config {
+	configs := make([]Config, 0, len(getScheduledTaskDefinitions())*2)
+
+	for _, task := range getScheduledTaskDefinitions() {
+		configs = append(configs,
+			Config{
+				Name:        task.Name + "开关",
+				ConfigKey:   task.EnabledKey,
+				ConfigValue: task.DefaultEnabled,
+				Comment:     task.Name + "计划任务是否启用：1 启用,0 停用",
+			},
+			Config{
+				Name:        task.Name + "Cron",
+				ConfigKey:   task.CronKey,
+				ConfigValue: task.DefaultCron,
+				Comment:     task.Name + "执行周期，格式：秒 分 时 日 月 周",
+			},
+		)
+	}
+
+	return configs
 }
 
 // getEmailConfigs 邮件配置
@@ -636,10 +654,10 @@ func getAIConfigs() []Config {
 			Comment:     "Deepseek API 地址，默认为 https://api.deepseek.com",
 		},
 		{
-			Name:      "告警分析提示词",
-			ConfigKey: "alarm_analysis_prompt",
+			Name:        "告警分析提示词",
+			ConfigKey:   "alarm_analysis_prompt",
 			ConfigValue: "你是专业运维分析师。请基于以下告警信息进行分析：\n\n设备名称：{{hostname}}\nIP：{{host_ip}}\n告警描述：{{message}}\n告警详情：{{detail}}\n告警级别：{{level}}\n告警状态：{{status}}\n\n请输出：\n1. 可能根因（按概率排序）\n2. 排查步骤（关键命令/检查项）\n3. 修复方案与风险\n4. 防复发建议",
-			Comment:   "用于AI助手告警分析的提示词模板，支持占位符：{{hostname}} {{host_ip}} {{message}} {{detail}} {{level}} {{status}} {{alarm_context}}",
+			Comment:     "用于AI助手告警分析的提示词模板，支持占位符：{{hostname}} {{host_ip}} {{message}} {{detail}} {{level}} {{status}} {{alarm_context}}",
 		},
 	}
 }

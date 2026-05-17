@@ -111,6 +111,7 @@ type HostInterface struct {
 type Hosts struct {
 	HostID            string `json:"hostid"` //主机
 	Host              string `json:"host"`
+	TypeCode          string `json:"type_code"`
 	Available         string `json:"available"` //设备状态
 	Error             string `json:"error"`
 	Name              string `json:"name"` //设备名称
@@ -151,6 +152,16 @@ type Host struct {
 	Name       string `json:"name,omitempty"`
 	Status     string `json:"status,omitempty"`
 	Interfaces string `json:"interfaces,omitempty"`
+}
+
+type HostTag struct {
+	Tag   string `json:"tag"`
+	Value string `json:"value"`
+}
+
+type HostTagFilter struct {
+	Tag   string `json:"tag"`
+	Value string `json:"value"`
 }
 type Inventory struct {
 	Type             string `json:"type"`
@@ -225,62 +236,66 @@ type Inventory struct {
 	Poc2Notes        string `json:"poc_2_notes"`
 }
 
-// ListHosts struct
-type ListHosts []struct {
-	AutoCompress string    `json:"auto_compress"`
-	Available    string    `json:"available"`
-	Description  string    `json:"description"`
-	DisableUntil string    `json:"disable_until"`
-	Error        string    `json:"error"`
-	Host         string    `json:"host"`
-	Hostid       string    `json:"hostid"`
-	Inventory    Inventory `json:"inventory"`
-	Interfaces   []struct {
-		Bulk        string `json:"bulk"`
-		DNS         string `json:"dns"`
-		Hostid      string `json:"hostid"`
-		Interfaceid string `json:"interfaceid"`
-		IP          string `json:"ip"`
-		Main        string `json:"main"`
-		Port        string `json:"port"`
-		Type        string `json:"type"`
-		Useip       string `json:"useip"`
-		Error       string `json:"error"`
-		Available   string `json:"available"`
-	} `json:"interfaces"`
-	IpmiAuthtype      string `json:"ipmi_authtype"`
-	IpmiAvailable     string `json:"ipmi_available"`
-	IpmiDisableUntil  string `json:"ipmi_disable_until"`
-	IpmiError         string `json:"ipmi_error"`
-	IpmiErrorsFrom    string `json:"ipmi_errors_from"`
-	IpmiPassword      string `json:"ipmi_password"`
-	IpmiPrivilege     string `json:"ipmi_privilege"`
-	IpmiUsername      string `json:"ipmi_username"`
-	JmxAvailable      string `json:"jmx_available"`
-	JmxDisableUntil   string `json:"jmx_disable_until"`
-	JmxError          string `json:"jmx_error"`
-	JmxErrorsFrom     string `json:"jmx_errors_from"`
-	Lastaccess        string `json:"lastaccess"`
-	MaintenanceFrom   string `json:"maintenance_from"`
-	MaintenanceStatus string `json:"maintenance_status"`
-	MaintenanceType   string `json:"maintenance_type"`
-	Maintenanceid     string `json:"maintenanceid"`
-	Name              string `json:"name"`
-	ProxyAddress      string `json:"proxy_address"`
-	ProxyHostid       string `json:"proxy_hostid"`
-	SnmpAvailable     string `json:"snmp_available"`
-	SnmpDisableUntil  string `json:"snmp_disable_until"`
-	SnmpError         string `json:"snmp_error"`
-	SnmpErrorsFrom    string `json:"snmp_errors_from"`
-	Status            string `json:"status"`
-	Templateid        string `json:"templateid"`
-	TLSAccept         string `json:"tls_accept"`
-	TLSConnect        string `json:"tls_connect"`
-	TLSIssuer         string `json:"tls_issuer"`
-	TLSPsk            string `json:"tls_psk"`
-	TLSPskIdentity    string `json:"tls_psk_identity"`
-	TLSSubject        string `json:"tls_subject"`
+type HostListInterface struct {
+	Bulk        string `json:"bulk"`
+	DNS         string `json:"dns"`
+	Hostid      string `json:"hostid"`
+	Interfaceid string `json:"interfaceid"`
+	IP          string `json:"ip"`
+	Main        string `json:"main"`
+	Port        string `json:"port"`
+	Type        string `json:"type"`
+	Useip       string `json:"useip"`
+	Error       string `json:"error"`
+	Available   string `json:"available"`
 }
+
+type ListHost struct {
+	AutoCompress      string              `json:"auto_compress"`
+	Available         string              `json:"available"`
+	Description       string              `json:"description"`
+	DisableUntil      string              `json:"disable_until"`
+	Error             string              `json:"error"`
+	Host              string              `json:"host"`
+	Hostid            string              `json:"hostid"`
+	Inventory         Inventory           `json:"inventory"`
+	Interfaces        []HostListInterface `json:"interfaces"`
+	IpmiAuthtype      string              `json:"ipmi_authtype"`
+	IpmiAvailable     string              `json:"ipmi_available"`
+	IpmiDisableUntil  string              `json:"ipmi_disable_until"`
+	IpmiError         string              `json:"ipmi_error"`
+	IpmiErrorsFrom    string              `json:"ipmi_errors_from"`
+	IpmiPassword      string              `json:"ipmi_password"`
+	IpmiPrivilege     string              `json:"ipmi_privilege"`
+	IpmiUsername      string              `json:"ipmi_username"`
+	JmxAvailable      string              `json:"jmx_available"`
+	JmxDisableUntil   string              `json:"jmx_disable_until"`
+	JmxError          string              `json:"jmx_error"`
+	JmxErrorsFrom     string              `json:"jmx_errors_from"`
+	Lastaccess        string              `json:"lastaccess"`
+	MaintenanceFrom   string              `json:"maintenance_from"`
+	MaintenanceStatus string              `json:"maintenance_status"`
+	MaintenanceType   string              `json:"maintenance_type"`
+	Maintenanceid     string              `json:"maintenanceid"`
+	Name              string              `json:"name"`
+	ProxyAddress      string              `json:"proxy_address"`
+	ProxyHostid       string              `json:"proxy_hostid"`
+	SnmpAvailable     string              `json:"snmp_available"`
+	SnmpDisableUntil  string              `json:"snmp_disable_until"`
+	SnmpError         string              `json:"snmp_error"`
+	SnmpErrorsFrom    string              `json:"snmp_errors_from"`
+	Status            string              `json:"status"`
+	Templateid        string              `json:"templateid"`
+	TLSAccept         string              `json:"tls_accept"`
+	TLSConnect        string              `json:"tls_connect"`
+	TLSIssuer         string              `json:"tls_issuer"`
+	TLSPsk            string              `json:"tls_psk"`
+	TLSPskIdentity    string              `json:"tls_psk_identity"`
+	TLSSubject        string              `json:"tls_subject"`
+}
+
+// ListHosts struct
+type ListHosts []ListHost
 type MonItemList []MonItem
 type MonItem struct {
 	Applicationid string `json:"applicationid"`

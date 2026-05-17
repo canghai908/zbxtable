@@ -44,6 +44,20 @@ func GetAllGroupsList(c *gin.Context) {
 // GetHostsByGroupID 根据组ID获取主机列表
 func GetHostsByGroupID(c *gin.Context) {
 	GroupID := c.Param("id")
+	zidStr := c.Query("zid")
+
+	if zidStr != "" {
+		hs, err := model.GetHostsByGroupIDFromInstance(zidStr, GroupID)
+		if err != nil {
+			response.DatabaseError(c, "获取主机列表失败: "+err.Error())
+			return
+		}
+		response.Success(c, map[string]interface{}{
+			"items": hs,
+		})
+		return
+	}
+
 	hs, err := model.GetHostsByGroupID(GroupID)
 	if err != nil {
 		response.DatabaseError(c, "获取主机列表失败: "+err.Error())

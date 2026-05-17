@@ -88,6 +88,12 @@ func CreateReportGin(c *gin.Context) {
 		return
 	}
 
+	if report_type == "host" && model.HasBulkHostReportConfig(host_ids) {
+		go model.ProcessHostReportConfigAsync(int(id), report_mode == "realtime")
+		response.SuccessWithMessage(c, "创建成功", nil)
+		return
+	}
+
 	// 如果是实时报表，立即生成
 	if report_mode == "realtime" && report_type == "host" {
 		// 重新读取完整的报表数据
@@ -165,6 +171,9 @@ func UpdateReportGin(c *gin.Context) {
 		response.InternalError(c, err.Error())
 		return
 	}
+	if report_type == "host" && model.HasBulkHostReportConfig(host_ids) {
+		go model.ProcessHostReportConfigAsync(id, false)
+	}
 	response.SuccessWithMessage(c, "保存成功", nil)
 }
 
@@ -192,12 +201,14 @@ func CheckNowGin(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 
 	v := model.Report{ID: id}
-	err = model.CheckNowByID(&v)
+	taskLogID, err := model.CheckNowByID(&v)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
 	}
-	response.SuccessWithMessage(c, "生成成功", nil)
+	response.SuccessWithMessage(c, "生成任务已提交", gin.H{
+		"task_log_id": taskLogID,
+	})
 }
 
 // UpdateReportStatusGin 更新报表状态

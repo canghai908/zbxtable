@@ -154,6 +154,11 @@ func runWeb(*cli.Context) error {
 		os.Exit(1)
 	}
 	logger.Log.Info("Database connected successfully")
+	if err := model.ResetStaleRunningReports(0); err != nil {
+		logger.Log.Error("Reset stale running reports failed:", err)
+	} else {
+		logger.Log.Info("Stale running reports reset successfully")
+	}
 
 	//Scheduled tasks
 	logger.Log.Info("Initializing scheduled tasks...")

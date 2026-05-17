@@ -47,6 +47,28 @@ func GetSystemByID(c *gin.Context) {
 }
 
 // UpdateSystem 更新系统配置（支持多实例）
+func parseSystemBody(body string) model.System {
+	zid, _ := strconv.Atoi(gjson.Get(body, "zid").String())
+	return model.System{
+		ZID:                 zid,
+		Name:                gjson.Get(body, "name").String(),
+		TypeCode:            gjson.Get(body, "type_code").String(),
+		GroupID:             gjson.Get(body, "group_id").String(),
+		CPUCore:             gjson.Get(body, "cpu_core").String(),
+		CPUUtilizationID:    gjson.Get(body, "cpu_utilization_id").String(),
+		MemoryTotalID:       gjson.Get(body, "memory_total_id").String(),
+		MemoryUsedID:        gjson.Get(body, "memory_used_id").String(),
+		MemoryUtilizationID: gjson.Get(body, "memory_utilization_id").String(),
+		UptimeID:            gjson.Get(body, "uptime_id").String(),
+		Model:               gjson.Get(body, "model").String(),
+		PingTemplateID:      gjson.Get(body, "ping_template_id").String(),
+		AutoInit:            int(gjson.Get(body, "auto_init").Int()),
+		InitCron:            gjson.Get(body, "init_cron").String(),
+		InitOnNewHost:       int(gjson.Get(body, "init_on_new_host").Int()),
+		MaxRetry:            int(gjson.Get(body, "max_retry").Int()),
+	}
+}
+
 func UpdateSystem(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -57,39 +79,16 @@ func UpdateSystem(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 
-	// 获取实例ID
-	zidStr := gjson.Get(string(body), "zid").String()
-	if zidStr == "" {
+	if gjson.Get(string(body), "zid").String() == "" {
 		response.BadRequest(c, "请选择 Zabbix 实例")
 		return
 	}
-	zid, _ := strconv.ParseInt(zidStr, 10, 64)
-	cpuCore := gjson.Get(string(body), "cpu_core").String()
-	uptimeId := gjson.Get(string(body), "uptime_id").String()
-	cpuUtilizationId := gjson.Get(string(body), "cpu_utilization_id").String()
-	groupId := gjson.Get(string(body), "group_id").String()
-	memoryTotalId := gjson.Get(string(body), "memory_total_id").String()
-	memoryUsedId := gjson.Get(string(body), "memory_used_id").String()
-	memoryUtilizationId := gjson.Get(string(body), "memory_utilization_id").String()
-	mode := gjson.Get(string(body), "model").String()
-	pingTemplateId := gjson.Get(string(body), "ping_template_id").String()
+
+	v := parseSystemBody(string(body))
+	v.ID = int64(id)
 
 	var SystemRes model.SystemList
-	v := model.System{
-		ID:                  int64(id),
-		ZID:                 int(zid),
-		CPUCore:             cpuCore,
-		CPUUtilizationID:    cpuUtilizationId,
-		GroupID:             groupId,
-		MemoryTotalID:       memoryTotalId,
-		UptimeID:            uptimeId,
-		Model:               mode,
-		MemoryUsedID:        memoryUsedId,
-		MemoryUtilizationID: memoryUtilizationId,
-		PingTemplateID:      pingTemplateId,
-	}
-	err = model.CreateOrUpdateSystem(&v)
-	if err != nil {
+	if err = model.CreateOrUpdateSystem(&v); err != nil {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
 	} else {
@@ -132,6 +131,69 @@ func SystemInit(c *gin.Context) {
 		SystemRes.Data.Items = ""
 	}
 	c.JSON(http.StatusOK, SystemRes)
+}
+
+// CreateSystem 创建新的资产绑定配置
+func CreateSystem(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.InternalError(c, "请求体读取失败")
+		return
+	}
+	if gjson.Get(string(body), "zid").String() == "" {
+		response.BadRequest(c, "请选择 Zabbix 实例")
+		return
+	}
+	if gjson.Get(string(body), "type_code").String() == "" {
+		response.BadRequest(c, "请选择资产类型")
+		return
+	}
+	v := parseSystemBody(string(body))
+	if err := model.CreateSystem(&v); err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "创建成功", v)
+}
+
+// GetSystemHistory 获取资产绑定初始化历史
+func GetSystemHistory(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	list, total, err := model.GetSystemHistory(id, page, pageSize)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, map[string]interface{}{"items": list, "total": total})
+}
+
+// DeleteSystem 删除资产绑定配置
+func DeleteSystem(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+	if err := model.DeleteSystem(id); err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "删除成功", nil)
 }
 
 // GetEgress 获取出口带宽配置

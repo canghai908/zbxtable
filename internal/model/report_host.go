@@ -40,41 +40,116 @@ type ItemData struct {
 	InstanceName string
 }
 
+func buildHostReportSheetName(hostName, itemName string, existingSheetNames []string) string {
+	sheetName := strings.TrimSpace(hostName) + "-" + strings.TrimSpace(itemName)
+	sheetName = strings.NewReplacer(
+		":", "_",
+		"\\", "_",
+		"/", "_",
+		"?", "_",
+		"*", "_",
+		"[", "_",
+		"]", "_",
+	).Replace(sheetName)
+	sheetName = strings.TrimSpace(sheetName)
+	if sheetName == "" {
+		sheetName = "Sheet"
+	}
+
+	baseRunes := []rune(sheetName)
+	if len(baseRunes) > 31 {
+		sheetName = string(baseRunes[:31])
+	}
+
+	originalSheetName := sheetName
+	sheetIndex := 1
+	for {
+		exists := false
+		for _, name := range existingSheetNames {
+			if name == sheetName {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return sheetName
+		}
+
+		suffix := strconv.Itoa(sheetIndex)
+		maxBaseLen := 31 - len([]rune(suffix))
+		trimmedRunes := []rune(originalSheetName)
+		if len(trimmedRunes) > maxBaseLen {
+			trimmedRunes = trimmedRunes[:maxBaseLen]
+		}
+		sheetName = string(trimmedRunes) + suffix
+		sheetIndex++
+	}
+}
+
 // TaskHostReport 生成主机报表
 func TaskHostReport(m Report) error {
+	return runTaskHostReport(m, nil)
+}
+
+func TaskHostReportWithTaskLog(m Report, task *TaskLog) error {
+	return runTaskHostReport(m, task)
+}
+
+func runTaskHostReport(m Report, task *TaskLog) error {
 	Tend := time.Now()
-	var task TaskLog
-	task.ReportID = m.ID
-	task.Name = m.Name
-	// 根据Cycle确定任务周期类型：day 或 week
-	if strings.Contains(m.Cycle, "week") {
-		task.Cycle = "week"
-	} else if strings.Contains(m.Cycle, "day") {
-		task.Cycle = "day"
-	} else {
-		task.Cycle = m.Cycle // 如果都不包含，使用原始值
+
+	if err := PrepareHostReportExecutionConfig(&m); err != nil {
+		return err
 	}
-	task.StartTime = Tend
+
+	if task == nil {
+		task = &TaskLog{
+			ReportID:  m.ID,
+			Name:      m.Name,
+			StartTime: Tend,
+			Status:    Running,
+			Result:    buildTaskLogResult(Running, 0, "等待执行"),
+		}
+		// 根据Cycle确定任务周期类型：day 或 week
+		if strings.Contains(m.Cycle, "week") {
+			task.Cycle = "week"
+		} else if strings.Contains(m.Cycle, "day") {
+			task.Cycle = "day"
+		} else {
+			task.Cycle = m.Cycle
+		}
+		if _, err := task.Create(); err != nil {
+			return err
+		}
+	}
+	updateProgress := func(progress int, detail string) {
+		if task != nil && task.Id > 0 {
+			if err := UpdateTaskLogProgress(int64(task.Id), progress, detail); err != nil {
+				logger.Log.Error(err)
+			}
+		}
+	}
+	failTask := func(err error, detail string, files string) error {
+		if task != nil && task.Id > 0 {
+			if updateErr := FinishTaskLog(int64(task.Id), task.StartTime, Failed, detail, files); updateErr != nil {
+				logger.Log.Error(updateErr)
+			}
+		}
+		return err
+	}
+
+	updateProgress(2, "正在解析主机配置")
 
 	// 解析主机和指标配置
 	var hostConfigs []HostReportConfig
 	if err := json.Unmarshal([]byte(m.HostIds), &hostConfigs); err != nil {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = "主机配置解析失败: " + err.Error()
-		_, _ = task.Create()
-		return err
+		return failTask(err, "主机配置解析失败: "+err.Error(), "")
 	}
 
 	if len(hostConfigs) == 0 {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = "主机配置为空"
-		_, _ = task.Create()
-		return fmt.Errorf("主机配置为空")
+		return failTask(fmt.Errorf("主机配置为空"), "主机配置为空", "")
 	}
+	updateProgress(8, "主机配置解析完成")
 
 	// 确定时间范围
 	var tstart, tend time.Time
@@ -115,19 +190,24 @@ func TaskHostReport(m Report) error {
 	// 创建下载目录
 	err := utils.Mkdir(DownloadPath)
 	if err != nil {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = err.Error()
-		_, _ = task.Create()
-		return err
+		return failTask(err, err.Error(), "")
 	}
+	updateProgress(12, "已准备输出目录")
 
 	var filelist []string
 	var ChartList []ChartData
 
 	// 收集所有指标数据，用于生成多sheet Excel
 	var allItemsData []ItemData
+	totalItemCount := 0
+	for _, config := range hostConfigs {
+		totalItemCount += len(config.ItemIDs)
+	}
+	if totalItemCount == 0 {
+		totalItemCount = len(hostConfigs)
+	}
+	processedItemCount := 0
+	lastProgress := 12
 
 	// 遍历每个主机配置
 	for _, v := range hostConfigs {
@@ -169,6 +249,12 @@ func TaskHostReport(m Report) error {
 			historyData, err := GetHistoryByItemIDFromInstance(inst, itemInfo[0].Itemid, itemInfo[0].ValueType, start, end)
 			if err != nil {
 				logger.Log.Error("获取历史数据失败:", err)
+				processedItemCount++
+				currentProgress := 12 + (processedItemCount * 58 / totalItemCount)
+				if currentProgress > lastProgress {
+					lastProgress = currentProgress
+					updateProgress(currentProgress, fmt.Sprintf("正在采集指标数据 %d/%d", processedItemCount, totalItemCount))
+				}
 				continue
 			}
 
@@ -205,10 +291,17 @@ func TaskHostReport(m Report) error {
 				Instance:     inst,      // 添加实例对象
 			}
 			ChartList = append(ChartList, chartData)
+			processedItemCount++
+			currentProgress := 12 + (processedItemCount * 58 / totalItemCount)
+			if currentProgress > lastProgress {
+				lastProgress = currentProgress
+				updateProgress(currentProgress, fmt.Sprintf("正在采集指标数据 %d/%d", processedItemCount, totalItemCount))
+			}
 		}
 	}
 
 	// 如果有多个指标，生成包含多个sheet的Excel文件
+	updateProgress(75, "正在生成 Excel 报表")
 	if len(allItemsData) > 0 {
 		xlsfilename, err := CreateMultiSheetHostReportXlsx(allItemsData, m.Name, m.Cycle, StrStart, StrEnd)
 		if err != nil {
@@ -219,27 +312,19 @@ func TaskHostReport(m Report) error {
 	}
 
 	if len(ChartList) == 0 {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = "没有可用的数据"
-		_, _ = task.Create()
-		return fmt.Errorf("没有可用的数据")
+		return failTask(fmt.Errorf("没有可用的数据"), "没有可用的数据", "")
 	}
 
 	// 生成HTML报表
+	updateProgress(82, "正在生成 HTML 报表")
 	htmlname, err := CreateHostReportHTML(m, ChartList)
 	if err != nil {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = err.Error()
-		_, _ = task.Create()
-		return err
+		return failTask(err, err.Error(), "")
 	}
 	filelist = append(filelist, htmlname)
 
 	// 复制静态资源文件到HTML同目录，并添加到文件列表
+	updateProgress(86, "正在整理静态资源")
 	assetFiles, err := assets.CopyAssetsToDir(DownloadPath)
 	if err != nil {
 		logger.Log.Error("Failed to copy assets:", err)
@@ -248,6 +333,7 @@ func TaskHostReport(m Report) error {
 	}
 
 	// 生成PDF报表
+	updateProgress(90, "正在生成 PDF 报表")
 	pdfname, err := CreateHostReportPDF(m, ChartList, StrStart, StrEnd)
 	if err != nil {
 		logger.Log.Error("生成PDF报表失败:", err)
@@ -271,14 +357,10 @@ func TaskHostReport(m Report) error {
 	Subject := "[主机报表]" + "[" + m.Name + "]" + "[" + time.Now().Format("2006-01-02") + "]"
 	zipfilename := m.Name + "_host_" + cycleType + "_" + dirdata + ".zip"
 
+	updateProgress(95, "正在打包报表文件")
 	err = utils.ZipFiles(DownloadPath+zipfilename, filelist, DownloadPath, dirname)
 	if err != nil {
-		task.EndTime = time.Now()
-		task.Status = Failed
-		task.TotalTime = time.Now().Unix() - Tend.Unix()
-		task.Result = err.Error()
-		_, _ = task.Create()
-		return err
+		return failTask(err, err.Error(), "")
 	}
 
 	// 清理临时文件
@@ -288,6 +370,7 @@ func TaskHostReport(m Report) error {
 
 	// 发送邮件
 	if m.Emails != "" {
+		updateProgress(98, "正在发送邮件")
 		byhtml, err := CreateHostMailTable(m, ChartList, StrStart, StrEnd)
 		if err != nil {
 			logger.Log.Error("生成邮件内容失败:", err)
@@ -296,25 +379,14 @@ func TaskHostReport(m Report) error {
 			err = Sendmail(tolist, Subject, zipfilename, byhtml)
 			if err != nil {
 				logger.Log.Error("发送邮件失败:", err)
-				task.EndTime = time.Now()
-				task.Status = Failed
-				task.TotalTime = time.Now().Unix() - Tend.Unix()
-				task.Result = "发送邮件失败: " + err.Error()
-				task.Files = zipfilename
-				_, _ = task.Create()
-				return err
+				return failTask(err, "发送邮件失败: "+err.Error(), zipfilename)
 			}
 		}
 	}
 
 	// 记录任务日志
-	task.EndTime = time.Now()
-	task.Status = Success
-	task.TotalTime = time.Now().Unix() - Tend.Unix()
-	task.Result = "执行成功"
-	task.Files = zipfilename
-	_, err = task.Create()
-	if err != nil {
+	updateProgress(100, "执行完成")
+	if err := FinishTaskLog(int64(task.Id), task.StartTime, Success, "执行成功", zipfilename); err != nil {
 		logger.Log.Error(err)
 	}
 
@@ -719,33 +791,7 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		itemInfo := itemData.ItemInfo[0]
 		hostInfo := itemData.HostInfo
 
-		// 生成sheet名称（限制在31个字符以内，Excel限制）
-		sheetName := itemInfo.Name
-		if len(sheetName) > 31 {
-			sheetName = sheetName[:28] + "..."
-		}
-		// 如果sheet名称重复，添加序号
-		originalSheetName := sheetName
-		sheetIndex := 1
-		for {
-			exists := false
-			for _, name := range xlsx.GetSheetList() {
-				if name == sheetName {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				break
-			}
-			suffix := strconv.Itoa(sheetIndex)
-			if len(originalSheetName) > 28-len(suffix) {
-				sheetName = originalSheetName[:28-len(suffix)] + suffix
-			} else {
-				sheetName = originalSheetName + suffix
-			}
-			sheetIndex++
-		}
+		sheetName := buildHostReportSheetName(hostInfo.Name, itemInfo.Name, xlsx.GetSheetList())
 
 		// 创建新的sheet（如果是第一个，使用默认的Sheet1）
 		var index int

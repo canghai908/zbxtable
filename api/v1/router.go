@@ -197,9 +197,10 @@ func InitRouter() *gin.Engine {
 			hostGroup := api.Group("/host")
 			{
 				hostGroup.GET("", handler.GetAllHost)
-				hostGroup.GET("/:hostid", handler.GetHostByID)
 				hostGroup.POST("", handler.UpdateHost)
 				hostGroup.GET("/search", handler.SearchHost)
+				hostGroup.GET("/filter-by-tag", handler.FilterHostsByTag)
+				hostGroup.GET("/:hostid", handler.GetHostByID)
 				hostGroup.GET("/monitem/:hostid", handler.GetMonItem)
 				hostGroup.GET("/interface/:hostid", handler.GetMonInterface)
 				hostGroup.POST("/interface/data", handler.GetOneInterface)
@@ -214,6 +215,8 @@ func InitRouter() *gin.Engine {
 				hostGroupGroup.GET("", handler.GetAllGroupsList)
 				//	hostGroupGroup.GET("/list", handler.GetAllGroupsList)
 				hostGroupGroup.GET("/tree", handler.GetAllHostGroupsTree)
+				hostGroupGroup.GET("/:id/hosts", handler.GetHostsByGroupID)
+				hostGroupGroup.GET("/list/:id/hosts", handler.GetHostsByGroupID)
 				hostGroupGroup.GET("/list/:id", handler.GetHostsByGroupID)
 			}
 
@@ -282,9 +285,12 @@ func InitRouter() *gin.Engine {
 			systemGroup := api.Group("/system")
 			{
 				systemGroup.GET("", handler.GetAllSystem)
+				systemGroup.POST("", handler.CreateSystem)
 				systemGroup.GET("/:id", handler.GetSystemByID)
 				systemGroup.PUT("/:id", handler.UpdateSystem)
+				systemGroup.DELETE("/:id", handler.DeleteSystem)
 				systemGroup.POST("/init/:id", handler.SystemInit)
+				systemGroup.GET("/:id/history", handler.GetSystemHistory)
 				systemGroup.GET("/config", handler.GetAllConfig)
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 				systemGroup.POST("/upload-logo", handler.UploadLogo)
@@ -301,6 +307,16 @@ func InitRouter() *gin.Engine {
 				systemGroup.GET("/version", handler.GetCurrentVersion)
 				systemGroup.GET("/check-update", handler.CheckUpdate)
 				systemGroup.POST("/update", handler.DoUpdate)
+			}
+
+			// 资产类型管理
+			assetTypeGroup := api.Group("/asset-type")
+			{
+				assetTypeGroup.GET("", handler.GetAllAssetTypes)
+				assetTypeGroup.POST("", handler.CreateAssetType)
+				assetTypeGroup.GET("/:id", handler.GetAssetTypeByID)
+				assetTypeGroup.PUT("/:id", handler.UpdateAssetType)
+				assetTypeGroup.DELETE("/:id", handler.DeleteAssetType)
 			}
 
 			// 出口配置管理（新）
@@ -396,6 +412,9 @@ func InitRouter() *gin.Engine {
 			{
 				managerGroup.POST("/chpwd", handler.ChangePasswordGin)
 			}
+
+			// Token 刷新（无感续期）
+			api.GET("/token/refresh", handler.RefreshTokenGin)
 
 			// AI 聊天
 			aiGroup := api.Group("/ai")

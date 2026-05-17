@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
@@ -93,6 +94,11 @@ func GetHostByID(c *gin.Context) {
 func SearchHost(c *gin.Context) {
 	name := c.Query("name")
 	zidStr := c.Query("zid")
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 0 {
+		limit = 10
+	}
 
 	// 如果提供了 zid，从指定实例查询
 	if zidStr != "" {
@@ -114,16 +120,61 @@ func SearchHost(c *gin.Context) {
 			response.InternalError(c, err.Error())
 			return
 		}
+		if limit > 0 && len(val) > limit {
+			val = val[:limit]
+		}
 		response.SuccessWithPage(c, val, int64(len(val)))
 	} else {
-		// 兼容旧逻辑：从缓存查询
-		val, err := model.GetNetHostByName(name)
+		val, err := model.SearchHostsFromOverviewCache(name, limit)
 		if err != nil {
 			response.InternalError(c, err.Error())
 			return
 		}
 		response.SuccessWithPage(c, val, int64(len(val)))
 	}
+}
+
+// FilterHostsByTag 从指定实例按 tag 过滤主机
+func FilterHostsByTag(c *gin.Context) {
+	zidStr := c.Query("zid")
+	rawTags := c.Query("tags")
+	if strings.TrimSpace(zidStr) == "" {
+		response.BadRequest(c, "实例ID不能为空")
+		return
+	}
+	if strings.TrimSpace(rawTags) == "" {
+		response.BadRequest(c, "tags 不能为空")
+		return
+	}
+
+	zid, err := strconv.Atoi(zidStr)
+	if err != nil {
+		response.BadRequest(c, "无效的实例ID")
+		return
+	}
+
+	var filters []model.HostTagFilter
+	if err := jsoniter.UnmarshalFromString(rawTags, &filters); err != nil {
+		response.BadRequest(c, "tags 格式错误")
+		return
+	}
+
+	inst, err := model.GetAPIByZID(zid)
+	if err != nil {
+		response.InternalError(c, fmt.Sprintf("获取实例连接失败: %v", err))
+		return
+	}
+
+	hosts, err := model.GetHostsByTagsFromInstance(inst, filters)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, map[string]interface{}{
+		"items": hosts,
+		"total": len(hosts),
+	})
 }
 
 // UpdateHost 更新主机信息

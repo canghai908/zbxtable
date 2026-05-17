@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"sort"
 	"zbxtable/pkg/logger"
 
 	"gorm.io/gorm"
@@ -75,11 +76,12 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 8, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "team", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "菜单管理", Path: "menu", Router: "menuManagement", Icon: "menu", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "Zabbix配置", Path: "zabbix", Router: "zabbix", Icon: "cloud-server", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 8, Name: "密码修改", Path: "chpwd", Router: "systemChpwd", Icon: "setting", Role: "admin,user"},
-		{ParentId: 8, Name: "指标映射", Path: "mapping", Router: "metricMapping", Icon: "interaction", Role: "admin,user"},
 		{ParentId: 8, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "swap", Role: "admin,user"},
 		{ParentId: 8, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "control", Role: "admin"},
+		{ParentId: 8, Name: "资产管理", Path: "asset-management", Router: "assetManagement", Icon: "appstore", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 8, Name: "版本信息", Path: "version", Router: "version", Icon: "info-circle", Role: "admin,user"},
+		{ParentId: 8, Name: "资产类型", Path: "asset-type", Router: "assetTypeManagement", Icon: "tags", Role: "admin", Permission: "['add','edit','delete','update']", Invisible: true, Highlight: "/system/asset-management"},
+		{ParentId: 8, Name: "资产绑定", Path: "asset-binding", Router: "assetBinding", Icon: "link", Role: "admin", Permission: "['add','edit','delete','update']", Invisible: true, Highlight: "/system/asset-management"},
 	}
 }
 
@@ -106,6 +108,8 @@ func InitMenuData() error {
 // CheckAndAddMenus 检查并添加缺失的菜单项（用于版本升级）
 // 检查 getMenuDefinitions 中定义的所有菜单是否在数据库中存在，如果不存在则添加
 func CheckAndAddMenus() error {
+	cleanupDeprecatedMenus()
+	migrateAssetManagementMenus()
 	menuDefs := getMenuDefinitions()
 
 	// 建立一级菜单名称到数据库ID的映射
@@ -171,6 +175,43 @@ func CheckAndAddMenus() error {
 
 	logger.Log.Info("菜单检查完成")
 	return nil
+}
+
+func cleanupDeprecatedMenus() {
+	if err := DB.Where("router = ? OR path = ?", "systemChpwd", "chpwd").Delete(&Menu{}).Error; err != nil {
+		logger.Log.Error("清理废弃菜单失败:", err)
+	}
+	if err := DB.Where("router = ? OR path = ?", "metricMapping", "mapping").Delete(&Menu{}).Error; err != nil {
+		logger.Log.Error("清理指标映射菜单失败:", err)
+	}
+}
+
+func migrateAssetManagementMenus() {
+	updates := []struct {
+		router string
+		values map[string]interface{}
+	}{
+		{
+			router: "assetTypeManagement",
+			values: map[string]interface{}{
+				"in_visible": true,
+				"highlight":  "/system/asset-management",
+			},
+		},
+		{
+			router: "assetBinding",
+			values: map[string]interface{}{
+				"in_visible": true,
+				"highlight":  "/system/asset-management",
+			},
+		},
+	}
+
+	for _, update := range updates {
+		if err := DB.Model(&Menu{}).Where("router = ?", update.router).Updates(update.values).Error; err != nil {
+			logger.Log.Error("迁移资产管理菜单失败:", update.router, err)
+		}
+	}
 }
 
 type MenuItem struct {
@@ -249,33 +290,40 @@ func getRootMenus(menus []Menu) []Menu {
 			rootMenus = append(rootMenus, menu)
 		}
 	}
+	sortMenusByDefinition(rootMenus)
 	return rootMenus
 }
 
 func getChildMenus(menus []Menu, parentId int, role string) []MenuItem {
-	var childMenus []MenuItem
+	var childDefs []Menu
 	for _, menu := range menus {
 		if menu.ParentId == parentId {
-			child := MenuItem{
-				Router: menu.Router,
-				Path:   menu.Path,
-				Name:   menu.Name,
-				Icon:   menu.Icon,
-				Meta: Meta{
-					Highlight: menu.Highlight,
-					Invisible: menu.Invisible,
-					Page: Page{
-						CacheAble: menu.CacheAble,
-					},
-				},
-				Authority: Authority{
-					Role:       role,
-					Permission: menu.Permission,
-				},
-				Children: getChildMenus(menus, menu.Id, role),
-			}
-			childMenus = append(childMenus, child)
+			childDefs = append(childDefs, menu)
 		}
+	}
+	sortMenusByDefinition(childDefs)
+
+	var childMenus []MenuItem
+	for _, menu := range childDefs {
+		child := MenuItem{
+			Router: menu.Router,
+			Path:   menu.Path,
+			Name:   menu.Name,
+			Icon:   menu.Icon,
+			Meta: Meta{
+				Highlight: menu.Highlight,
+				Invisible: menu.Invisible,
+				Page: Page{
+					CacheAble: menu.CacheAble,
+				},
+			},
+			Authority: Authority{
+				Role:       role,
+				Permission: menu.Permission,
+			},
+			Children: getChildMenus(menus, menu.Id, role),
+		}
+		childMenus = append(childMenus, child)
 	}
 	return childMenus
 }
@@ -286,6 +334,7 @@ func getChildMenus(menus []Menu, parentId int, role string) []MenuItem {
 func GetAllMenus() ([]Menu, error) {
 	var menus []Menu
 	err := DB.Order("parent_id, id").Find(&menus).Error
+	sortMenusByParentAndDefinition(menus)
 	return menus, err
 }
 
@@ -324,6 +373,7 @@ func DeleteMenu(id int) error {
 func GetParentMenus() ([]Menu, error) {
 	var menus []Menu
 	err := DB.Where("parent_id = ?", 0).Order("id").Find(&menus).Error
+	sortMenusByDefinition(menus)
 	return menus, err
 }
 
@@ -331,5 +381,39 @@ func GetParentMenus() ([]Menu, error) {
 func GetMenusByParentID(parentId int) ([]Menu, error) {
 	var menus []Menu
 	err := DB.Where("parent_id = ?", parentId).Order("id").Find(&menus).Error
+	sortMenusByDefinition(menus)
 	return menus, err
+}
+
+func sortMenusByParentAndDefinition(menus []Menu) {
+	sort.SliceStable(menus, func(i, j int) bool {
+		if menus[i].ParentId != menus[j].ParentId {
+			return menus[i].ParentId < menus[j].ParentId
+		}
+		return compareMenuOrder(menus[i], menus[j])
+	})
+}
+
+func sortMenusByDefinition(menus []Menu) {
+	sort.SliceStable(menus, func(i, j int) bool {
+		return compareMenuOrder(menus[i], menus[j])
+	})
+}
+
+func compareMenuOrder(a, b Menu) bool {
+	aOrder := menuDefinitionOrder(a)
+	bOrder := menuDefinitionOrder(b)
+	if aOrder != bOrder {
+		return aOrder < bOrder
+	}
+	return a.Id < b.Id
+}
+
+func menuDefinitionOrder(menu Menu) int {
+	for idx, def := range getMenuDefinitions() {
+		if def.ParentId == menu.ParentId && def.Router == menu.Router && def.Path == menu.Path && def.Name == menu.Name {
+			return idx
+		}
+	}
+	return 1 << 30
 }
