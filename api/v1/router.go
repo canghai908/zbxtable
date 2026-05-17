@@ -49,31 +49,38 @@ func InitRouter() *gin.Engine {
 		panic("Failed to get embedded frontend filesystem: " + err.Error())
 	}
 
-	// 创建 static 和 css 子文件系统
-	staticFS, err := fs.Sub(subFS, "static")
-	if err != nil {
-		panic("Failed to get static filesystem: " + err.Error())
-	}
-
-	cssFS, err := fs.Sub(subFS, "css")
-	if err != nil {
-		panic("Failed to get css filesystem: " + err.Error())
-	}
-
-	// 前端静态文件服务（使用 go:embed，不需要安装检查）
+	// 前端静态文件服务（使用 go:embed，不需要安装检查）。
+	// Vite 默认输出到 /assets，保留 /static 和 /css 兼容旧 Vue CLI 产物。
 	// 注意：这些路由必须在安装检查中间件之前注册
-	r.StaticFS("/static", http.FS(staticFS))
-	r.StaticFS("/css", http.FS(cssFS))
-
-	// favicon.ico
-	r.GET("/favicon.ico", func(c *gin.Context) {
-		data, err := fs.ReadFile(subFS, "favicon.ico")
-		if err != nil {
-			c.Status(404)
+	mountEmbeddedDir := func(urlPath, dir string) {
+		if _, err := fs.Stat(subFS, dir); err != nil {
 			return
 		}
-		c.Data(200, "image/x-icon", data)
-	})
+		dirFS, err := fs.Sub(subFS, dir)
+		if err != nil {
+			panic("Failed to get embedded frontend filesystem: " + err.Error())
+		}
+		r.StaticFS(urlPath, http.FS(dirFS))
+	}
+	mountEmbeddedDir("/assets", "assets")
+	mountEmbeddedDir("/static", "static")
+	mountEmbeddedDir("/css", "css")
+
+	serveFrontendFile := func(path string, contentType string) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			data, err := fs.ReadFile(subFS, path)
+			if err != nil {
+				c.Status(404)
+				return
+			}
+			c.Data(200, contentType, data)
+		}
+	}
+
+	// 根级静态资源
+	r.GET("/favicon.ico", serveFrontendFile("favicon.ico", "image/x-icon"))
+	r.GET("/logo.png", serveFrontendFile("logo.png", "image/png"))
+	r.GET("/vite.svg", serveFrontendFile("vite.svg", "image/svg+xml"))
 
 	// 根路径返回 index.html
 	r.GET("/", func(c *gin.Context) {
@@ -190,9 +197,10 @@ func InitRouter() *gin.Engine {
 			hostGroup := api.Group("/host")
 			{
 				hostGroup.GET("", handler.GetAllHost)
-				hostGroup.GET("/:hostid", handler.GetHostByID)
 				hostGroup.POST("", handler.UpdateHost)
 				hostGroup.GET("/search", handler.SearchHost)
+				hostGroup.GET("/filter-by-tag", handler.FilterHostsByTag)
+				hostGroup.GET("/:hostid", handler.GetHostByID)
 				hostGroup.GET("/monitem/:hostid", handler.GetMonItem)
 				hostGroup.GET("/interface/:hostid", handler.GetMonInterface)
 				hostGroup.POST("/interface/data", handler.GetOneInterface)
@@ -207,6 +215,8 @@ func InitRouter() *gin.Engine {
 				hostGroupGroup.GET("", handler.GetAllGroupsList)
 				//	hostGroupGroup.GET("/list", handler.GetAllGroupsList)
 				hostGroupGroup.GET("/tree", handler.GetAllHostGroupsTree)
+				hostGroupGroup.GET("/:id/hosts", handler.GetHostsByGroupID)
+				hostGroupGroup.GET("/list/:id/hosts", handler.GetHostsByGroupID)
 				hostGroupGroup.GET("/list/:id", handler.GetHostsByGroupID)
 			}
 
@@ -275,9 +285,12 @@ func InitRouter() *gin.Engine {
 			systemGroup := api.Group("/system")
 			{
 				systemGroup.GET("", handler.GetAllSystem)
+				systemGroup.POST("", handler.CreateSystem)
 				systemGroup.GET("/:id", handler.GetSystemByID)
 				systemGroup.PUT("/:id", handler.UpdateSystem)
+				systemGroup.DELETE("/:id", handler.DeleteSystem)
 				systemGroup.POST("/init/:id", handler.SystemInit)
+				systemGroup.GET("/:id/history", handler.GetSystemHistory)
 				systemGroup.GET("/config", handler.GetAllConfig)
 				systemGroup.PUT("/config/:id", handler.UpdateConfig)
 				systemGroup.POST("/upload-logo", handler.UploadLogo)
@@ -294,6 +307,16 @@ func InitRouter() *gin.Engine {
 				systemGroup.GET("/version", handler.GetCurrentVersion)
 				systemGroup.GET("/check-update", handler.CheckUpdate)
 				systemGroup.POST("/update", handler.DoUpdate)
+			}
+
+			// 资产类型管理
+			assetTypeGroup := api.Group("/asset-type")
+			{
+				assetTypeGroup.GET("", handler.GetAllAssetTypes)
+				assetTypeGroup.POST("", handler.CreateAssetType)
+				assetTypeGroup.GET("/:id", handler.GetAssetTypeByID)
+				assetTypeGroup.PUT("/:id", handler.UpdateAssetType)
+				assetTypeGroup.DELETE("/:id", handler.DeleteAssetType)
 			}
 
 			// 出口配置管理（新）
@@ -384,6 +407,14 @@ func InitRouter() *gin.Engine {
 				groupGroup.PUT("/member/:id", handler.UpdateGroupMember)
 				groupGroup.DELETE("/:id", handler.DeleteGroup)
 			}
+
+			managerGroup := api.Group("/manager")
+			{
+				managerGroup.POST("/chpwd", handler.ChangePasswordGin)
+			}
+
+			// Token 刷新（无感续期）
+			api.GET("/token/refresh", handler.RefreshTokenGin)
 
 			// AI 聊天
 			aiGroup := api.Group("/ai")

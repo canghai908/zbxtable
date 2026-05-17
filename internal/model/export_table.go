@@ -524,7 +524,7 @@ func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 		d.Uptime = v.Inventory.SoftwareAppE
 		d.Available = v.Available
 		d.Error = v.Error
-		if HostType == "HW_NET" || HostType == "HW_SRV" {
+		if IsHardwareType(HostType) {
 			d.Available = v.SnmpAvailable
 			d.Error = v.SnmpError
 			d.SerialNo = v.Inventory.SerialnoA

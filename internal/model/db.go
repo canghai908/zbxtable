@@ -80,6 +80,7 @@ func AutoMigrate() error {
 	// GORM 会自动使用模型的 TableName() 方法（如果存在）
 	// 否则使用默认的命名策略（结构体名的复数形式）
 	return DB.AutoMigrate(
+		&AssetType{},
 		&Alarm{},
 		&User{},
 		&Topology{},
@@ -95,6 +96,7 @@ func AutoMigrate() error {
 		&ZabbixInstance{},
 		&MetricMapping{},
 		&MetricMappingHistory{},
+		&SystemHistory{},
 		//&MappingRule{},
 	//&ZabbixInstance{},
 	//&ZabbixInstanceBinding{},

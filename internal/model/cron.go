@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,43 +13,214 @@ import (
 
 var (
 	cronScheduler *cron.Cron
+	cronMu        sync.Mutex
 )
+
+type scheduledTaskDefinition struct {
+	Name           string
+	EnabledKey     string
+	CronKey        string
+	DefaultEnabled string
+	DefaultCron    string
+	Run            func() error
+}
+
+var taskCronParser = cron.NewParser(
+	cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+)
+
+func getScheduledTaskDefinitions() []scheduledTaskDefinition {
+	return []scheduledTaskDefinition{
+		{
+			Name:           "首页 Top 数据同步",
+			EnabledKey:     "top_sync_enabled",
+			CronKey:        "top_sync_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0/30 * * * * *",
+			Run:            TOP,
+		},
+		{
+			Name:           "日报生成",
+			EnabledKey:     "day_report_enabled",
+			CronKey:        "day_report_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 55 23 * * *",
+			Run:            CreateDayReport,
+		},
+		{
+			Name:           "周报生成",
+			EnabledKey:     "week_report_enabled",
+			CronKey:        "week_report_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 55 17 * * 5",
+			Run:            CreateWeekReport,
+		},
+		{
+			Name:           "主机分类同步",
+			EnabledKey:     "sync_inventory",
+			CronKey:        "sync_inventory_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 */5 * * * *",
+			Run:            SyncInventory,
+		},
+		{
+			Name:           "自动指标映射",
+			EnabledKey:     "auto_metric_mapping_enabled",
+			CronKey:        "auto_metric_mapping_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 0 * * * *",
+			Run:            AutoMetricMapping,
+		},
+		{
+			Name:           "失败指标映射重试",
+			EnabledKey:     "retry_failed_mapping_enabled",
+			CronKey:        "retry_failed_mapping_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 */30 * * * *",
+			Run:            RetryFailedMappings,
+		},
+		{
+			Name:           "出口数据采集",
+			EnabledKey:     "egress_collect_enabled",
+			CronKey:        "egress_collect_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 * * * * *",
+			Run:            CollectEgressData,
+		},
+		{
+			Name:           "状态总览同步",
+			EnabledKey:     "overview_sync_enabled",
+			CronKey:        "overview_sync_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 */5 * * * *",
+			Run:            SyncOverviewData,
+		},
+		{
+			Name:           "资产绑定自动初始化",
+			EnabledKey:     "binding_auto_init_enabled",
+			CronKey:        "binding_auto_init_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 0 2 * * *",
+			Run:            AutoInitSystemBindings,
+		},
+		{
+			Name:           "资产绑定失败重试",
+			EnabledKey:     "binding_retry_enabled",
+			CronKey:        "binding_retry_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 */30 * * * *",
+			Run:            RetryFailedSystemBindings,
+		},
+	}
+}
+
+func IsTaskConfigKey(key string) bool {
+	for _, task := range getScheduledTaskDefinitions() {
+		if key == task.EnabledKey || key == task.CronKey {
+			return true
+		}
+	}
+	return false
+}
+
+func IsTaskCronConfigKey(key string) bool {
+	for _, task := range getScheduledTaskDefinitions() {
+		if key == task.CronKey {
+			return true
+		}
+	}
+	return false
+}
+
+func IsTaskEnabledConfigKey(key string) bool {
+	for _, task := range getScheduledTaskDefinitions() {
+		if key == task.EnabledKey {
+			return true
+		}
+	}
+	return false
+}
+
+func ValidateTaskConfigValue(key, value string) error {
+	if IsTaskEnabledConfigKey(key) {
+		if value != "0" && value != "1" {
+			return fmt.Errorf("计划任务开关只支持 0 或 1")
+		}
+		return nil
+	}
+	if IsTaskCronConfigKey(key) {
+		if _, err := taskCronParser.Parse(value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // InitTask 初始化定时任务
 func InitTask() {
-	// 创建 cron 调度器
-	cronScheduler = cron.New(cron.WithSeconds())
-
-	// 添加任务
-	// 注意：cron 表达式格式为 "秒 分 时 日 月 周"
-	cronScheduler.AddFunc("0/30 * * * * *", func() { _ = TOP() })
-	cronScheduler.AddFunc("0 55 23 * * *", func() { _ = CreateDayReport() })  // 每天23:55执行
-	cronScheduler.AddFunc("0 55 17 * * 5", func() { _ = CreateWeekReport() }) // 每周五17:55执行
-	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncInventory() })    // 每5分钟执行
-
-	// 新增：自动指标映射任务（每小时检查一次）
-	cronScheduler.AddFunc("0 0 * * * *", func() { _ = AutoMetricMapping() })
-
-	// 新增：失败重试任务（每30分钟检查一次）
-	cronScheduler.AddFunc("0 */30 * * * *", func() { _ = RetryFailedMappings() })
-
-	// 新增：出口数据采集任务（每分钟执行一次）
-	cronScheduler.AddFunc("0 * * * * *", func() { _ = CollectEgressData() })
-
-	// 新增：状态纵览数据采集任务（每5分钟执行一次）
-	cronScheduler.AddFunc("0 */5 * * * *", func() { _ = SyncOverviewData() })
-
-	// 启动调度器
-	cronScheduler.Start()
-	logger.Log.Info("Cron scheduler started")
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	startTaskSchedulerLocked()
 }
 
 // StopTask 停止定时任务
 func StopTask() {
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	stopTaskSchedulerLocked()
+}
+
+func ReloadTaskScheduler() {
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	stopTaskSchedulerLocked()
+	startTaskSchedulerLocked()
+}
+
+func startTaskSchedulerLocked() {
 	if cronScheduler != nil {
 		cronScheduler.Stop()
-		logger.Log.Info("Cron scheduler stopped")
 	}
+
+	cronScheduler = cron.New(cron.WithSeconds())
+
+	for _, task := range getScheduledTaskDefinitions() {
+		if GetConfigValueByKey(task.EnabledKey, task.DefaultEnabled) != "1" {
+			logger.Log.Infof("计划任务[%s]已禁用，跳过注册", task.Name)
+			continue
+		}
+
+		spec := GetConfigValueByKey(task.CronKey, task.DefaultCron)
+		if _, err := taskCronParser.Parse(spec); err != nil {
+			logger.Log.Errorf("计划任务[%s] Cron表达式无效[%s]: %v", task.Name, spec, err)
+			continue
+		}
+
+		currentTask := task
+		_, err := cronScheduler.AddFunc(spec, func() {
+			if err := currentTask.Run(); err != nil {
+				logger.Log.Errorf("计划任务[%s]执行失败: %v", currentTask.Name, err)
+			}
+		})
+		if err != nil {
+			logger.Log.Errorf("注册计划任务[%s]失败: %v", task.Name, err)
+			continue
+		}
+		logger.Log.Infof("计划任务[%s]已注册，Cron=%s", task.Name, spec)
+	}
+
+	cronScheduler.Start()
+	logger.Log.Info("Cron scheduler started")
+}
+
+func stopTaskSchedulerLocked() {
+	if cronScheduler == nil {
+		return
+	}
+
+	cronScheduler.Stop()
+	cronScheduler = nil
+	logger.Log.Info("Cron scheduler stopped")
 }
 func CreateWeekReport() error {
 	_, list, err := GetALlReport()
@@ -513,17 +685,7 @@ func UpdateEdgeDataById(id int) error {
 
 // SyncInventory 同步主机分类及数据绑定（支持多实例）
 func SyncInventory() error {
-	var data []Config
-	//查询配置表，id 3为同步配置
-	err := DB.Where("id = ?", 3).Find(&data).Error
-	if err != nil {
-		return err
-	}
-	if len(data) == 0 {
-		return nil
-	}
-	//1为开启，其他为关闭
-	if data[0].ConfigValue != "1" {
+	if GetConfigValueByKey("sync_inventory", "1") != "1" {
 		return nil
 	}
 
@@ -574,8 +736,16 @@ func SyncOverviewData() error {
 		return err
 	}
 
-	// 定义主机类型列表
-	hostTypes := []string{"VM_LIN", "VM_WIN", "HW_NET", "HW_SRV"}
+	// 从数据库动态获取主机类型列表
+	assetTypes, err := GetAllAssetTypes()
+	if err != nil {
+		logger.Log.Errorf("获取资产类型列表失败: %v", err)
+		return err
+	}
+	hostTypes := make([]string, 0, len(assetTypes))
+	for _, at := range assetTypes {
+		hostTypes = append(hostTypes, at.TypeCode)
+	}
 
 	// 遍历每种主机类型
 	for _, hostType := range hostTypes {
@@ -649,55 +819,50 @@ func getOverviewHostsFromInstance(inst *APIInstance, hostType string) ([]Hosts, 
 
 	var hosts []Hosts
 	for _, v := range hb {
-		var d Hosts
-		d.HostID = v.Hostid
-		d.Host = v.Host
-		d.Name = v.Name
-		if len(v.Interfaces) != 0 {
-			d.Interfaces = v.Interfaces[0].IP
-			d.Available = v.Interfaces[0].Available
-			d.Error = v.Interfaces[0].Error
-		}
-		d.Status = v.Status
-		d.Model = v.Inventory.Model
-		d.OS = v.Inventory.Os
-		d.NumberOfCores = v.Inventory.Software
-		d.CPUUtilization = v.Inventory.SoftwareAppA
-		d.MemoryUtilization = v.Inventory.SoftwareAppB
-		d.MemoryTotal = v.Inventory.SoftwareAppC
-		d.MemoryUsed = v.Inventory.SoftwareAppD
-		d.Uptime = v.Inventory.SoftwareAppE
-		d.DateHwInstall = v.Inventory.DateHwInstall
-		d.DateHwExpiry = v.Inventory.DateHwExpiry
-		d.MAC = v.Inventory.MacaddressA
-		d.ResourceID = v.Inventory.SerialnoB
-		d.Vendor = v.Inventory.Vendor
-		d.Ping = v.Inventory.Poc1Name
-		d.PingLoss = v.Inventory.Poc1Email
-		d.PingSec = v.Inventory.Poc1PhoneA
-
-		// 网络设备和物理服务器的特殊字段
-		if hostType == "HW_NET" || hostType == "HW_SRV" {
-			d.SerialNo = v.Inventory.SerialnoA
-			d.Location = v.Inventory.Location
-			d.Department = v.Inventory.SiteCity
-		}
-
-		if !inst.IsV54OrLater {
-			//网络和设备
-			if hostType == "HW_NET" || hostType == "HW_SRV" {
-				d.Available = v.SnmpAvailable
-				d.Error = v.SnmpError
-
-			} else {
-				//主机设备
-				d.Available = v.Available
-				d.Error = v.Error
-			}
-
-		}
-		hosts = append(hosts, d)
+		hosts = append(hosts, buildHostFromListHost(inst, v, hostType))
 	}
 
 	return hosts, nil
+}
+
+// AutoInitSystemBindings 自动执行启用了 auto_init 的资产绑定初始化
+func AutoInitSystemBindings() error {
+	systems, err := GetAutoInitSystems()
+	if err != nil {
+		logger.Log.Errorf("获取自动初始化绑定配置失败: %v", err)
+		return err
+	}
+	if len(systems) == 0 {
+		return nil
+	}
+	logger.Log.Infof("开始自动资产绑定初始化，共 %d 个配置", len(systems))
+	for _, s := range systems {
+		go func(id int64) {
+			if err := ExecuteSystemInit(id, "auto"); err != nil {
+				logger.Log.Errorf("自动资产绑定初始化失败 [ID=%d]: %v", id, err)
+			}
+		}(s.ID)
+	}
+	return nil
+}
+
+// RetryFailedSystemBindings 重试失败的资产绑定初始化
+func RetryFailedSystemBindings() error {
+	systems, err := GetFailedSystemsForRetry()
+	if err != nil {
+		logger.Log.Errorf("获取失败绑定配置失败: %v", err)
+		return err
+	}
+	if len(systems) == 0 {
+		return nil
+	}
+	logger.Log.Infof("开始重试失败的资产绑定，共 %d 个配置", len(systems))
+	for _, s := range systems {
+		go func(id int64) {
+			if err := ExecuteSystemInit(id, "retry"); err != nil {
+				logger.Log.Errorf("重试资产绑定失败 [ID=%d]: %v", id, err)
+			}
+		}(s.ID)
+	}
+	return nil
 }

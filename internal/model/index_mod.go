@@ -1,16 +1,26 @@
 package model
 
 // TrendRes resp
-// IndexInfo struct
+// IndexInfo struct（动态主机数量通过 HostCounts map 返回）
 type IndexInfo struct {
-	Hosts    int64 `json:"hosts"`
-	Items    int64 `json:"items"`
-	Triggers int64 `json:"triggers"`
-	Problems int64 `json:"problems"`
-	WinCount int64 `json:"win_count"` //Windows主机
-	LinCount int64 `json:"lin_count"` //Linux主机
-	NETCount int64 `json:"net_count"` //网络设备
-	SRVCount int64 `json:"srv_count"` //物理机器
+	Hosts           int64            `json:"hosts"`
+	Items           int64            `json:"items"`
+	Triggers        int64            `json:"triggers"`
+	Problems        int64            `json:"problems"`
+	LinCount        int64            `json:"lin_count"`
+	WinCount        int64            `json:"win_count"`
+	SrvCount        int64            `json:"srv_count"`
+	NetCount        int64            `json:"net_count"`
+	TotalCount      int64            `json:"total_count"`
+	HostCounts      map[string]int64 `json:"host_counts"` // key=type_code, value=数量
+	AssetTypeCounts []AssetTypeCount `json:"asset_type_counts"`
+}
+
+type AssetTypeCount struct {
+	TypeCode string `json:"type_code"`
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	Count    int64  `json:"count"`
 }
 
 type RouRes struct {
@@ -74,9 +84,10 @@ type Treeinventory struct {
 	TwoChildren []TwoChildren `json:"children"`
 }
 type TwoChildren struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	//TreeChildren []TreeChildren `json:"children"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	TypeCode string `json:"type_code"`
+	Icon     string `json:"icon"`
 }
 type TreeChildren struct {
 	ID   int64  `json:"id"`
@@ -89,12 +100,9 @@ type OverviewRes struct {
 		Items OverviewList `json:"items"`
 	} `json:"data"`
 }
-type OverviewList struct {
-	Win []Hosts `json:"vm_win"`
-	Lin []Hosts `json:"vm_lin"`
-	NET []Hosts `json:"hw_net"`
-	SRV []Hosts `json:"hw_srv"`
-}
+
+// OverviewList 动态资产类型列表，key=type_code（如 VM_LIN），value=主机列表
+type OverviewList map[string][]Hosts
 type EgressRes struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

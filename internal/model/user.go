@@ -295,15 +295,22 @@ func GetManagerByName(username string) (v *User, err error) {
 
 // Chanagepwd func
 func Chanagepwd(old, new string) (err error) {
-	v, err := GetManagerByName("admin")
+	return ChangePasswordForUser("admin", old, new)
+}
+
+func ChangePasswordForUser(username, oldPassword, newPassword string) error {
+	v, err := GetManagerByName(username)
 	if err != nil {
 		return err
 	}
-	if v.Username != "admin" || v.Password != utils.Md5([]byte(old)) {
+	if err := utils.ComparePass(v.Password, oldPassword); err != nil {
 		return errors.New("账号或密码错误")
 	}
-	err = DB.Model(&User{}).Where("id = ?", v.ID).Update("password", utils.Md5([]byte(new))).Error
+	password, err := utils.PasswordHash(newPassword)
 	if err != nil {
+		return errors.New("更新密码出错")
+	}
+	if err := DB.Model(&User{}).Where("id = ?", v.ID).Update("password", password).Error; err != nil {
 		return errors.New("更新密码出错")
 	}
 	return nil

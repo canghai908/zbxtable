@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
@@ -56,6 +57,12 @@ func UpdateConfig(m *Config) (err error) {
 		return errors.New("加密密钥不允许修改，如需更换请联系系统管理员")
 	}
 
+	if IsTaskConfigKey(v.ConfigKey) {
+		if err := ValidateTaskConfigValue(v.ConfigKey, m.ConfigValue); err != nil {
+			return fmt.Errorf("计划任务配置无效: %w", err)
+		}
+	}
+
 	// 对敏感字段进行加密
 	valueToSave := m.ConfigValue
 	sensitiveKeys := []string{
@@ -87,6 +94,11 @@ func UpdateConfig(m *Config) (err error) {
 	if err != nil {
 		return err
 	}
+
+	if IsTaskConfigKey(v.ConfigKey) {
+		ReloadTaskScheduler()
+	}
+
 	//dash处理
 	if m.ID == 1 {
 		err = updateZbxDash(m)

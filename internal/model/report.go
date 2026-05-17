@@ -1,11 +1,15 @@
 package model
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 // TableName alarm
@@ -97,13 +101,19 @@ func UpdateReportByID(m *Report) (err error) {
 		"items":           m.Items,
 		"link_band_width": m.LinkBandWidth,
 		"host_ids":        m.HostIds,
-		"item_ids":        m.ItemIds,
-		"cycle":           m.Cycle,
-		"status":          m.Status,
-		"desc":            m.Desc,
-		"start":           m.Start,
-		"end":             m.End,
-		"report_mode":     m.ReportMode,
+		"resolved_host_ids": func() string {
+			if m.ReportType == "host" {
+				return ""
+			}
+			return v.ResolvedHostIds
+		}(),
+		"item_ids":    m.ItemIds,
+		"cycle":       m.Cycle,
+		"status":      m.Status,
+		"desc":        m.Desc,
+		"start":       m.Start,
+		"end":         m.End,
+		"report_mode": m.ReportMode,
 	}).Error
 	if err != nil {
 		return err
@@ -111,48 +121,163 @@ func UpdateReportByID(m *Report) (err error) {
 	return nil
 }
 
+func UpdateReportHostConfigByID(id int, hostIDs, itemIDs string) error {
+	return DB.Model(&Report{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"host_ids": hostIDs,
+		"item_ids": itemIDs,
+	}).Error
+}
+
+func UpdateReportItemIDsByID(id int, itemIDs string) error {
+	return DB.Model(&Report{}).Where("id = ?", id).Update("item_ids", itemIDs).Error
+}
+
+func UpdateReportResolvedHostConfigByID(id int, resolvedHostIDs, itemIDs string) error {
+	return DB.Model(&Report{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"resolved_host_ids": resolvedHostIDs,
+		"item_ids":          itemIDs,
+	}).Error
+}
+
 // UpdateTopologyByID updates Alarm by Id and returns error if
-func CheckNowByID(m *Report) (err error) {
+func CheckNowByID(m *Report) (taskLogID int64, err error) {
 	var v Report
 	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
+		return 0, err
+	}
+
+	if err := ResetStaleRunningReports(15 * time.Minute); err != nil {
+		logger.Log.Error(err)
+	}
+	if err := DB.Where("id = ?", m.ID).First(&v).Error; err != nil {
+		return 0, err
+	}
+
+	if v.ExecStatus == strconv.Itoa(Running) {
+		latestTaskLog, taskErr := GetLatestTaskLogByReportID(v.ID)
+		if taskErr != nil {
+			if !errors.Is(taskErr, gorm.ErrRecordNotFound) {
+				return 0, taskErr
+			}
+		}
+		if latestTaskLog == nil || latestTaskLog.Status != Running {
+			finishedAt := time.Now()
+			v.ExecStatus = strconv.Itoa(Failed)
+			v.EndAt = &finishedAt
+			if err := UpdateReportExecStatusByID(&v); err != nil {
+				return 0, err
+			}
+		} else {
+			return 0, fmt.Errorf("报表正在处理中，请稍后重试")
+		}
+	}
+
+	if v.ReportType != "host" {
+		start := time.Now()
+		v.ExecStatus = strconv.Itoa(Running)
+		v.StartAt = &start
+		v.EndAt = nil
+		if err := UpdateReportExecStatusByID(&v); err != nil {
+			logger.Log.Error(err)
+			return 0, err
+		}
+		runErr := runReportNow(&v, nil)
+		finishedAt := time.Now()
+		v.EndAt = &finishedAt
+		if runErr != nil {
+			v.ExecStatus = strconv.Itoa(Failed)
+		} else {
+			v.ExecStatus = strconv.Itoa(Success)
+		}
+		if err := UpdateReportExecStatusByID(&v); err != nil {
+			logger.Log.Error(err)
+			return 0, err
+		}
+		return 0, runErr
+	}
+
+	start := time.Now()
+	v.ExecStatus = strconv.Itoa(Running)
+	v.StartAt = &start
+	v.EndAt = nil
+	if err := UpdateReportExecStatusByID(&v); err != nil {
+		logger.Log.Error(err)
+		return 0, err
+	}
+
+	taskLogID, err = CreateTaskLog(v, Running)
+	if err != nil {
+		finishedAt := time.Now()
+		v.ExecStatus = strconv.Itoa(Failed)
+		v.EndAt = &finishedAt
+		if updateErr := UpdateReportExecStatusByID(&v); updateErr != nil {
+			logger.Log.Error(updateErr)
+		}
+		logger.Log.Error(err)
+		return 0, err
+	}
+
+	go func(report Report, logID int64) {
+		task := &TaskLog{
+			Id:        int(logID),
+			ReportID:  report.ID,
+			Name:      report.Name,
+			Cycle:     report.Cycle,
+			StartTime: start,
+			Status:    Running,
+		}
+		runErr := runReportNow(&report, task)
+		finishedAt := time.Now()
+		report.EndAt = &finishedAt
+		if runErr != nil {
+			report.ExecStatus = strconv.Itoa(Failed)
+		} else if report.ReportType == "host" && report.ReportMode != "realtime" {
+			report.ExecStatus = strconv.Itoa(NoBegin)
+		} else {
+			report.ExecStatus = strconv.Itoa(Success)
+		}
+		if updateErr := UpdateReportExecStatusByID(&report); updateErr != nil {
+			logger.Log.Error(updateErr)
+		}
+	}(v, taskLogID)
+
+	return taskLogID, nil
+}
+
+func ResetStaleRunningReports(timeout time.Duration) error {
+	query := DB.Model(&Report{}).Where("exec_status = ?", strconv.Itoa(Running))
+	if timeout > 0 {
+		cutoff := time.Now().Add(-timeout)
+		query = query.Where("start_at < ?", cutoff)
+	}
+	if err := query.Updates(map[string]interface{}{
+		"exec_status": strconv.Itoa(Failed),
+		"end_at":      time.Now(),
+	}).Error; err != nil {
 		return err
+	}
+	return MarkStaleRunningTaskLogsFailed(timeout)
+}
+
+func runReportNow(v *Report, task *TaskLog) error {
+	if v == nil {
+		return fmt.Errorf("报表不存在")
+	}
+
+	if v.ReportType == "host" && HasBulkHostReportConfig(v.HostIds) {
+		if err := PrepareHostReportExecutionConfig(v); err != nil {
+			return err
+		}
 	}
 
 	// 实时报表：直接生成，不需要周期
 	if v.ReportMode == "realtime" && v.ReportType == "host" {
-		start := time.Now()
-		// 设置执行状态为处理中
-		v.ExecStatus = strconv.Itoa(Running)
-		v.StartAt = &start
-		if err := UpdateReportExecStatusByID(&v); err != nil {
-			logger.Log.Error(err)
-			return err
-		}
-
-		// 实时报表使用配置的开始和结束时间，设置一个临时的Cycle用于文件命名
-		vTemp := v
+		vTemp := *v
 		if len(vTemp.Cycle) == 0 {
 			vTemp.Cycle = "realtime" // 用于文件命名区分
 		}
-		taskErr := TaskHostReport(vTemp)
-		if taskErr != nil {
-			logger.Log.Error(taskErr)
-			v.ExecStatus = strconv.Itoa(Failed)
-			end := time.Now()
-			v.EndAt = &end
-			UpdateReportExecStatusByID(&v)
-			return taskErr
-		}
-		// 更新 report 状态
-		v.ExecStatus = strconv.Itoa(Success)
-		end := time.Now()
-		v.EndAt = &end
-		if err := UpdateReportExecStatusByID(&v); err != nil {
-			logger.Log.Error(err)
-			return err
-		}
-		return nil
+		return TaskHostReportWithTaskLog(vTemp, task)
 	}
 
 	// 循环报表：需要配置周期
@@ -168,55 +293,33 @@ func CheckNowByID(m *Report) (err error) {
 	for _, vv := range cycle {
 		// day
 		if vv == "day" {
-			start := time.Now()
 			var taskErr error
 			if v.ReportType == "host" {
-				// 只针对当前周期生成主机报表
-				vDay := v
+				vDay := *v
 				vDay.Cycle = "day"
-				taskErr = TaskHostReport(vDay)
+				taskErr = TaskHostReportWithTaskLog(vDay, task)
 			} else {
-				taskErr = TaskDayReport(v)
+				taskErr = TaskDayReport(*v)
 			}
 			if taskErr != nil {
 				logger.Log.Error(taskErr)
 				return taskErr
-			}
-			// 更新 report 状态
-			v.ExecStatus = strconv.Itoa(Success)
-			v.StartAt = &start
-			end := time.Now()
-			v.EndAt = &end
-			if err := UpdateReportExecStatusByID(&v); err != nil {
-				logger.Log.Error(err)
-				return err
 			}
 		}
 
 		// week
 		if vv == "week" {
-			start := time.Now()
 			var taskErr error
 			if v.ReportType == "host" {
-				// 只针对当前周期生成主机报表
-				vWeek := v
+				vWeek := *v
 				vWeek.Cycle = "week"
-				taskErr = TaskHostReport(vWeek)
+				taskErr = TaskHostReportWithTaskLog(vWeek, task)
 			} else {
-				taskErr = TaskWeekReport(v)
+				taskErr = TaskWeekReport(*v)
 			}
 			if taskErr != nil {
 				logger.Log.Error(taskErr)
 				return taskErr
-			}
-			// 更新 report 状态
-			v.ExecStatus = strconv.Itoa(Success)
-			v.StartAt = &start
-			end := time.Now()
-			v.EndAt = &end
-			if err := UpdateReportExecStatusByID(&v); err != nil {
-				logger.Log.Error(err)
-				return err
 			}
 		}
 	}

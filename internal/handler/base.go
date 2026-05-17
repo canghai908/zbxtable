@@ -241,6 +241,32 @@ func LogoutGin(c *gin.Context) {
 	response.SuccessWithMessage(c, "用户注销成功", nil)
 }
 
+// RefreshTokenGin 无感刷新 token（需要当前 token 有效）
+func RefreshTokenGin(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists || username == "" {
+		response.Unauthorized(c, "无效的 token")
+		return
+	}
+
+	var SessionTimeout int64
+	var err error
+	SessionTimeout, err = strconv.ParseInt(model.GetConfKey("timeout"), 10, 32)
+	if err != nil {
+		SessionTimeout = 12
+	}
+
+	et := jwtbeego.EasyToken{
+		Username: username.(string),
+		Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
+	}
+	tokenString, _ := et.GetToken()
+
+	response.SuccessWithMessage(c, "刷新成功", gin.H{
+		"token": tokenString,
+	})
+}
+
 // ReceiveGin 接收消息告警消息
 func ReceiveGin(c *gin.Context) {
 	type Re struct {

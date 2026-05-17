@@ -3,107 +3,117 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'  # 当推送 v* 格式的标签时触发，例如 v1.0.0
+      - "v*"
 
 permissions:
-  contents: write  # 需要写权限来创建 release
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
+  release:
     name: Build and Release
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: 检出后端代码
+      - name: Checkout backend repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整的 git 历史，用于生成版本信息
+          fetch-depth: 0
 
-      - name: 检出前端代码
+      - name: Checkout frontend repository
         uses: actions/checkout@v4
         with:
           repository: canghai908/zbxtable-web
           path: zbxtable-web
 
-      - name: 设置 Node.js 环境
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '16'
-          cache: 'npm'
+          node-version: "20"
+          cache: npm
           cache-dependency-path: zbxtable-web/package-lock.json
 
-      - name: 设置 Go 环境
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: "1.24"
+          cache: true
           cache-dependency-path: go.sum
 
-      - name: 构建前端
+      - name: Build frontend
         working-directory: ./zbxtable-web
+        env:
+          NODE_OPTIONS: --openssl-legacy-provider
         run: |
-          echo "📦 开始构建前端..."
+          echo "📦 Building frontend..."
           npm ci
           npm run build
-          echo "✓ 前端构建完成"
-          ls -lh web/
+          test -f web/index.html
+          echo "✓ Frontend build complete"
 
-      - name: 复制前端构建产物到后端
+      - name: Sync frontend assets into embedded web directory
         run: |
-          echo "📋 复制前端文件到后端目录..."
+          echo "📋 Syncing frontend assets..."
+          rm -rf api/v1/web/web
           mkdir -p api/v1/web/web
-          cp -r zbxtable-web/web/* api/v1/web/web/
-          echo "✓ 前端文件复制完成"
-          ls -lh api/v1/web/web/
+          cp -R zbxtable-web/web/. api/v1/web/web/
+          test -f api/v1/web/web/index.html
+          echo "✓ Frontend assets synced"
 
-      - name: 获取版本信息
+      - name: Resolve version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "发布版本: $VERSION"
+          version="${GITHUB_REF#refs/tags/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version"
 
-      - name: 编译所有平台并打包
+      - name: Run release validation
         run: |
-          # 设置版本号（Makefile 会自动从 git tag 获取）
-          echo "📦 开始编译所有平台（不使用 CGO）..."
-          export CGO_ENABLED=0
-          make build-all
-          
-          echo "📦 创建发布包..."
-          make package
-          
-          echo "✅ 编译和打包完成！"
-          ls -lh dist/releases/
+          make install
+          make vet
+          make test
 
-      - name: 生成校验和
+      - name: Build release packages
+        run: |
+          echo "📦 Building release archives..."
+          make package
+          ls -lh dist/releases
+
+      - name: Generate checksums
         run: |
           cd dist/releases
           sha256sum *.tar.gz > SHA256SUMS
           cat SHA256SUMS
-          echo "📋 所有发布包："
-          ls -lh
 
-      - name: 生成更新日志
-        id: changelog
+      - name: Generate changelog
         run: |
-          # 获取上一个标签
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
-          if [ -z "$PREV_TAG" ]; then
-            echo "这是第一个版本发布"
-            CHANGELOG="## 🎉 首次发布\n\n这是 zbxtable 的第一个正式版本。\n\n### 📦 支持平台\n\n- Linux AMD64 (无 CGO 依赖，纯静态编译)\n- Linux ARM64 (无 CGO 依赖，纯静态编译)\n\n### ✨ 特性\n\n- ✅ 纯 Go 编译，无需 CGO\n- ✅ 静态二进制文件，无外部依赖\n- ✅ 支持 MySQL 和 PostgreSQL 数据库\n- ✅ 可在任何 Linux 发行版上运行"
-          else
-            echo "生成从 $PREV_TAG 到当前版本的更新日志..."
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
-            CHANGELOG="## 📝 更新内容\n\n${CHANGELOG}\n\n### 📦 支持平台\n\n- Linux AMD64 (无 CGO 依赖，纯静态编译)\n- Linux ARM64 (无 CGO 依赖，纯静态编译)\n\n### ✨ 特性\n\n- ✅ 纯 Go 编译，无需 CGO\n- ✅ 静态二进制文件，无外部依赖\n- ✅ 支持 MySQL 和 PostgreSQL 数据库\n- ✅ 可在任何 Linux 发行版上运行"
-          fi
-          
-          # 保存到文件
-          echo -e "$CHANGELOG" > CHANGELOG.md
+          current_tag="${{ steps.version.outputs.version }}"
+          prev_tag="$(git describe --tags --abbrev=0 "${current_tag}^" 2>/dev/null || true)"
+          {
+            echo "## Release ${current_tag}"
+            echo
+            if [ -n "$prev_tag" ]; then
+              echo "### Changes since ${prev_tag}"
+              echo
+              git log "${prev_tag}..${current_tag}" --pretty=format:"- %s (%h)" --no-merges
+            else
+              echo "### Initial release"
+              echo
+              echo "- First tagged release."
+            fi
+            echo
+            echo "### Packages"
+            echo
+            echo "- Linux AMD64"
+            echo "- Linux ARM64"
+          } > CHANGELOG.md
           cat CHANGELOG.md
 
-      - name: 创建 GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ steps.version.outputs.version }}
           body_path: CHANGELOG.md
@@ -112,11 +122,3 @@ jobs:
           files: |
             dist/releases/*.tar.gz
             dist/releases/SHA256SUMS
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 发布完成
-        run: |
-          echo "🎉 发布成功！"
-          echo "版本: ${{ steps.version.outputs.version }}"
-          echo "下载地址: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"

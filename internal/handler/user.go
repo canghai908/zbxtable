@@ -166,6 +166,9 @@ func UpdateUserGin(c *gin.Context) {
 	if bodyJSON.Get("theme").Exists() {
 		v.Theme = bodyJSON.Get("theme").String()
 	}
+	if bodyJSON.Get("status").Exists() {
+		v.Status = bodyJSON.Get("status").Int()
+	}
 
 	err = model.UpdateUser(&v, tuserStr)
 	if err != nil {
@@ -198,4 +201,33 @@ func DeleteUserGin(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// ChangePasswordGin 修改当前登录用户密码
+func ChangePasswordGin(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.BadRequest(c, "请求体读取失败")
+		return
+	}
+
+	oldPassword := gjson.Get(string(body), "old").String()
+	newPassword := gjson.Get(string(body), "new").String()
+	if oldPassword == "" || newPassword == "" {
+		response.ValidationError(c, "当前密码和新密码不能为空")
+		return
+	}
+
+	usernameValue, ok := c.Get("username")
+	if !ok {
+		response.Unauthorized(c, "登录状态失效")
+		return
+	}
+
+	if err := model.ChangePasswordForUser(usernameValue.(string), oldPassword, newPassword); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "密码修改成功", nil)
 }

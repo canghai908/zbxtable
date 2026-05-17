@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 	"zbxtable/pkg/logger"
+
+	"gorm.io/gorm"
 )
 
 // item link to inventory
@@ -53,7 +55,7 @@ func GetSystemByID(id int64) (v *System, err error) {
 // GetSystemByInstance 根据实例ID和系统ID获取配置
 func GetSystemByInstance(systemID int64, instanceID int) (v *System, err error) {
 	v = &System{}
-	err = DB.Where("id = ? AND instance = ?", systemID, instanceID).First(v).Error
+	err = DB.Where("id = ? AND zid = ?", systemID, instanceID).First(v).Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +64,9 @@ func GetSystemByInstance(systemID int64, instanceID int) (v *System, err error) 
 
 // GetALlSystem 获取所有系统列表
 func GetALlSystem() (cnt int64, system []System, err error) {
+	if err = EnsureSystemBindingsForAssetTypes(); err != nil {
+		return 0, []System{}, err
+	}
 	var sys []System
 	err = DB.Find(&sys).Error
 	if err != nil {
@@ -74,7 +79,7 @@ func GetALlSystem() (cnt int64, system []System, err error) {
 // GetSystemsByInstance 获取指定实例的所有系统配置
 func GetSystemsByInstance(instanceID int) ([]System, error) {
 	var sys []System
-	err := DB.Where("instance = ?", instanceID).Find(&sys).Error
+	err := DB.Where("zid = ?", instanceID).Find(&sys).Error
 	if err != nil {
 		return []System{}, err
 	}
@@ -84,13 +89,15 @@ func GetSystemsByInstance(instanceID int) ([]System, error) {
 // UpdateSystem 更新系统分类及指标
 func UpdateSystem(m *System) (err error) {
 	var v System
-	err = DB.Where("id = ? AND instance = ?", m.ID, m.ZID).First(&v).Error
+	err = DB.Where("id = ?", m.ID).First(&v).Error
 	if err != nil {
 		return err
 	}
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
-	err = DB.Model(&System{}).Where("id = ? AND instance = ?", m.ID, m.ZID).Updates(map[string]interface{}{
+	err = DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+		"zid":                   m.ZID,
+		"type_code":             m.TypeCode,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -109,10 +116,54 @@ func UpdateSystem(m *System) (err error) {
 	return nil
 }
 
+// EnsureSystemBindingsForAssetTypes 确保每个资产类型都有一条资产绑定配置
+func EnsureSystemBindingsForAssetTypes() error {
+	assetTypes, err := GetAllAssetTypes()
+	if err != nil {
+		return err
+	}
+	if len(assetTypes) == 0 {
+		return nil
+	}
+
+	now := time.Now()
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var systems []System
+		if err := tx.Find(&systems).Error; err != nil {
+			return err
+		}
+
+		existingByType := make(map[string]bool, len(systems))
+		for _, sys := range systems {
+			if sys.TypeCode == "" {
+				continue
+			}
+			existingByType[sys.TypeCode] = true
+		}
+
+		var missing []System
+		for _, assetType := range assetTypes {
+			if existingByType[assetType.TypeCode] {
+				continue
+			}
+			missing = append(missing, System{
+				Name:     assetType.Name,
+				TypeCode: assetType.TypeCode,
+				Status:   0,
+				InitedAt: &now,
+			})
+		}
+		if len(missing) == 0 {
+			return nil
+		}
+		return tx.Create(&missing).Error
+	})
+}
+
 // CreateOrUpdateSystem 创建或更新系统配置（支持多实例）
 func CreateOrUpdateSystem(m *System) error {
 	var existing System
-	err := DB.Where("id = ? AND instance = ?", m.ID, m.ZID).First(&existing).Error
+	err := DB.Where("id = ?", m.ID).First(&existing).Error
 
 	if err != nil {
 		// 不存在，创建新记录
@@ -124,8 +175,9 @@ func CreateOrUpdateSystem(m *System) error {
 	// 存在，更新记录
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = existing.CreatedAt
-	return DB.Model(&System{}).Where("id = ? AND instance = ?", m.ID, m.ZID).Updates(map[string]interface{}{
+	return DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"zid":                   m.ZID,
+		"type_code":             m.TypeCode,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
 		"group_id":              m.GroupID,
@@ -139,57 +191,122 @@ func CreateOrUpdateSystem(m *System) error {
 	}).Error
 }
 
+// CreateSystem 创建新的 System 绑定记录
+func CreateSystem(m *System) error {
+	m.CreatedAt = time.Now()
+	m.UpdatedAt = time.Now()
+	return DB.Create(m).Error
+}
+
+// DeleteSystem 删除 System 绑定记录
+func DeleteSystem(id int64) error {
+	return DB.Delete(&System{}, id).Error
+}
+
 // SystemInit 初始化指标
-func SystemInit(id int64) error {
+// ExecuteSystemInit 执行资产绑定初始化，记录历史，支持 execType: manual/auto/retry
+func ExecuteSystemInit(systemID int64, execType string) error {
 	var v System
-	err := DB.Where("id = ?", id).First(&v).Error
-	if err != nil {
+	if err := DB.Where("id = ?", systemID).First(&v).Error; err != nil {
 		return err
 	}
+
+	hist := &SystemHistory{
+		SystemID:  systemID,
+		ZID:       v.ZID,
+		TypeCode:  v.TypeCode,
+		ExecType:  execType,
+		StartTime: time.Now(),
+		Status:    "running",
+	}
+	DB.Create(hist)
+
+	apiInstance, err := GetAPIByZID(v.ZID)
+	if err != nil {
+		return systemInitError(&v, hist, fmt.Errorf("获取实例API失败: %w", err))
+	}
+
 	list := strings.Split(v.GroupID, ",")
-	err = HostTypeSet(&v, list)
+	affectedHosts, err := hostTypeSetWithCount(&v, list, apiInstance)
 	if err != nil {
-		return err
+		return systemInitError(&v, hist, err)
 	}
+
+	return systemInitSuccess(&v, hist, affectedHosts)
+}
+
+func systemInitError(v *System, hist *SystemHistory, err error) error {
 	now := time.Now()
-	err = DB.Model(&System{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":    1,
-		"inited_at": &now,
-	}).Error
-	if err != nil {
-		return err
-	}
+	DB.Model(hist).Updates(map[string]interface{}{
+		"end_time":      &now,
+		"duration":      int(now.Sub(hist.StartTime).Seconds()),
+		"status":        "failed",
+		"error_message": err.Error(),
+	})
+	DB.Model(&System{}).Where("id = ?", v.ID).Updates(map[string]interface{}{
+		"status":      2,
+		"init_error":  err.Error(),
+		"retry_count": v.RetryCount + 1,
+		"inited_at":   &now,
+	})
+	logger.Log.Errorf("资产绑定初始化失败 [ID=%d, type=%s]: %v", v.ID, v.TypeCode, err)
+	return err
+}
+
+func systemInitSuccess(v *System, hist *SystemHistory, affectedHosts int) error {
+	now := time.Now()
+	DB.Model(hist).Updates(map[string]interface{}{
+		"end_time":       &now,
+		"duration":       int(now.Sub(hist.StartTime).Seconds()),
+		"status":         "success",
+		"affected_hosts": affectedHosts,
+	})
+	DB.Model(&System{}).Where("id = ?", v.ID).Updates(map[string]interface{}{
+		"status":          1,
+		"inited_at":       &now,
+		"last_success_at": &now,
+		"init_error":      "",
+		"retry_count":     0,
+	})
+	logger.Log.Infof("资产绑定初始化成功 [ID=%d, type=%s, 影响主机=%d]", v.ID, v.TypeCode, affectedHosts)
 	return nil
 }
 
-// SystemInitWithInstance 初始化指标（支持多实例）
-func SystemInitWithInstance(systemID int64, zid int) error {
-	var v System
-	err := DB.Where("id = ? AND zid = ?", systemID, zid).First(&v).Error
-	if err != nil {
-		return err
-	}
+// GetAutoInitSystems 获取启用自动初始化的绑定配置
+func GetAutoInitSystems() ([]System, error) {
+	var list []System
+	err := DB.Where("auto_init = ?", 1).Find(&list).Error
+	return list, err
+}
 
-	// 获取指定实例的API
-	apiInstance, err := GetAPIByZID(zid)
-	if err != nil {
-		return fmt.Errorf("获取实例API失败: %w", err)
-	}
+// GetFailedSystemsForRetry 获取需要重试的失败配置
+func GetFailedSystemsForRetry() ([]System, error) {
+	var list []System
+	err := DB.Where("status = ? AND retry_count < max_retry", 2).Find(&list).Error
+	return list, err
+}
 
-	list := strings.Split(v.GroupID, ",")
-	err = HostTypeSetWithInstance(&v, list, apiInstance)
-	if err != nil {
-		return err
-	}
-	now := time.Now()
-	err = DB.Model(&System{}).Where("id = ? AND instance = ?", systemID, zid).Updates(map[string]interface{}{
-		"status":    1,
-		"inited_at": &now,
-	}).Error
-	if err != nil {
-		return err
-	}
-	return nil
+// GetSystemHistory 获取指定绑定配置的执行历史（分页）
+func GetSystemHistory(systemID int64, page, pageSize int) ([]SystemHistory, int64, error) {
+	var list []SystemHistory
+	var total int64
+	query := DB.Model(&SystemHistory{}).Where("system_id = ?", systemID)
+	query.Count(&total)
+	err := query.Order("start_time DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&list).Error
+	return list, total, err
+}
+
+// SystemInit 保留兼容旧调用
+func SystemInit(id int64) error {
+	return ExecuteSystemInit(id, "manual")
+}
+
+// SystemInitWithInstance 保留兼容旧调用
+func SystemInitWithInstance(systemID int64, _ int) error {
+	return ExecuteSystemInit(systemID, "manual")
 }
 
 // HostTypeSet 根据提供的主机组初始化
@@ -220,19 +337,10 @@ func HostTypeSet(s *System, groupId []string) error {
 		return fmt.Errorf("未在指定的主机组中找到任何主机")
 	}
 
-	//根据id主机类型
-	var hType string
-	switch s.ID {
-	case 1:
-		hType = "VM_LIN"
-	case 2:
-		hType = "VM_WIN"
-	case 3:
-		hType = "HW_NET"
-	case 4:
-		hType = "HW_SRV"
-	default:
-		hType = "VM_LIN"
+	// 从 type_code 字段读取资产类型（动态，不再硬编码）
+	hType := s.TypeCode
+	if hType == "" {
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
@@ -278,6 +386,31 @@ func HostTypeSet(s *System, groupId []string) error {
 }
 
 // HostTypeSetWithInstance 根据提供的主机组初始化（支持多实例）
+// hostTypeSetWithCount 执行初始化并返回影响主机数
+func hostTypeSetWithCount(s *System, groupId []string, apiInstance *APIInstance) (int, error) {
+	err := HostTypeSetWithInstance(s, groupId, apiInstance)
+	if err != nil {
+		return 0, err
+	}
+	// 查询主机组实际主机数
+	OutputPar := []string{"hostid"}
+	rep, err2 := apiInstance.API.CallWithError("host.get", Params{
+		"output":   OutputPar,
+		"groupids": groupId,
+	})
+	if err2 != nil {
+		return 0, nil
+	}
+	type hostData struct {
+		HostID string `json:"hostid"`
+	}
+	var hosts []hostData
+	if b, e := json.Marshal(rep.Result); e == nil {
+		_ = json.Unmarshal(b, &hosts)
+	}
+	return len(hosts), nil
+}
+
 func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstance) error {
 	//根据groupid获取host
 	OutputPar := []string{"hostid"}
@@ -305,19 +438,10 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 		return fmt.Errorf("未在指定的主机组中找到任何主机")
 	}
 
-	//根据id主机类型
-	var hType string
-	switch s.ID {
-	case 1:
-		hType = "VM_LIN"
-	case 2:
-		hType = "VM_WIN"
-	case 3:
-		hType = "HW_NET"
-	case 4:
-		hType = "HW_SRV"
-	default:
-		hType = "VM_LIN"
+	// 从 type_code 字段读取资产类型（动态，不再硬编码）
+	hType := s.TypeCode
+	if hType == "" {
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)

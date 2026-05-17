@@ -11,6 +11,123 @@ import (
 	"zbxtable/pkg/utils"
 )
 
+func normalizeSearchText(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
+}
+
+func hostMatchesKeyword(host Hosts, keyword string) bool {
+	normalized := normalizeSearchText(keyword)
+	if normalized == "" {
+		return true
+	}
+
+	fields := []string{
+		host.Name,
+		host.Host,
+		host.Interfaces,
+		host.ResourceID,
+		host.SerialNo,
+		host.Model,
+		host.Location,
+		host.Department,
+		host.InstanceName,
+		host.OS,
+		host.Vendor,
+	}
+	for _, field := range fields {
+		if strings.Contains(normalizeSearchText(field), normalized) {
+			return true
+		}
+	}
+	return false
+}
+
+func limitHosts(hosts []Hosts, limit int) []Hosts {
+	if limit > 0 && len(hosts) > limit {
+		return hosts[:limit]
+	}
+	return hosts
+}
+
+func searchHostsInList(hosts []Hosts, keyword string) []Hosts {
+	normalized := strings.TrimSpace(keyword)
+	if normalized == "" {
+		return []Hosts{}
+	}
+
+	matches := make([]Hosts, 0, len(hosts))
+	for _, host := range hosts {
+		if hostMatchesKeyword(host, normalized) {
+			matches = append(matches, host)
+		}
+	}
+	return matches
+}
+
+func searchHostsInOverviewData(overview map[string][]Hosts, keyword string, limit int) []Hosts {
+	if len(overview) == 0 {
+		return []Hosts{}
+	}
+
+	matches := make([]Hosts, 0)
+	for _, hosts := range overview {
+		matches = append(matches, searchHostsInList(hosts, keyword)...)
+		if limit > 0 && len(matches) >= limit {
+			return matches[:limit]
+		}
+	}
+
+	return limitHosts(matches, limit)
+}
+
+// SearchHostsFromOverviewCache 从纵览缓存中搜索主机和资产信息。
+func SearchHostsFromOverviewCache(keyword string, limit int) ([]Hosts, error) {
+	overview, err := GetOverviewData()
+	if err != nil {
+		return []Hosts{}, err
+	}
+	return searchHostsInOverviewData(overview, keyword, limit), nil
+}
+
+// SearchHostsMultiInstance 跨所有启用实例搜索主机和资产信息。
+func SearchHostsMultiInstance(keyword string, limit int) ([]Hosts, error) {
+	instances, err := GetAllEnabledAPIInstances()
+	if err != nil {
+		logger.Log.Errorf("获取启用的实例失败: %v", err)
+		return []Hosts{}, err
+	}
+
+	query := strings.TrimSpace(keyword)
+	if query == "" {
+		return []Hosts{}, nil
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	allHosts := make([]Hosts, 0)
+
+	for _, inst := range instances {
+		wg.Add(1)
+		go func(instance *APIInstance) {
+			defer wg.Done()
+
+			hosts, searchErr := SearchHostFromInstance(instance, query)
+			if searchErr != nil {
+				logger.Log.Errorf("搜索实例 %s 的主机失败: %v", instance.Name, searchErr)
+				return
+			}
+
+			mu.Lock()
+			allHosts = append(allHosts, hosts...)
+			mu.Unlock()
+		}(inst)
+	}
+
+	wg.Wait()
+
+	return limitHosts(allHosts, limit), nil
+}
+
 // HostsListMultiInstance 多实例主机列表查询（聚合所有启用的实例）
 func HostsListMultiInstance(HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
 	// 获取所有启用的 API 实例
@@ -103,56 +220,67 @@ func queryHostsFromInstance(inst *APIInstance, HostType string) ([]Hosts, error)
 
 	var hosts []Hosts
 	for _, v := range hb {
-		var d Hosts
-		d.HostID = v.Hostid
-		d.Host = v.Host
-		d.Name = v.Name
-		if len(v.Interfaces) != 0 {
-			d.Interfaces = v.Interfaces[0].IP
-			d.Available = v.Interfaces[0].Available
-			d.Error = v.Interfaces[0].Error
-		}
-		d.Status = v.Status
-		d.Model = v.Inventory.Model
-		d.OS = v.Inventory.Os
-		d.NumberOfCores = v.Inventory.Software
-		d.CPUUtilization = v.Inventory.SoftwareAppA
-		d.MemoryUtilization = v.Inventory.SoftwareAppB
-		d.MemoryTotal = v.Inventory.SoftwareAppC
-		d.MemoryUsed = v.Inventory.SoftwareAppD
-		d.Uptime = v.Inventory.SoftwareAppE
-		d.DateHwInstall = v.Inventory.DateHwInstall
-		d.DateHwExpiry = v.Inventory.DateHwExpiry
-		d.MAC = v.Inventory.MacaddressA
-		d.ResourceID = v.Inventory.SerialnoB
-		d.Vendor = v.Inventory.Vendor
-		d.Ping = v.Inventory.Poc1Name
-		d.PingLoss = v.Inventory.Poc1Email
-		d.PingSec = v.Inventory.Poc1PhoneA
-		// 所有类型都读取 Location 和 Department
-		d.SerialNo = v.Inventory.SerialnoA
-		d.Location = v.Inventory.Location
-		d.Department = v.Inventory.SiteCity
-
-		// 处理旧版本的特殊字段
-		if !inst.IsV54OrLater {
-			//网络和设备
-			if HostType == "HW_NET" || HostType == "HW_SRV" {
-				d.Available = v.SnmpAvailable
-				d.Error = v.SnmpError
-
-			} else {
-				//主机设备
-				d.Available = v.Available
-				d.Error = v.Error
-			}
-
-		}
-
-		hosts = append(hosts, d)
+		hosts = append(hosts, buildHostFromListHost(inst, v, HostType))
 	}
 
 	return hosts, nil
+}
+
+func buildHostFromListHost(inst *APIInstance, v ListHost, hostType string) Hosts {
+	var d Hosts
+	d.HostID = v.Hostid
+	d.Host = v.Host
+	d.TypeCode = hostType
+	if d.TypeCode == "" {
+		d.TypeCode = v.Inventory.Type
+	}
+	d.Name = v.Name
+	if len(v.Interfaces) != 0 {
+		d.Interfaces = v.Interfaces[0].IP
+		d.Available = v.Interfaces[0].Available
+		d.Error = v.Interfaces[0].Error
+	}
+	d.Status = v.Status
+	d.Model = v.Inventory.Model
+	d.OS = v.Inventory.Os
+	d.NumberOfCores = v.Inventory.Software
+	d.CPUUtilization = v.Inventory.SoftwareAppA
+	d.MemoryUtilization = v.Inventory.SoftwareAppB
+	d.MemoryTotal = v.Inventory.SoftwareAppC
+	d.MemoryUsed = v.Inventory.SoftwareAppD
+	d.Uptime = v.Inventory.SoftwareAppE
+	d.DateHwInstall = v.Inventory.DateHwInstall
+	d.DateHwExpiry = v.Inventory.DateHwExpiry
+	d.MAC = v.Inventory.MacaddressA
+	d.ResourceID = v.Inventory.SerialnoB
+	d.Vendor = v.Inventory.Vendor
+	d.Ping = v.Inventory.Poc1Name
+	d.PingLoss = v.Inventory.Poc1Email
+	d.PingSec = v.Inventory.Poc1PhoneA
+	d.SerialNo = v.Inventory.SerialnoA
+	d.Location = v.Inventory.Location
+	d.Department = v.Inventory.SiteCity
+	d.ZID = inst.ZID
+	d.InstanceName = inst.Name
+
+	if !inst.IsV54OrLater {
+		switch GetMonitorType(hostType) {
+		case "snmp":
+			d.Available = v.SnmpAvailable
+			d.Error = v.SnmpError
+		case "ipmi":
+			d.Available = v.IpmiAvailable
+			d.Error = v.IpmiError
+		case "jmx":
+			d.Available = v.JmxAvailable
+			d.Error = v.JmxError
+		default:
+			d.Available = v.Available
+			d.Error = v.Error
+		}
+	}
+
+	return d
 }
 
 // paginateHosts 分页处理
@@ -249,7 +377,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.Ping = v.Inventory.Poc1Name
 			d.PingLoss = v.Inventory.Poc1Email
 			d.PingSec = v.Inventory.Poc1PhoneA
-			if HostType == "HW_NET" || HostType == "HW_SRV" {
+			if IsHardwareType(HostType) {
 				if len(v.Interfaces) != 0 {
 					d.SerialNo = v.Inventory.SerialnoA
 					d.Location = v.Inventory.Location
@@ -301,9 +429,16 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.Ping = v.Inventory.Poc1Name
 			d.PingLoss = v.Inventory.Poc1Email
 			d.PingSec = v.Inventory.Poc1PhoneA
-			if HostType == "HW_NET" || HostType == "HW_SRV" {
+			switch GetMonitorType(HostType) {
+			case "snmp":
 				d.Available = v.SnmpAvailable
 				d.Error = v.SnmpError
+				d.SerialNo = v.Inventory.SerialnoA
+				d.Location = v.Inventory.Location
+				d.Department = v.Inventory.SiteCity
+			case "ipmi":
+				d.Available = v.IpmiAvailable
+				d.Error = v.IpmiError
 				d.SerialNo = v.Inventory.SerialnoA
 				d.Location = v.Inventory.Location
 				d.Department = v.Inventory.SiteCity
@@ -437,12 +572,6 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 	filterPar := make(map[string]string)
 	filterPar["status"] = "0"
 
-	// 如果提供了名称，添加搜索条件
-	searchPar := make(map[string]interface{})
-	if name != "" {
-		searchPar["name"] = name
-	}
-
 	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
 
 	params := Params{
@@ -450,11 +579,6 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 		"filter":           filterPar,
 		"selectInventory":  "extend",
 		"selectInterfaces": SelectInterfacesPar,
-	}
-
-	if name != "" {
-		params["search"] = searchPar
-		params["searchWildcardsEnabled"] = true
 	}
 
 	rep, err := inst.API.CallWithError("host.get", params)
@@ -473,23 +597,138 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 		return []Hosts{}, err
 	}
 
-	var hosts []Hosts
+	keyword := strings.TrimSpace(name)
+	hosts := make([]Hosts, 0, len(hb))
 	for _, v := range hb {
-		var d Hosts
-		d.HostID = v.Hostid
-		d.Host = v.Host
-		d.Name = v.Name
-		if len(v.Interfaces) != 0 {
-			d.Interfaces = v.Interfaces[0].IP
-			d.Available = v.Interfaces[0].Available
-			d.Error = v.Interfaces[0].Error
+		host := buildHostFromListHost(inst, v, "")
+		if !hostMatchesKeyword(host, keyword) {
+			continue
 		}
-		d.Status = v.Status
-		d.ZID = inst.ZID
-		d.InstanceName = inst.Name
-		hosts = append(hosts, d)
+		hosts = append(hosts, host)
 	}
 
+	return hosts, nil
+}
+
+func GetHostsByGroupIDsFromInstance(inst *APIInstance, groupIDs []string) ([]Hosts, error) {
+	if len(groupIDs) == 0 {
+		return []Hosts{}, nil
+	}
+
+	filterPar := map[string]string{"status": "0"}
+	selectInterfaces := []string{"ip", "port", "available", "error"}
+
+	rep, err := inst.API.CallWithError("host.get", Params{
+		"output":           "extend",
+		"filter":           filterPar,
+		"groupids":         groupIDs,
+		"selectInventory":  "extend",
+		"selectInterfaces": selectInterfaces,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var hb ListHosts
+	if err := json.Unmarshal(hba, &hb); err != nil {
+		return nil, err
+	}
+
+	hosts := make([]Hosts, 0, len(hb))
+	for _, v := range hb {
+		hosts = append(hosts, buildHostFromListHost(inst, v, ""))
+	}
+	return hosts, nil
+}
+
+func normalizeHostTagFilters(filters []HostTagFilter) []HostTagFilter {
+	normalized := make([]HostTagFilter, 0, len(filters))
+	for _, filter := range filters {
+		tag := strings.TrimSpace(filter.Tag)
+		if tag == "" {
+			continue
+		}
+		normalized = append(normalized, HostTagFilter{
+			Tag:   tag,
+			Value: strings.TrimSpace(filter.Value),
+		})
+	}
+	return normalized
+}
+
+func hostMatchesTagFilters(hostTags []HostTag, filters []HostTagFilter) bool {
+	normalized := normalizeHostTagFilters(filters)
+	if len(normalized) == 0 {
+		return true
+	}
+
+	for _, filter := range normalized {
+		matched := false
+		for _, hostTag := range hostTags {
+			if strings.TrimSpace(hostTag.Tag) != filter.Tag {
+				continue
+			}
+			if filter.Value == "" || strings.TrimSpace(hostTag.Value) == filter.Value {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	return true
+}
+
+func GetHostsByTagsFromInstance(inst *APIInstance, filters []HostTagFilter) ([]Hosts, error) {
+	normalized := normalizeHostTagFilters(filters)
+	if len(normalized) == 0 {
+		return []Hosts{}, nil
+	}
+
+	filterPar := map[string]string{"status": "0"}
+	selectInterfaces := []string{"ip", "port", "available", "error"}
+	selectTags := []string{"tag", "value"}
+
+	rep, err := inst.API.CallWithError("host.get", Params{
+		"output":           "extend",
+		"filter":           filterPar,
+		"selectInventory":  "extend",
+		"selectInterfaces": selectInterfaces,
+		"selectTags":       selectTags,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	type hostWithTags struct {
+		ListHost
+		Tags []HostTag `json:"tags"`
+	}
+
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var hb []hostWithTags
+	if err := json.Unmarshal(hba, &hb); err != nil {
+		return nil, err
+	}
+
+	hosts := make([]Hosts, 0, len(hb))
+	for _, v := range hb {
+		if !hostMatchesTagFilters(v.Tags, normalized) {
+			continue
+		}
+		hosts = append(hosts, buildHostFromListHost(inst, v.ListHost, ""))
+	}
 	return hosts, nil
 }
 
