@@ -293,8 +293,8 @@ func ReceiveGin(c *gin.Context) {
 		response.BadRequest(c, "instanceID not found")
 		return
 	}
-	// instance的token校验
-	//查询instanceid和token,可以一起查询，无需多次查询
+	// instance 的 webhook_token 校验
+	// 查询 instance 和 webhook_token，可以一起查询，无需多次查询
 	instance, err := model.GetZabbixInstanceByInstance(Instance)
 	if err != nil {
 		response.ValidationError(c, err.Error())
@@ -307,8 +307,8 @@ func ReceiveGin(c *gin.Context) {
 		response.Success(c, res)
 		return
 	}
-	//token是否正确
-	if token == "" || (instance.Token != "" && token != instance.Token) {
+	// Webhook 回调只使用独立的 WebhookToken 认证。
+	if token == "" || instance.WebhookToken == "" || token != instance.WebhookToken {
 		res.ID = 0
 		res.Msg = "Token Error!"
 		response.Success(c, res)
