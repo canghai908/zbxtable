@@ -619,7 +619,7 @@ func getAIConfigs() []Config {
 			Name:        "AI 类型",
 			ConfigKey:   "ai_type",
 			ConfigValue: "ollama",
-			Comment:     "选择使用的 AI 服务类型：ollama 或 deepseek",
+			Comment:     "选择使用的 AI 服务类型：ollama、deepseek 或 custom",
 		},
 		// Ollama 配置
 		{
@@ -652,6 +652,25 @@ func getAIConfigs() []Config {
 			ConfigKey:   "deepseek_base_url",
 			ConfigValue: "https://api.deepseek.com",
 			Comment:     "Deepseek API 地址，默认为 https://api.deepseek.com",
+		},
+		// Custom(OpenAI-compatible) 配置
+		{
+			Name:        "Custom API Key",
+			ConfigKey:   "custom_api_key",
+			ConfigValue: "",
+			Comment:     "OpenAI 兼容接口的 API Key",
+		},
+		{
+			Name:        "Custom Model",
+			ConfigKey:   "custom_model",
+			ConfigValue: "",
+			Comment:     "OpenAI 兼容接口的模型名称",
+		},
+		{
+			Name:        "Custom Base URL",
+			ConfigKey:   "custom_base_url",
+			ConfigValue: "",
+			Comment:     "OpenAI 兼容接口地址，如 https://api.example.com/v1",
 		},
 		{
 			Name:        "告警分析提示词",

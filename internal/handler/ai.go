@@ -15,6 +15,8 @@ import (
 )
 
 var alarmPromptVarPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_]+)\s*\}\}`)
+var aiConfigValueByKey = model.GetConfigValueByKey
+var aiHTTPClient = &http.Client{}
 
 func extractAlarmContext(rawMessage string) (string, string) {
 	parts := strings.SplitN(rawMessage, "\n\n", 2)
@@ -160,11 +162,11 @@ func AIChat(c *gin.Context) {
 	}
 
 	// 告警分析提示词（后端兜底渲染，避免仅依赖前端）
-	alarmPromptTpl := model.GetConfigValueByKey("alarm_analysis_prompt", "")
+	alarmPromptTpl := aiConfigValueByKey("alarm_analysis_prompt", "")
 	finalMessage := renderAlarmPromptTemplate(alarmPromptTpl, userReq.Message, userReq.AlarmContext)
 
 	// 获取 AI 类型配置
-	aiType := model.GetConfigValueByKey("ai_type", "ollama")
+	aiType := aiConfigValueByKey("ai_type", "ollama")
 	if aiType == "" {
 		aiType = "ollama"
 	}
@@ -173,6 +175,8 @@ func AIChat(c *gin.Context) {
 	switch aiType {
 	case "deepseek":
 		handleDeepseekChat(c, finalMessage)
+	case "custom":
+		handleCustomChat(c, finalMessage)
 	case "ollama":
 		handleOllamaChat(c, finalMessage)
 	default:
@@ -193,11 +197,11 @@ func handleOllamaChat(c *gin.Context, message string) {
 	}
 
 	// 从配置获取 Ollama 地址
-	ollamaHost := model.GetConfigValueByKey("ollama_host", model.GetConfKey("ollama_host"))
+	ollamaHost := aiConfigValueByKey("ollama_host", model.GetConfKey("ollama_host"))
 	if ollamaHost == "" {
 		ollamaHost = "http://localhost:11434"
 	}
-	ollamaModel := model.GetConfigValueByKey("ollama_model", model.GetConfKey("ollama_model"))
+	ollamaModel := aiConfigValueByKey("ollama_model", model.GetConfKey("ollama_model"))
 	if ollamaModel == "" {
 		ollamaModel = "deepseek-r1:32b"
 	}
@@ -295,7 +299,7 @@ func handleOllamaChat(c *gin.Context, message string) {
 // handleDeepseekChat 处理 Deepseek AI 请求
 func handleDeepseekChat(c *gin.Context, message string) {
 	// 从配置获取 Deepseek 参数（会自动解密）
-	apiKey := model.GetConfigValueByKey("deepseek_api_key", "")
+	apiKey := aiConfigValueByKey("deepseek_api_key", "")
 	if apiKey == "" {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -308,12 +312,12 @@ func handleDeepseekChat(c *gin.Context, message string) {
 		return
 	}
 
-	deepseekModel := model.GetConfigValueByKey("deepseek_model", "deepseek-chat")
+	deepseekModel := aiConfigValueByKey("deepseek_model", "deepseek-chat")
 	if deepseekModel == "" {
 		deepseekModel = "deepseek-chat"
 	}
 
-	baseURL := model.GetConfigValueByKey("deepseek_base_url", "https://api.deepseek.com")
+	baseURL := aiConfigValueByKey("deepseek_base_url", "https://api.deepseek.com")
 	if baseURL == "" {
 		baseURL = "https://api.deepseek.com"
 	}
@@ -379,8 +383,7 @@ func handleDeepseekChat(c *gin.Context, message string) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 	// 发送请求到 Deepseek
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := aiHTTPClient.Do(req)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`
@@ -408,10 +411,31 @@ func handleDeepseekChat(c *gin.Context, message string) {
 		return
 	}
 
-	// 创建 reader
-	reader := bufio.NewReader(resp.Body)
+	streamOpenAICompatibleResponse(c, resp.Body)
+}
 
-	// 流式读取响应
+func openAICompatibleMessages(message string) []struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+} {
+	return []struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}{
+		{
+			Role:    "system",
+			Content: "你是一个专业的运维分析师，请分析用户提供的问题并给出专业的建议。",
+		},
+		{
+			Role:    "user",
+			Content: message,
+		},
+	}
+}
+
+func streamOpenAICompatibleResponse(c *gin.Context, body io.Reader) {
+	reader := bufio.NewReader(body)
+
 	for {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
@@ -421,21 +445,16 @@ func handleDeepseekChat(c *gin.Context, message string) {
 			return
 		}
 
-		// 跳过空行
 		lineStr := strings.TrimSpace(string(line))
 		if lineStr == "" {
 			continue
 		}
 
-		// Deepseek 使用 SSE 格式，需要去掉 "data: " 前缀
 		lineStr = strings.TrimPrefix(lineStr, "data: ")
-
-		// 检查是否是结束标记
 		if lineStr == "[DONE]" {
 			break
 		}
 
-		// 解析响应
 		var response struct {
 			ID      string `json:"id"`
 			Object  string `json:"object"`
@@ -455,15 +474,99 @@ func handleDeepseekChat(c *gin.Context, message string) {
 			continue
 		}
 
-		// 发送数据
 		if len(response.Choices) > 0 && response.Choices[0].Delta.Content != "" {
 			c.Writer.WriteString(response.Choices[0].Delta.Content)
 			c.Writer.Flush()
 		}
 
-		// 检查是否完成
 		if len(response.Choices) > 0 && response.Choices[0].FinishReason != "" {
 			break
 		}
 	}
+}
+
+func handleCustomChat(c *gin.Context, message string) {
+	apiKey := aiConfigValueByKey("custom_api_key", "")
+	if apiKey == "" {
+		writeAIConfigError(c, "Custom API Key 未配置")
+		return
+	}
+
+	customModel := aiConfigValueByKey("custom_model", "")
+	if customModel == "" {
+		writeAIConfigError(c, "Custom Model 未配置")
+		return
+	}
+
+	baseURL := aiConfigValueByKey("custom_base_url", "")
+	if baseURL == "" {
+		writeAIConfigError(c, "Custom Base URL 未配置")
+		return
+	}
+
+	customReq := struct {
+		Model    string `json:"model"`
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+		Stream bool `json:"stream"`
+	}{
+		Model:    customModel,
+		Messages: openAICompatibleMessages(message),
+		Stream:   true,
+	}
+
+	jsonData, err := json.Marshal(customReq)
+	if err != nil {
+		writeAIConfigError(c, err.Error())
+		return
+	}
+
+	customURL := fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(baseURL, "/"))
+	req, err := http.NewRequest("POST", customURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		writeAIConfigError(c, err.Error())
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+
+	resp, err := aiHTTPClient.Do(req)
+	if err != nil {
+		writeAIConfigError(c, fmt.Sprintf("Custom AI 服务连接失败: %v", err))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		writeAIStatusError(c, resp.StatusCode, fmt.Sprintf("Custom AI API 错误: %s", string(bodyBytes)))
+		return
+	}
+
+	streamOpenAICompatibleResponse(c, resp.Body)
+}
+
+func writeAIConfigError(c *gin.Context, message string) {
+	var AIRes struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	AIRes.Code = 500
+	AIRes.Message = message
+	c.JSON(http.StatusOK, AIRes)
+}
+
+func writeAIStatusError(c *gin.Context, statusCode int, message string) {
+	var AIRes struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	AIRes.Code = statusCode
+	AIRes.Message = message
+	c.JSON(http.StatusOK, AIRes)
 }

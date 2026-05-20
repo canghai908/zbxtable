@@ -220,29 +220,7 @@ func GetAllConfig(c *gin.Context) {
 		SystemRes.Code = 500
 		SystemRes.Message = err.Error()
 	} else {
-		// 定义敏感字段列表
-		sensitiveKeys := map[string]bool{
-			"email_secret":     true, // SMTP 密码/授权码
-			"wechat_secret":    true, // 企业微信 Secret
-			"deepseek_api_key": true, // Deepseek API Key
-			"encryption_key":   true, // 加密密钥（完全隐藏）
-		}
-
-		// 过滤和脱敏处理
-		filteredConfigs := []model.Config{}
-		for _, config := range val {
-			// 完全隐藏加密密钥配置项
-			if config.ConfigKey == "encryption_key" {
-				continue
-			}
-
-			// 对敏感字段进行脱敏处理
-			if sensitiveKeys[config.ConfigKey] && config.ConfigValue != "" {
-				config.ConfigValue = "********" // 替换为星号
-			}
-
-			filteredConfigs = append(filteredConfigs, config)
-		}
+		filteredConfigs := sanitizeConfigsForResponse(val)
 
 		SystemRes.Code = 200
 		SystemRes.Message = "获取成功"
@@ -250,6 +228,31 @@ func GetAllConfig(c *gin.Context) {
 		SystemRes.Data.Total = int64(len(filteredConfigs))
 	}
 	c.JSON(http.StatusOK, SystemRes)
+}
+
+func sanitizeConfigsForResponse(configs []model.Config) []model.Config {
+	filteredConfigs := make([]model.Config, 0, len(configs))
+	for _, config := range configs {
+		if config.ConfigKey == "encryption_key" {
+			continue
+		}
+
+		if modelSensitiveConfigKey(config.ConfigKey) && config.ConfigValue != "" {
+			config.ConfigValue = "********"
+		}
+
+		filteredConfigs = append(filteredConfigs, config)
+	}
+	return filteredConfigs
+}
+
+func modelSensitiveConfigKey(key string) bool {
+	switch key {
+	case "email_secret", "wechat_secret", "deepseek_api_key", "custom_api_key":
+		return true
+	default:
+		return false
+	}
 }
 
 // UpdateConfig 更新系统参数配置

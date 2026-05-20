@@ -23,6 +23,39 @@ type Config struct {
 	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
+func isSensitiveConfigKey(key string) bool {
+	switch key {
+	case "email_secret", "wechat_secret", "deepseek_api_key", "custom_api_key":
+		return true
+	default:
+		return false
+	}
+}
+
+func encryptConfigValueIfSensitive(key, value, encryptionKey string) (string, error) {
+	if !isSensitiveConfigKey(key) || value == "" {
+		return value, nil
+	}
+
+	encryptedValue, err := utils.EncryptString(value, encryptionKey)
+	if err != nil {
+		return "", err
+	}
+	return encryptedValue, nil
+}
+
+func decryptConfigValueIfSensitive(key, value, encryptionKey string) (string, error) {
+	if !isSensitiveConfigKey(key) || value == "" {
+		return value, nil
+	}
+
+	decryptedValue, err := utils.DecryptString(value, encryptionKey)
+	if err != nil {
+		return "", err
+	}
+	return decryptedValue, nil
+}
+
 // GetConfigList 获取系统配置
 func GetConfigList() ([]Config, error) {
 	var v []Config
@@ -64,30 +97,9 @@ func UpdateConfig(m *Config) (err error) {
 	}
 
 	// 对敏感字段进行加密
-	valueToSave := m.ConfigValue
-	sensitiveKeys := []string{
-		"email_secret",     // SMTP 密码/授权码
-		"wechat_secret",    // 企业微信 Secret
-		"deepseek_api_key", // Deepseek API Key
-	}
-
-	// 检查是否是敏感字段
-	isSensitive := false
-	for _, key := range sensitiveKeys {
-		if v.ConfigKey == key {
-			isSensitive = true
-			break
-		}
-	}
-
-	// 如果是敏感字段且值不为空，进行加密
-	if isSensitive && valueToSave != "" {
-		encryptionKey := GetEncryptionKey()
-		encryptedValue, err := utils.EncryptString(valueToSave, encryptionKey)
-		if err != nil {
-			return errors.New("加密失败: " + err.Error())
-		}
-		valueToSave = encryptedValue
+	valueToSave, err := encryptConfigValueIfSensitive(v.ConfigKey, m.ConfigValue, GetEncryptionKey())
+	if err != nil {
+		return errors.New("加密失败: " + err.Error())
 	}
 
 	err = DB.Model(&Config{}).Where("id = ?", m.ID).Update("config_value", valueToSave).Error
@@ -144,26 +156,9 @@ func GetConfigValueByKey(key string, defaultVal string) string {
 		return defaultVal
 	}
 
-	// 定义需要解密的敏感字段
-	sensitiveKeys := []string{
-		"email_secret",     // SMTP 密码/授权码
-		"wechat_secret",    // 企业微信 Secret
-		"deepseek_api_key", // Deepseek API Key
-	}
-
-	// 检查是否是敏感字段
-	isSensitive := false
-	for _, skey := range sensitiveKeys {
-		if key == skey {
-			isSensitive = true
-			break
-		}
-	}
-
 	// 如果是敏感字段，尝试解密
-	if isSensitive && c.ConfigValue != "" {
-		encryptionKey := GetEncryptionKey()
-		decryptedValue, err := utils.DecryptString(c.ConfigValue, encryptionKey)
+	if isSensitiveConfigKey(key) && c.ConfigValue != "" {
+		decryptedValue, err := decryptConfigValueIfSensitive(key, c.ConfigValue, GetEncryptionKey())
 		if err != nil {
 			// 解密失败，可能是旧数据未加密，直接返回原值
 			logger.Log.Warnf("解密配置 %s 失败，返回原值: %v", key, err)
