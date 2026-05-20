@@ -700,7 +700,7 @@ func SyncInventory() error {
 	for _, inst := range instances {
 		// 查询该实例的系统配置
 		var list []System
-		err = GetDB().Where("instance = ? AND status = ?", inst.ZID, 1).Find(&list).Error
+		err = GetDB().Where("zid = ? AND status = ?", inst.ZID, 1).Find(&list).Error
 		if err != nil {
 			logger.Log.Errorf("查询实例 %s 的系统配置失败: %v", inst.Name, err)
 			continue
