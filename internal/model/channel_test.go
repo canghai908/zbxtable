@@ -72,6 +72,230 @@ func TestCELMatcher_Match(t *testing.T) {
 	}
 }
 
+func TestMatchRule(t *testing.T) {
+	matcher := GetCELMatcher()
+	data := map[string]any{
+		"host":     "server-01",
+		"severity": "Average",
+	}
+
+	tests := []struct {
+		name string
+		rule Rule
+		want bool
+	}{
+		{
+			name: "default rule with empty conditions matches all",
+			rule: Rule{MType: "2", Conditions: ""},
+			want: true,
+		},
+		{
+			name: "custom rule with empty conditions does not match",
+			rule: Rule{MType: "1", Conditions: ""},
+			want: false,
+		},
+		{
+			name: "default rule with invalid conditions does not match",
+			rule: Rule{MType: "2", Conditions: "invalid-json"},
+			want: false,
+		},
+		{
+			name: "default rule with valid conditions still evaluates expression",
+			rule: Rule{MType: "2", Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-01"}]`},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchRule(&tt.rule, data, matcher); got != tt.want {
+				t.Fatalf("matchRule() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMatchDispatchRules(t *testing.T) {
+	matcher := GetCELMatcher()
+	matchData := map[string]any{
+		"host":     "server-01",
+		"group":    "core",
+		"item":     "CPU load",
+		"key":      "system.cpu.load",
+		"trigger":  "cpu high",
+		"severity": "Average",
+	}
+	now := time.Date(2026, 2, 10, 10, 0, 0, 0, time.Local)
+
+	t.Run("falls back to default rule when custom rules do not match", func(t *testing.T) {
+		rules, ruleType := matchDispatchRules([]dispatchRuleSet{
+			{
+				rules: []Rule{
+					{
+						ID:         1,
+						MType:      "1",
+						Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-02"}]`,
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "1",
+			},
+			{
+				rules: []Rule{
+					{
+						ID:         2,
+						MType:      "2",
+						Conditions: "",
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "2",
+			},
+		}, matchData, now, matcher)
+
+		if ruleType != "2" {
+			t.Fatalf("matchDispatchRules() ruleType = %s, want 2", ruleType)
+		}
+		if len(rules) != 1 || rules[0].ID != 2 {
+			t.Fatalf("matchDispatchRules() matched rules = %+v, want default rule", rules)
+		}
+	})
+
+	t.Run("keeps custom rule priority when custom rule matches", func(t *testing.T) {
+		rules, ruleType := matchDispatchRules([]dispatchRuleSet{
+			{
+				rules: []Rule{
+					{
+						ID:         3,
+						MType:      "1",
+						Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-01"}]`,
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "1",
+			},
+			{
+				rules: []Rule{
+					{
+						ID:         4,
+						MType:      "2",
+						Conditions: "",
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "2",
+			},
+		}, matchData, now, matcher)
+
+		if ruleType != "1" {
+			t.Fatalf("matchDispatchRules() ruleType = %s, want 1", ruleType)
+		}
+		if len(rules) != 1 || rules[0].ID != 3 {
+			t.Fatalf("matchDispatchRules() matched rules = %+v, want custom rule", rules)
+		}
+	})
+
+	t.Run("does not include default rule when custom rule also matches", func(t *testing.T) {
+		rules, ruleType := matchDispatchRules([]dispatchRuleSet{
+			{
+				rules: []Rule{
+					{
+						ID:         5,
+						MType:      "1",
+						Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-01"}]`,
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "1",
+			},
+			{
+				rules: []Rule{
+					{
+						ID:         6,
+						MType:      "2",
+						Conditions: "",
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "2",
+			},
+		}, matchData, now, matcher)
+
+		if ruleType != "1" {
+			t.Fatalf("matchDispatchRules() ruleType = %s, want 1", ruleType)
+		}
+		if len(rules) != 1 {
+			t.Fatalf("matchDispatchRules() matched rule count = %d, want 1", len(rules))
+		}
+		if rules[0].ID != 5 {
+			t.Fatalf("matchDispatchRules() matched rules = %+v, want only custom rule", rules)
+		}
+	})
+
+	t.Run("falls back to global default when instance rules do not match", func(t *testing.T) {
+		rules, ruleType := matchDispatchRules([]dispatchRuleSet{
+			{
+				rules: []Rule{
+					{
+						ID:         7,
+						MType:      "1",
+						Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-02"}]`,
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "1",
+			},
+			{
+				rules: []Rule{
+					{
+						ID:         8,
+						MType:      "2",
+						Conditions: `[{"r_type":"host","r_func":"=","r_value":"server-03"}]`,
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "2",
+			},
+			{
+				rules: []Rule{
+					{
+						ID:         9,
+						MType:      "2",
+						Conditions: "",
+						Stime:      "00:00",
+						Etime:      "23:59",
+						Sweek:      "0,1,2,3,4,5,6",
+					},
+				},
+				ruleType: "2",
+			},
+		}, matchData, now, matcher)
+
+		if ruleType != "2" {
+			t.Fatalf("matchDispatchRules() ruleType = %s, want 2", ruleType)
+		}
+		if len(rules) != 1 || rules[0].ID != 9 {
+			t.Fatalf("matchDispatchRules() matched rules = %+v, want global default rule", rules)
+		}
+	})
+}
+
 func TestIsNoneAlarm(t *testing.T) {
 	now := time.Date(2026, 2, 10, 10, 0, 0, 0, time.Local) // 周二 10:00
 

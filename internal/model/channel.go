@@ -22,6 +22,11 @@ type CELMatcher struct {
 	cache sync.Map // map[string]cel.Program
 }
 
+type dispatchRuleSet struct {
+	rules    []Rule
+	ruleType string
+}
+
 func GetCELMatcher() *CELMatcher {
 	celOnce.Do(func() {
 		env, _ := cel.NewEnv(
@@ -115,13 +120,6 @@ func (m *CELMatcher) getProgram(expr string) (cel.Program, error) {
 
 // 根据规则生成告警
 func GenAlert(alarm *Alarm) {
-	// 1. 获取分发规则（遵循 实例普通 -> 实例默认 -> 全局默认 优先级）
-	rules, ruleType := getDispatchRules(alarm.ZID)
-	if len(rules) == 0 {
-		logger.Log.Errorf("no rules found for zid: %d", alarm.ZID)
-		return
-	}
-
 	// 准备匹配数据
 	matchData := map[string]any{
 		"host":     alarm.Host,
@@ -132,26 +130,13 @@ func GenAlert(alarm *Alarm) {
 		"severity": alarm.Level,
 	}
 
-	matcher := GetCELMatcher()
-	var matchedRules []Rule
-	var firstRule *Rule
-
-	for i := range rules {
-		var conds []Conditions
-		if err := json.Unmarshal([]byte(rules[i].Conditions), &conds); err != nil {
-			continue
-		}
-		if matcher.Match(conds, matchData) && !isNoneAlarm(alarm.OccurTime, &rules[i]) {
-			matchedRules = append(matchedRules, rules[i])
-			if firstRule == nil {
-				firstRule = &rules[i]
-			}
-		}
-	}
-
+	// 1. 获取实际命中的分发规则（遵循 实例普通 -> 实例默认 -> 全局默认 优先级）
+	matchedRules, ruleType := getDispatchRules(alarm.ZID, matchData, alarm.OccurTime)
 	if len(matchedRules) == 0 {
+		logger.Log.Infof("no matched rules found for zid: %d", alarm.ZID)
 		return
 	}
+	firstRule := &matchedRules[0]
 
 	// 3. 聚合去重：同人同渠道只生成一条，优化 GetEventUser 调用
 	allUserIDs := make(map[string]struct{})
@@ -259,21 +244,57 @@ func GenAlert(alarm *Alarm) {
 	UpdateAlarmStatus(&ala)
 }
 
-func getDispatchRules(zid int) ([]Rule, string) {
-	var rules []Rule
-	// 1. 实例普通规则
-	rules = queryRules("1", zid, false)
-	if len(rules) > 0 {
-		return rules, strconv.Itoa(RuleCust)
+func getDispatchRules(zid int, matchData map[string]any, occurTime time.Time) ([]Rule, string) {
+	ruleSets := []dispatchRuleSet{
+		{rules: queryRules("1", zid, false), ruleType: strconv.Itoa(RuleCust)},
+		{rules: queryRules("2", zid, false), ruleType: strconv.Itoa(RuleDefault)},
+		{rules: queryRules("2", 0, true), ruleType: strconv.Itoa(RuleDefault)},
 	}
-	// 2. 实例默认规则
-	rules = queryRules("2", zid, false)
-	if len(rules) > 0 {
-		return rules, strconv.Itoa(RuleDefault)
+	return matchDispatchRules(ruleSets, matchData, occurTime, GetCELMatcher())
+}
+
+func matchDispatchRules(ruleSets []dispatchRuleSet, matchData map[string]any, occurTime time.Time, matcher *CELMatcher) ([]Rule, string) {
+	for _, set := range ruleSets {
+		matchedRules := filterMatchedRules(set.rules, matchData, occurTime, matcher)
+		if len(matchedRules) > 0 {
+			return matchedRules, set.ruleType
+		}
 	}
-	// 3. 全局默认规则
-	rules = queryRules("2", 0, true)
-	return rules, strconv.Itoa(RuleDefault)
+	return nil, ""
+}
+
+func filterMatchedRules(rules []Rule, matchData map[string]any, occurTime time.Time, matcher *CELMatcher) []Rule {
+	matchedRules := make([]Rule, 0, len(rules))
+	for i := range rules {
+		if !matchRule(&rules[i], matchData, matcher) || isNoneAlarm(occurTime, &rules[i]) {
+			continue
+		}
+		matchedRules = append(matchedRules, rules[i])
+	}
+	return matchedRules
+}
+
+func matchRule(rule *Rule, matchData map[string]any, matcher *CELMatcher) bool {
+	conds, err := parseRuleConditions(rule.Conditions)
+	if err != nil {
+		return false
+	}
+	if len(conds) == 0 {
+		return rule.MType == "2"
+	}
+	return matcher.Match(conds, matchData)
+}
+
+func parseRuleConditions(raw string) ([]Conditions, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var conds []Conditions
+	if err := json.Unmarshal([]byte(raw), &conds); err != nil {
+		return nil, err
+	}
+	return conds, nil
 }
 
 func queryRules(mType string, zid int, isGlobal bool) []Rule {
@@ -429,10 +450,6 @@ func IsMuteTime(event *Event, rule *Rule) bool {
 }
 
 func MeetEventConditions(event *Event, rule *Rule) bool {
-	var conds []Conditions
-	if err := json.Unmarshal([]byte(rule.Conditions), &conds); err != nil {
-		return false
-	}
 	matchData := map[string]any{
 		"host":     event.Host,
 		"group":    event.Hgroup,
@@ -441,7 +458,7 @@ func MeetEventConditions(event *Event, rule *Rule) bool {
 		"trigger":  event.Message,
 		"severity": event.Level,
 	}
-	return GetCELMatcher().Match(conds, matchData)
+	return matchRule(rule, matchData, GetCELMatcher())
 }
 
 func normalizeChannel(ch string) string {
@@ -488,10 +505,6 @@ func isNoneAlarm(occurtime time.Time, rule *Rule) bool {
 }
 
 func MeetConditions(alarm *Alarm, rule *Rule) bool {
-	var conds []Conditions
-	if err := json.Unmarshal([]byte(rule.Conditions), &conds); err != nil {
-		return false
-	}
 	matchData := map[string]any{
 		"host":     alarm.Host,
 		"group":    alarm.Hgroup,
@@ -500,5 +513,5 @@ func MeetConditions(alarm *Alarm, rule *Rule) bool {
 		"trigger":  alarm.Message,
 		"severity": alarm.Level,
 	}
-	return GetCELMatcher().Match(conds, matchData)
+	return matchRule(rule, matchData, GetCELMatcher())
 }
