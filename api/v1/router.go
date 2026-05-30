@@ -309,6 +309,16 @@ func InitRouter() *gin.Engine {
 				systemGroup.POST("/update", handler.DoUpdate)
 			}
 
+			// 设备分组管理（一级菜单分类）
+			assetGroupGroup := api.Group("/asset-group")
+			{
+				assetGroupGroup.GET("", handler.GetAllAssetGroups)
+				assetGroupGroup.POST("", handler.CreateAssetGroup)
+				assetGroupGroup.GET("/:id", handler.GetAssetGroupByID)
+				assetGroupGroup.PUT("/:id", handler.UpdateAssetGroup)
+				assetGroupGroup.DELETE("/:id", handler.DeleteAssetGroup)
+			}
+
 			// 资产类型管理
 			assetTypeGroup := api.Group("/asset-type")
 			{
@@ -317,6 +327,8 @@ func InitRouter() *gin.Engine {
 				assetTypeGroup.GET("/:id", handler.GetAssetTypeByID)
 				assetTypeGroup.PUT("/:id", handler.UpdateAssetType)
 				assetTypeGroup.DELETE("/:id", handler.DeleteAssetType)
+				assetTypeGroup.GET("/:id/fields", handler.GetAssetTypeFields)
+				assetTypeGroup.PUT("/:id/fields", handler.UpdateAssetTypeFields)
 			}
 
 			// 出口配置管理（新）

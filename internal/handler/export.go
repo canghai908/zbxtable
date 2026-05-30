@@ -204,7 +204,7 @@ func ExportInspect(c *gin.Context) {
 	c.Data(http.StatusOK, "application/octet-stream", ByteData)
 }
 
-// ExportHosts 导出设备列表
+// ExportHosts 导出设备列表（使用多实例查询，与列表接口保持一致）
 func ExportHosts(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -213,26 +213,32 @@ func ExportHosts(c *gin.Context) {
 	}
 
 	var v model.ExportHosts
-	var HostRes model.HostList
-	err = jsoniter.Unmarshal(body, &v)
-	if err != nil {
-		HostRes.Code = 500
-		HostRes.Message = err.Error()
-		c.JSON(http.StatusOK, HostRes)
+	if err = jsoniter.Unmarshal(body, &v); err != nil {
+		response.BadRequest(c, "参数解析失败: "+err.Error())
 		return
 	}
-	hs, err := model.GetHostList(v.Hosttype, v.Hosts, v.Model, v.Ip, v.Available)
+
+	// 使用多实例聚合查询（与 /host 列表接口一致，最多取 10000 条）
+	hosts, _, err := model.HostsListMultiInstance(v.Hosttype, "1", "10000", v.Hosts, v.Model, v.Ip, v.Available)
 	if err != nil {
-		HostRes.Code = 500
-		HostRes.Message = err.Error()
-		c.JSON(http.StatusOK, HostRes)
+		response.InternalError(c, "获取主机列表失败: "+err.Error())
 		return
 	}
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", "attachment; filename=host_list.xlsx")
+
+	// 生成 xlsx
+	hs, err := model.CreateHostListInfoXlsx(hosts, v.Hosttype)
+	if err != nil {
+		response.InternalError(c, "生成 Excel 失败: "+err.Error())
+		return
+	}
+
+	// 文件名使用设备类型名称
+	filename := url.QueryEscape(v.Hosttype + "_host_list.xlsx")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename*=UTF-8''"+filename)
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	c.Data(http.StatusOK, "application/octet-stream", hs)
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", hs)
 }
 
 // ExportInventory 导出资产列表

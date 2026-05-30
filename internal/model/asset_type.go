@@ -7,6 +7,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// AssetTypeField 设备类型列表字段配置
+type AssetTypeField struct {
+	Key      string `json:"key"`      // Hosts struct 对应的 JSON 字段名
+	Label    string `json:"label"`    // 列头显示名称
+	Render   string `json:"render"`   // 渲染方式: text/progress/status/ping/tag/link
+	Width    int    `json:"width"`    // 列宽（0 表示自适应）
+	Visible  bool   `json:"visible"`  // 是否在列表中显示
+	Sortable bool   `json:"sortable"` // 是否可排序
+	Order    int    `json:"order"`    // 列顺序
+}
+
 // AssetType 资产类型定义
 type AssetType struct {
 	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
@@ -16,8 +27,34 @@ type AssetType struct {
 	Description string    `gorm:"column:description;size:500;default:''" json:"description"`
 	MonitorType string    `gorm:"column:monitor_type;size:20;default:'agent'" json:"monitor_type"`
 	SortOrder   int       `gorm:"column:sort_order;default:0" json:"sort_order"`
+	// MenuGroup 指定该类型挂载的菜单分组：host/net/server/custom（空表示不在菜单显示）
+	MenuGroup   string    `gorm:"column:menu_group;size:20;default:''" json:"menu_group"`
+	// ListFields 列表字段配置，存储为 JSON 数组（TEXT 列在 MySQL 不能有默认值）
+	ListFields  string    `gorm:"column:list_fields;type:text" json:"list_fields"`
 	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+}
+
+// ParseListFields 解析 ListFields JSON 字符串为字段配置列表
+func (a *AssetType) ParseListFields() []AssetTypeField {
+	if a.ListFields == "" {
+		return nil
+	}
+	var fields []AssetTypeField
+	if err := json.Unmarshal([]byte(a.ListFields), &fields); err != nil {
+		return nil
+	}
+	return fields
+}
+
+// SetListFields 将字段配置列表序列化存入 ListFields
+func (a *AssetType) SetListFields(fields []AssetTypeField) error {
+	b, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+	a.ListFields = string(b)
+	return nil
 }
 
 func (t *AssetType) TableName() string {
@@ -65,8 +102,90 @@ func UpdateAssetType(m *AssetType) error {
 		"description":  m.Description,
 		"monitor_type": m.MonitorType,
 		"sort_order":   m.SortOrder,
+		"menu_group":   m.MenuGroup,
 		"updated_at":   time.Now(),
 	}).Error
+}
+
+// GetAssetTypeFields 获取指定类型的列表字段配置
+func GetAssetTypeFields(id int64) ([]AssetTypeField, error) {
+	at, err := GetAssetTypeByID(id)
+	if err != nil {
+		return nil, err
+	}
+	fields := at.ParseListFields()
+	if fields == nil {
+		fields = DefaultFieldConfig(at.TypeCode, at.MonitorType)
+	}
+	return fields, nil
+}
+
+// UpdateAssetTypeFields 更新指定类型的列表字段配置
+func UpdateAssetTypeFields(id int64, fields []AssetTypeField) error {
+	b, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+	return DB.Model(&AssetType{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"list_fields": string(b),
+		"updated_at":  time.Now(),
+	}).Error
+}
+
+// DefaultFieldConfig 根据 typeCode 和 monitorType 返回默认字段配置
+func DefaultFieldConfig(typeCode, monitorType string) []AssetTypeField {
+	// 通用基础字段（所有类型都有）
+	base := []AssetTypeField{
+		{Key: "hostid", Label: "主机ID", Render: "text", Visible: false, Order: 0},
+		{Key: "name", Label: "设备名称", Render: "text", Visible: true, Order: 1},
+		{Key: "instance_name", Label: "所属实例", Render: "tag", Visible: true, Width: 120, Order: 2},
+		{Key: "interfaces", Label: "IP地址", Render: "text", Visible: true, Order: 3},
+		{Key: "available", Label: "采集状态", Render: "status", Visible: true, Width: 100, Order: 10},
+		{Key: "ping", Label: "Ping状态", Render: "ping", Visible: true, Order: 11},
+	}
+
+	switch typeCode {
+	case "VM_LIN":
+		return append(base, []AssetTypeField{
+			{Key: "os", Label: "操作系统", Render: "text", Visible: true, Order: 4},
+			{Key: "uptime", Label: "运行时长", Render: "text", Visible: true, Order: 5},
+			{Key: "cpu_utilization", Label: "CPU使用率", Render: "progress", Visible: true, Order: 6},
+			{Key: "memory_utilization", Label: "内存使用率", Render: "progress", Visible: true, Order: 7},
+		}...)
+	case "VM_WIN":
+		return append(base, []AssetTypeField{
+			{Key: "os", Label: "操作系统", Render: "text", Visible: true, Order: 4},
+			{Key: "uptime", Label: "运行时长", Render: "text", Visible: true, Order: 5},
+			{Key: "cpu_utilization", Label: "CPU使用率", Render: "progress", Visible: true, Order: 6},
+			{Key: "memory_utilization", Label: "内存使用率", Render: "progress", Visible: true, Order: 7},
+		}...)
+	case "HW_SRV":
+		return append(base, []AssetTypeField{
+			{Key: "model", Label: "设备型号", Render: "text", Visible: true, Order: 4},
+			{Key: "serial_no", Label: "序列号", Render: "text", Visible: true, Order: 5},
+			{Key: "os", Label: "操作系统", Render: "text", Visible: true, Order: 6},
+			{Key: "location", Label: "设备位置", Render: "text", Visible: true, Order: 7},
+			{Key: "cpu_utilization", Label: "CPU使用率", Render: "progress", Visible: true, Order: 8},
+			{Key: "memory_utilization", Label: "内存使用率", Render: "progress", Visible: true, Order: 9},
+		}...)
+	default:
+		// SNMP/IPMI 硬件类型通用默认
+		if monitorType == "snmp" || monitorType == "ipmi" {
+			return append(base, []AssetTypeField{
+				{Key: "model", Label: "设备型号", Render: "text", Visible: true, Order: 4},
+				{Key: "serial_no", Label: "序列号", Render: "text", Visible: true, Order: 5},
+				{Key: "location", Label: "设备位置", Render: "text", Visible: true, Order: 6},
+				{Key: "vendor", Label: "厂商", Render: "text", Visible: true, Order: 7},
+			}...)
+		}
+		// Agent 类型通用默认
+		return append(base, []AssetTypeField{
+			{Key: "os", Label: "操作系统", Render: "text", Visible: true, Order: 4},
+			{Key: "uptime", Label: "运行时长", Render: "text", Visible: true, Order: 5},
+			{Key: "cpu_utilization", Label: "CPU使用率", Render: "progress", Visible: true, Order: 6},
+			{Key: "memory_utilization", Label: "内存使用率", Render: "progress", Visible: true, Order: 7},
+		}...)
+	}
 }
 
 // DeleteAssetType 删除资产类型，删前校验无 System 记录引用
@@ -105,15 +224,15 @@ func IsHardwareType(typeCode string) bool {
 	return mt == "snmp" || mt == "ipmi"
 }
 
-// InitDefaultAssetTypes 幂等预置4条默认资产类型
+// InitDefaultAssetTypes 幂等预置默认资产类型
 func InitDefaultAssetTypes() error {
 	defaults := []AssetType{
-		{Name: "Linux", TypeCode: "VM_LIN", Icon: "desktop", MonitorType: "agent", SortOrder: 1},
-		{Name: "Windows", TypeCode: "VM_WIN", Icon: "windows", MonitorType: "agent", SortOrder: 2},
-		{Name: "网络设备", TypeCode: "HW_NET", Icon: "cluster", MonitorType: "snmp", SortOrder: 3},
-		{Name: "物理服务器", TypeCode: "HW_SRV", Icon: "database", MonitorType: "snmp", SortOrder: 4},
-		{Name: "光纤交换机", TypeCode: "HW_FIB", Icon: "share-alt", MonitorType: "snmp", SortOrder: 5},
-		{Name: "存储设备", TypeCode: "HW_STO", Icon: "hdd", MonitorType: "snmp", SortOrder: 6},
+		{Name: "Linux", TypeCode: "VM_LIN", Icon: "desktop", MonitorType: "agent", SortOrder: 1, MenuGroup: "host"},
+		{Name: "Windows", TypeCode: "VM_WIN", Icon: "windows", MonitorType: "agent", SortOrder: 2, MenuGroup: "host"},
+		{Name: "网络设备", TypeCode: "HW_NET", Icon: "cluster", MonitorType: "snmp", SortOrder: 3, MenuGroup: "net"},
+		{Name: "物理服务器", TypeCode: "HW_SRV", Icon: "database", MonitorType: "snmp", SortOrder: 4, MenuGroup: "server"},
+		{Name: "光纤交换机", TypeCode: "HW_FIB", Icon: "share-alt", MonitorType: "snmp", SortOrder: 5, MenuGroup: "server"},
+		{Name: "存储设备", TypeCode: "HW_STO", Icon: "hdd", MonitorType: "snmp", SortOrder: 6, MenuGroup: "server"},
 	}
 	for _, at := range defaults {
 		var existing AssetType
@@ -122,6 +241,10 @@ func InitDefaultAssetTypes() error {
 			if createErr := DB.Create(&at).Error; createErr != nil {
 				return createErr
 			}
+		} else if err == nil && existing.MenuGroup == "" {
+			// 回填历史记录的 menu_group
+			DB.Model(&AssetType{}).Where("type_code = ?", at.TypeCode).
+				Update("menu_group", at.MenuGroup)
 		}
 	}
 	return nil

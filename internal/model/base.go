@@ -280,6 +280,10 @@ func DatabaseInit() error {
 
 	// 存量 asset_type 记录回填 monitor_type（幂等，需在 InitDefaultAssetTypes 之前）
 	_ = MigrateAssetTypeMonitorType()
+	// 初始化内置设备分组（幂等）
+	if err := InitDefaultAssetGroups(); err != nil {
+		return fmt.Errorf("init default asset groups failed: %w", err)
+	}
 	// 初始化默认资产类型（幂等）
 	if err := InitDefaultAssetTypes(); err != nil {
 		return fmt.Errorf("init default asset types failed: %w", err)
@@ -292,6 +296,9 @@ func DatabaseInit() error {
 	if err := MigrateSystemTypeCodes(); err != nil {
 		return fmt.Errorf("migrate system type codes failed: %w", err)
 	}
+
+	// 启动异步预热：主机统计缓存（资产树页面首次打开即命中缓存，无需等待 Zabbix）
+	WarmHostCountCache()
 
 	return nil
 }

@@ -127,7 +127,7 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 	var b bytes.Buffer
 	err = xlsx.Write(&b)
 	if err != nil {
-		return []byte{}, nil
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 
@@ -222,7 +222,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 	var b bytes.Buffer
 	err = xlsx.Write(&b)
 	if err != nil {
-		return []byte{}, nil
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 }
@@ -307,7 +307,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 	var b bytes.Buffer
 	err = xlsx.Write(&b)
 	if err != nil {
-		return []byte{}, nil
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 }
@@ -836,7 +836,7 @@ func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 	var b bytes.Buffer
 	err = xlsx.Write(&b)
 	if err != nil {
-		return []byte{}, nil
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 }

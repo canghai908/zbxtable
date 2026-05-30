@@ -28,6 +28,10 @@ type ChartData struct {
 	ItemID        string          `json:"item_id"`       // 指标ID，用于获取图表
 	InstanceName  string          `json:"instance_name"` // 实例名称
 	Instance      *APIInstance    `json:"-"`             // 实例对象，用于获取图表图片
+	Max           float64         `json:"max"`           // 时间范围内最大值
+	Min           float64         `json:"min"`           // 时间范围内最小值
+	Avg           float64         `json:"avg"`           // 时间范围内平均值
+	HasStats      bool            `json:"has_stats"`     // 是否存在有效的统计数据
 }
 
 func TaskDayReport(m Report) error {

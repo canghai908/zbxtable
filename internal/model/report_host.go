@@ -40,6 +40,58 @@ type ItemData struct {
 	InstanceName string
 }
 
+// HistoryStats 历史数据统计结果
+type HistoryStats struct {
+	Max   float64
+	Min   float64
+	Avg   float64
+	Count int
+}
+
+// HasData 是否包含有效统计数据
+func (s HistoryStats) HasData() bool {
+	return s.Count > 0
+}
+
+// CalcHistoryStats 根据历史数据计算最大值、最小值、平均值
+func CalcHistoryStats(historyData []History) HistoryStats {
+	var stats HistoryStats
+	var sum float64
+	for _, h := range historyData {
+		val, err := strconv.ParseFloat(h.Value, 64)
+		if err != nil {
+			continue
+		}
+		if stats.Count == 0 {
+			stats.Max = val
+			stats.Min = val
+		} else {
+			if val > stats.Max {
+				stats.Max = val
+			}
+			if val < stats.Min {
+				stats.Min = val
+			}
+		}
+		sum += val
+		stats.Count++
+	}
+	if stats.Count > 0 {
+		stats.Avg = sum / float64(stats.Count)
+	}
+	return stats
+}
+
+// formatStatValue 格式化统计数值，保留两位小数并去除多余的零
+func formatStatValue(v float64) string {
+	s := strconv.FormatFloat(v, 'f', 2, 64)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimRight(s, ".")
+	}
+	return s
+}
+
 func buildHostReportSheetName(hostName, itemName string, existingSheetNames []string) string {
 	sheetName := strings.TrimSpace(hostName) + "-" + strings.TrimSpace(itemName)
 	sheetName = strings.NewReplacer(
@@ -277,6 +329,9 @@ func runTaskHostReport(m Report, task *TaskLog) error {
 				vallist = append(vallist, opts.LineData{Value: floaval})
 			}
 
+			// 根据时间范围内的历史数据计算最大、最小、平均值
+			stats := CalcHistoryStats(historyData)
+
 			chartData := ChartData{
 				Host:         hostInfo.Name,
 				IP:           hostInfo.Interfaces,
@@ -289,6 +344,10 @@ func runTaskHostReport(m Report, task *TaskLog) error {
 				ItemID:       itemInfo[0].Itemid,
 				InstanceName: inst.Name, // 添加实例名称
 				Instance:     inst,      // 添加实例对象
+				Max:          stats.Max,
+				Min:          stats.Min,
+				Avg:          stats.Avg,
+				HasStats:     stats.HasData(),
 			}
 			ChartList = append(ChartList, chartData)
 			processedItemCount++
@@ -414,6 +473,21 @@ func CreateHostReportHTML(m Report, data []ChartData) (string, error) {
 	return filename, nil
 }
 
+// buildChartSubtitle 构建图表副标题，附带最大/最小/平均统计
+func buildChartSubtitle(data ChartData) string {
+	subtitle := data.Name + "\n" + data.Start + "--" + data.End
+	if data.HasStats {
+		unit := strings.TrimSpace(data.Units)
+		statLine := fmt.Sprintf("最大: %s   最小: %s   平均: %s",
+			formatStatValue(data.Max), formatStatValue(data.Min), formatStatValue(data.Avg))
+		if unit != "" {
+			statLine += " " + unit
+		}
+		subtitle += "\n" + statLine
+	}
+	return subtitle
+}
+
 // CreateHostChart 创建主机图表
 func CreateHostChart(data ChartData) *charts.Line {
 	line := charts.NewLine()
@@ -435,6 +509,11 @@ func CreateHostChart(data ChartData) *charts.Line {
 			Theme:           "white",   // 使用白色主题
 			BackgroundColor: "#ffffff", // 白色背景
 		}),
+		// 下移绘图区，为标题/副标题（含统计信息）留出空间，避免重叠
+		charts.WithGridOpts(opts.Grid{
+			Top:          "22%",
+			ContainLabel: true,
+		}),
 		charts.WithLegendOpts(opts.Legend{
 			Show:   true,
 			Orient: "vertical",
@@ -455,7 +534,7 @@ func CreateHostChart(data ChartData) *charts.Line {
 		}),
 		charts.WithTitleOpts(opts.Title{
 			Title:         titleText,
-			Subtitle:      data.Name + "\n" + data.Start + "--" + data.End,
+			Subtitle:      buildChartSubtitle(data),
 			Left:          "center",
 			TitleStyle:    &opts.TextStyle{FontSize: 20, Color: "#333"},
 			SubtitleStyle: &opts.TextStyle{FontSize: 12, Color: "#666"},
@@ -640,6 +719,17 @@ func CreateHostReportPDF(m Report, data []ChartData, start, end string) (string,
 		}
 		pdf.Cell(nil, titleText)
 
+		// 在标题下方添加统计信息（最大/最小/平均）
+		if chartData.HasStats {
+			pdf.SetX(10)
+			pdf.SetY(yPos + 14)
+			statText := fmt.Sprintf("最大: %s | 最小: %s | 平均: %s %s",
+				formatStatValue(chartData.Max), formatStatValue(chartData.Min),
+				formatStatValue(chartData.Avg), strings.TrimSpace(chartData.Units))
+			pdf.Cell(nil, strings.TrimSpace(statText))
+			yPos += 14
+		}
+
 		// 获取图表图片
 		if chartData.ItemID != "" && chartData.Instance != nil {
 			// 先检查实例是否配置了用户名和密码
@@ -735,6 +825,9 @@ func CreateHostMailTable(m Report, data []ChartData, start, end string) ([]byte,
 			IP           string
 			ItemName     string
 			Units        string
+			Max          string
+			Min          string
+			Avg          string
 		}
 	}
 
@@ -745,18 +838,30 @@ func CreateHostMailTable(m Report, data []ChartData, start, end string) ([]byte,
 	}
 
 	for _, v := range data {
+		maxStr, minStr, avgStr := "--", "--", "--"
+		if v.HasStats {
+			maxStr = formatStatValue(v.Max)
+			minStr = formatStatValue(v.Min)
+			avgStr = formatStatValue(v.Avg)
+		}
 		mailData.TableInfo = append(mailData.TableInfo, struct {
 			InstanceName string
 			Host         string
 			IP           string
 			ItemName     string
 			Units        string
+			Max          string
+			Min          string
+			Avg          string
 		}{
 			InstanceName: v.InstanceName,
 			Host:         v.Host,
 			IP:           v.IP,
 			ItemName:     v.Name,
 			Units:        v.Units,
+			Max:          maxStr,
+			Min:          minStr,
+			Avg:          avgStr,
 		})
 	}
 
@@ -825,6 +930,29 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		xlsx.SetCellValue(sheetName, "A7", "结束时间")
 		xlsx.SetCellValue(sheetName, "B7", end)
 
+		// 写入统计信息（最大/最小/平均），紧跟在结束时间行之后，根据时间范围内的历史数据计算
+		stats := CalcHistoryStats(itemData.HistoryData)
+		unitSuffix := ""
+		if u := strings.TrimSpace(itemInfo.Units); u != "" {
+			unitSuffix = "(" + u + ")"
+		}
+		maxStr, minStr, avgStr := "--", "--", "--"
+		if stats.HasData() {
+			maxStr = formatStatValue(stats.Max)
+			minStr = formatStatValue(stats.Min)
+			avgStr = formatStatValue(stats.Avg)
+		}
+		xlsx.SetCellValue(sheetName, "A8", "最大值"+unitSuffix)
+		xlsx.SetCellValue(sheetName, "B8", maxStr)
+		xlsx.SetCellValue(sheetName, "A9", "最小值"+unitSuffix)
+		xlsx.SetCellValue(sheetName, "B9", minStr)
+		xlsx.SetCellValue(sheetName, "A10", "平均值"+unitSuffix)
+		xlsx.SetCellValue(sheetName, "B10", avgStr)
+
+		// 数据表头与数据起始行（统计信息后空一行）
+		const dataHeaderRow = 12
+		const dataStartRow = 13
+
 		// 数据样式设置
 		stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
 		if err != nil {
@@ -834,13 +962,14 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		lea := len(itemData.HistoryData)
 		// 设置单元格对齐方式
 		if lea > 0 {
-			xlsx.SetCellStyle(sheetName, "A9", "A"+strconv.Itoa(lea+10), stylecenter)
-			xlsx.SetCellStyle(sheetName, "B9", "B"+strconv.Itoa(lea+10), stylecenter)
+			lastRow := strconv.Itoa(dataStartRow + lea - 1)
+			xlsx.SetCellStyle(sheetName, "A"+strconv.Itoa(dataHeaderRow), "A"+lastRow, stylecenter)
+			xlsx.SetCellStyle(sheetName, "B"+strconv.Itoa(dataHeaderRow), "B"+lastRow, stylecenter)
 		}
 
 		// 写入数据表头
-		xlsx.SetCellValue(sheetName, "A9", "时间")
-		xlsx.SetCellValue(sheetName, "B9", "数值("+itemInfo.Units+")")
+		xlsx.SetCellValue(sheetName, "A"+strconv.Itoa(dataHeaderRow), "时间")
+		xlsx.SetCellValue(sheetName, "B"+strconv.Itoa(dataHeaderRow), "数值("+itemInfo.Units+")")
 
 		// 写入历史数据
 		for k, v := range itemData.HistoryData {
@@ -848,8 +977,9 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 			timeint64, _ := strconv.ParseInt(v.Clock, 10, 64)
 			TimeUnix := time.Unix(timeint64, 0).In(loc)
 			StrTime := TimeUnix.Format("2006-01-02 15:04:05")
-			xlsx.SetCellValue(sheetName, "A"+strconv.Itoa(k+10), StrTime)
-			xlsx.SetCellValue(sheetName, "B"+strconv.Itoa(k+10), v.Value)
+			rowStr := strconv.Itoa(k + dataStartRow)
+			xlsx.SetCellValue(sheetName, "A"+rowStr, StrTime)
+			xlsx.SetCellValue(sheetName, "B"+rowStr, v.Value)
 		}
 
 		// 如果是第一个sheet，设置为活动sheet
@@ -899,6 +1029,9 @@ var htmlHostReport = `<div>
                                 <th>IP地址</th>
                                 <th>指标名称</th>
                                 <th>单位</th>
+                                <th>最大值</th>
+                                <th>最小值</th>
+                                <th>平均值</th>
                             </tr>
                             {{range .TableInfo}}
                             <tr>
@@ -907,6 +1040,9 @@ var htmlHostReport = `<div>
                                 <td>{{.IP}}</td>
                                 <td>{{.ItemName}}</td>
                                 <td>{{.Units}}</td>
+                                <td>{{.Max}}</td>
+                                <td>{{.Min}}</td>
+                                <td>{{.Avg}}</td>
                             </tr>
                             {{end}}
                         </table>
