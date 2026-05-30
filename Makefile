@@ -33,6 +33,7 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make build          - 编译应用"
+	@echo "  make build-linux-amd64 - 交叉编译 Linux amd64 测试包"
 	@echo "  make build-all      - 编译所有平台版本"
 	@echo "  make clean          - 清理编译产物"
 	@echo "  make test           - 运行测试"
@@ -53,6 +54,9 @@ build:
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) main.go
 	@echo "Build complete: $(BUILD_DIR)/$(APP_NAME)"
+
+build-linux-amd64:
+	@./scripts/build-linux-amd64.sh
 
 # 编译所有平台
 build-all:
@@ -212,4 +216,3 @@ uninstall-bin:
 # 检查代码质量
 quality: fmt vet lint test
 	@echo "Code quality check complete!"
-
