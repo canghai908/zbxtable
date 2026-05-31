@@ -33,8 +33,8 @@ func getMenuDefinitions() []Menu {
 	return []Menu{
 		// 一级菜单（ParentId: 0）
 		{ParentId: 0, Name: "工作台", Path: "dashboard", Router: "dashboard", Icon: "dashboard", CacheAble: false, Role: "admin,user"},
-		// 资产管理（一级父菜单，紧随工作台之后，作为设备资产统一入口）
-		{ParentId: 0, Name: "资产管理", Path: "assets", Router: "assets", Icon: "appstore", CacheAble: false, Role: "admin,user"},
+		// 设备管理（一级父菜单，紧随工作台之后，作为设备资产统一入口）
+		{ParentId: 0, Name: "设备管理", Path: "assets", Router: "assets", Icon: "appstore", CacheAble: false, Role: "admin,user"},
 		// 主机/网络/硬件管理已统一并入"资产管理"，菜单隐藏（保留路由供详情页使用），后续清理页面
 		{ParentId: 0, Name: "主机管理", Path: "host", Router: "host", Icon: "hdd", CacheAble: false, Role: "admin,user", Invisible: true},
 		{ParentId: 0, Name: "网络管理", Path: "net", Router: "net", Icon: "cloud", CacheAble: false, Role: "admin,user", Invisible: true},
@@ -49,8 +49,8 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 1, Name: "首页", Path: "workplace", Router: "workplace", Icon: "home", Role: "admin,user"},
 		{ParentId: 1, Name: "状态总览", Path: "overview", Router: "overview", Icon: "appstore", Role: "admin,user"},
 		{ParentId: 1, Name: "数据面板", Path: "dash", Router: "dash", Icon: "block", IsAvailable: true, Role: "admin,user"},
-		//资产管理 (ParentId: 2)
-		{ParentId: 2, Name: "资产树", Path: "tree", Router: "assetBrowser", Icon: "apartment", Role: "admin,user"},
+		//设备管理 (ParentId: 2)
+		{ParentId: 2, Name: "设备树", Path: "tree", Router: "assetBrowser", Icon: "apartment", Role: "admin,user"},
 		// 主机/网络/硬件管理 (ParentId 3/4/5)：列表已并入"资产管理"，仅保留各设备详情路由
 		{ParentId: 3, Name: "Linux主机详情", Path: "lindetail", Router: "linDetail", Invisible: true, Highlight: "/host", Role: "admin,user"},
 		{ParentId: 3, Name: "Windows主机详情", Path: "windetail", Router: "winDetail", Invisible: true, Highlight: "/host", Role: "admin,user"},
@@ -73,12 +73,12 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 9, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "team", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 9, Name: "菜单管理", Path: "menu", Router: "menuManagement", Icon: "menu", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 9, Name: "Zabbix配置", Path: "zabbix", Router: "zabbix", Icon: "cloud-server", Role: "admin", Permission: "['add','edit','delete','update']"},
-		{ParentId: 9, Name: "资产设置", Path: "asset-management", Router: "assetManagement", Icon: "appstore", Role: "admin", Permission: "['add','edit','delete','update']"},
+		{ParentId: 9, Name: "设备配置", Path: "asset-management", Router: "assetManagement", Icon: "appstore", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 9, Name: "出口配置", Path: "bandwidth", Router: "systemBandwidth", Icon: "swap", Role: "admin,user"},
 		{ParentId: 9, Name: "参数配置", Path: "config", Router: "sysConfig", Icon: "control", Role: "admin"},
 		{ParentId: 9, Name: "版本信息", Path: "version", Router: "version", Icon: "info-circle", Role: "admin,user"},
 		{ParentId: 9, Name: "资产类型", Path: "asset-type", Router: "assetTypeManagement", Icon: "tags", Role: "admin", Permission: "['add','edit','delete','update']", Invisible: true, Highlight: "/system/asset-management"},
-		{ParentId: 9, Name: "资产绑定", Path: "asset-binding", Router: "assetBinding", Icon: "link", Role: "admin", Permission: "['add','edit','delete','update']", Invisible: true, Highlight: "/system/asset-management"},
+		{ParentId: 9, Name: "设备绑定", Path: "asset-binding", Router: "assetBinding", Icon: "link", Role: "admin", Permission: "['add','edit','delete','update']", Invisible: true, Highlight: "/system/asset-management"},
 	}
 }
 
@@ -203,11 +203,31 @@ func cleanupDeprecatedMenus() {
 		Update("router", "assets").Error; err != nil {
 		logger.Log.Error("迁移资产管理为父菜单失败:", err)
 	}
-	// 系统管理下的"资产管理"改名为"资产设置"（幂等）
+	// 系统管理下的"资产管理"/"资产设置"统一改名为"设备配置"（幂等）。
+	// 历史上该菜单经历 资产管理 → 资产设置 → 设备配置 多次更名，两条 WHERE 均需覆盖。
 	if err := DB.Model(&Menu{}).
-		Where("router = ? AND name = ?", "assetManagement", "资产管理").
-		Update("name", "资产设置").Error; err != nil {
-		logger.Log.Error("重命名资产管理菜单失败:", err)
+		Where("router = ? AND name IN ?", "assetManagement", []string{"资产管理", "资产设置"}).
+		Update("name", "设备配置").Error; err != nil {
+		logger.Log.Error("重命名资产设置菜单失败:", err)
+	}
+	// 顶级"资产管理"(设备入口)改名为"设备管理"（幂等）。CheckAndAddMenus 按 name 匹配，
+	// 必须先在此重命名存量行，否则会重复创建一条"设备管理"菜单。
+	if err := DB.Model(&Menu{}).
+		Where("parent_id = 0 AND router = ? AND name = ?", "assets", "资产管理").
+		Update("name", "设备管理").Error; err != nil {
+		logger.Log.Error("重命名顶级资产管理菜单失败:", err)
+	}
+	// "资产树"子菜单改名为"设备树"（幂等）
+	if err := DB.Model(&Menu{}).
+		Where("router = ? AND name = ?", "assetBrowser", "资产树").
+		Update("name", "设备树").Error; err != nil {
+		logger.Log.Error("重命名资产树菜单失败:", err)
+	}
+	// "资产绑定"菜单改名为"设备绑定"（幂等）
+	if err := DB.Model(&Menu{}).
+		Where("router = ? AND name = ?", "assetBinding", "资产绑定").
+		Update("name", "设备绑定").Error; err != nil {
+		logger.Log.Error("重命名资产绑定菜单失败:", err)
 	}
 }
 

@@ -104,7 +104,7 @@ func getScheduledTaskDefinitions() []scheduledTaskDefinition {
 			Run:            SyncHostCountCache,
 		},
 		{
-			Name:           "资产绑定自动初始化",
+			Name:           "设备绑定自动初始化",
 			EnabledKey:     "binding_auto_init_enabled",
 			CronKey:        "binding_auto_init_cron",
 			DefaultEnabled: "1",
@@ -112,7 +112,7 @@ func getScheduledTaskDefinitions() []scheduledTaskDefinition {
 			Run:            AutoInitSystemBindings,
 		},
 		{
-			Name:           "资产绑定失败重试",
+			Name:           "设备绑定失败重试",
 			EnabledKey:     "binding_retry_enabled",
 			CronKey:        "binding_retry_cron",
 			DefaultEnabled: "1",

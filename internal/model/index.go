@@ -266,7 +266,7 @@ func GetInventory() ([]Treeinventory, error) {
 	}
 	tree := make([]Treeinventory, 1)
 	tree[0].ID = 0
-	tree[0].Name = "资产树"
+	tree[0].Name = "设备树"
 	tree[0].TwoChildren = TwoTree
 
 	return tree, nil

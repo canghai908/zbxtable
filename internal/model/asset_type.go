@@ -197,7 +197,7 @@ func DeleteAssetType(id int64) error {
 	var count int64
 	DB.Model(&System{}).Where("type_code = ?", at.TypeCode).Count(&count)
 	if count > 0 {
-		return errors.New("该资产类型已被绑定配置引用，请先删除对应的资产绑定配置")
+		return errors.New("该资产类型已被绑定配置引用，请先删除对应的设备绑定配置")
 	}
 	return DB.Delete(&AssetType{}, id).Error
 }

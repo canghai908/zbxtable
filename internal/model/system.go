@@ -410,7 +410,7 @@ func HostTypeSet(s *System, groupId []string) error {
 	// 从 type_code 字段读取资产类型（动态，不再硬编码）
 	hType := s.TypeCode
 	if hType == "" {
-		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在设备绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
@@ -511,7 +511,7 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 	// 从 type_code 字段读取资产类型（动态，不再硬编码）
 	hType := s.TypeCode
 	if hType == "" {
-		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在设备绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
