@@ -80,8 +80,8 @@ func DeleteAssetGroup(id int64) error {
 // InitDefaultAssetGroups 幂等预置内置分组
 func InitDefaultAssetGroups() error {
 	defaults := []AssetGroup{
-		{Name: "主机管理", GroupKey: "host",   Icon: "hdd",      SortOrder: 1, IsBuiltin: true},
-		{Name: "网络管理", GroupKey: "net",    Icon: "cloud",    SortOrder: 2, IsBuiltin: true},
+		{Name: "主机管理", GroupKey: "host", Icon: "hdd", SortOrder: 1, IsBuiltin: true},
+		{Name: "网络管理", GroupKey: "net", Icon: "cloud", SortOrder: 2, IsBuiltin: true},
 		{Name: "硬件管理", GroupKey: "server", Icon: "database", SortOrder: 3, IsBuiltin: true},
 	}
 	for _, g := range defaults {
