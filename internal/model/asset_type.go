@@ -20,19 +20,19 @@ type AssetTypeField struct {
 
 // AssetType 资产类型定义
 type AssetType struct {
-	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Name        string    `gorm:"column:name;size:100;not null" json:"name"`
-	TypeCode    string    `gorm:"column:type_code;size:50;not null;uniqueIndex" json:"type_code"`
-	Icon        string    `gorm:"column:icon;size:100;default:''" json:"icon"`
-	Description string    `gorm:"column:description;size:500;default:''" json:"description"`
-	MonitorType string    `gorm:"column:monitor_type;size:20;default:'agent'" json:"monitor_type"`
-	SortOrder   int       `gorm:"column:sort_order;default:0" json:"sort_order"`
+	ID          int64  `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Name        string `gorm:"column:name;size:100;not null" json:"name"`
+	TypeCode    string `gorm:"column:type_code;size:50;not null;uniqueIndex" json:"type_code"`
+	Icon        string `gorm:"column:icon;size:100;default:''" json:"icon"`
+	Description string `gorm:"column:description;size:500;default:''" json:"description"`
+	MonitorType string `gorm:"column:monitor_type;size:20;default:'agent'" json:"monitor_type"`
+	SortOrder   int    `gorm:"column:sort_order;default:0" json:"sort_order"`
 	// MenuGroup 指定该类型挂载的菜单分组：host/net/server/custom（空表示不在菜单显示）
-	MenuGroup   string    `gorm:"column:menu_group;size:20;default:''" json:"menu_group"`
+	MenuGroup string `gorm:"column:menu_group;size:20;default:''" json:"menu_group"`
 	// ListFields 列表字段配置，存储为 JSON 数组（TEXT 列在 MySQL 不能有默认值）
-	ListFields  string    `gorm:"column:list_fields;type:text" json:"list_fields"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	ListFields string    `gorm:"column:list_fields;type:text" json:"list_fields"`
+	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 // ParseListFields 解析 ListFields JSON 字符串为字段配置列表

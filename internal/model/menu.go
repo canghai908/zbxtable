@@ -283,7 +283,6 @@ type Authority struct {
 	Permission string `json:"permission,omitempty"`
 }
 
-
 func GetRouter(username string) ([]RouterRes, error) {
 	m, err := GetManagerByName(username)
 	if err != nil {
@@ -300,7 +299,6 @@ func GetRouter(username string) ([]RouterRes, error) {
 	tree[0].Children = pRouter
 	return tree, nil
 }
-
 
 func buildMenuTree(menus []Menu, role string) []MenuItem {
 	var tree []MenuItem
