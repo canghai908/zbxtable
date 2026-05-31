@@ -94,6 +94,7 @@ func UpdateSystem(c *gin.Context) {
 	} else {
 		SystemRes.Code = 200
 		SystemRes.Message = "更新成功"
+		// 调度器重载已在 model.CreateOrUpdateSystem 内触发，此处无需重复
 	}
 	c.JSON(http.StatusOK, SystemRes)
 }

@@ -95,6 +95,10 @@ func UpdateSystem(m *System) (err error) {
 	}
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = v.CreatedAt
+	initCron := m.InitCron
+	if initCron == "" {
+		initCron = "0 0 2 * * *"
+	}
 	err = DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"zid":                   m.ZID,
 		"type_code":             m.TypeCode,
@@ -107,8 +111,13 @@ func UpdateSystem(m *System) (err error) {
 		"uptime_id":             m.UptimeID,
 		"model":                 m.Model,
 		"ping_template_id":      m.PingTemplateID,
-		"updated_at":            m.UpdatedAt,
-		"created_at":            m.CreatedAt,
+		// 自动初始化相关字段（之前缺失导致 UI 开关保存后 DB 不变）
+		"auto_init":        m.AutoInit,
+		"init_cron":        initCron,
+		"init_on_new_host": m.InitOnNewHost,
+		"max_retry":        m.MaxRetry,
+		"updated_at":       m.UpdatedAt,
+		"created_at":       m.CreatedAt,
 	}).Error
 	if err != nil {
 		return err
@@ -147,10 +156,14 @@ func EnsureSystemBindingsForAssetTypes() error {
 				continue
 			}
 			missing = append(missing, System{
-				Name:     assetType.Name,
-				TypeCode: assetType.TypeCode,
-				Status:   0,
-				InitedAt: &now,
+				Name:          assetType.Name,
+				TypeCode:      assetType.TypeCode,
+				Status:        0,
+				InitedAt:      &now,
+				AutoInit:      1,             // 默认开启定时自动初始化
+				InitCron:      "0 0 2 * * *", // 默认每天凌晨 2 点
+				InitOnNewHost: 1,             // 默认开启新主机自动初始化
+				MaxRetry:      3,
 			})
 		}
 		if len(missing) == 0 {
@@ -169,13 +182,22 @@ func CreateOrUpdateSystem(m *System) error {
 		// 不存在，创建新记录
 		m.CreatedAt = time.Now()
 		m.UpdatedAt = time.Now()
-		return DB.Create(m).Error
+		if createErr := DB.Create(m).Error; createErr != nil {
+			return createErr
+		}
+		// 新建后重载调度器，使 auto_init / init_cron 生效
+		go ReloadTaskScheduler()
+		return nil
 	}
 
 	// 存在，更新记录
 	m.UpdatedAt = time.Now()
 	m.CreatedAt = existing.CreatedAt
-	return DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+	initCron := m.InitCron
+	if initCron == "" {
+		initCron = "0 0 2 * * *"
+	}
+	err = DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"zid":                   m.ZID,
 		"type_code":             m.TypeCode,
 		"cpu_core":              m.CPUCore,
@@ -187,8 +209,19 @@ func CreateOrUpdateSystem(m *System) error {
 		"uptime_id":             m.UptimeID,
 		"model":                 m.Model,
 		"ping_template_id":      m.PingTemplateID,
-		"updated_at":            m.UpdatedAt,
+		// 自动化配置字段（之前缺失导致编辑保存后不生效）
+		"auto_init":        m.AutoInit,
+		"init_cron":        initCron,
+		"init_on_new_host": m.InitOnNewHost,
+		"max_retry":        m.MaxRetry,
+		"updated_at":       m.UpdatedAt,
 	}).Error
+	if err != nil {
+		return err
+	}
+	// 配置变更后重启调度器，使新的 auto_init / init_cron 立即生效
+	go ReloadTaskScheduler()
+	return nil
 }
 
 // CreateSystem 创建新的 System 绑定记录
@@ -198,8 +231,11 @@ func CreateSystem(m *System) error {
 	return DB.Create(m).Error
 }
 
-// DeleteSystem 删除 System 绑定记录
+// DeleteSystem 删除 System 绑定记录（同时级联删除其历史记录）
 func DeleteSystem(id int64) error {
+	if err := DB.Where("system_id = ?", id).Delete(&SystemHistory{}).Error; err != nil {
+		logger.Log.Errorf("删除绑定历史记录失败 [ID=%d]: %v", id, err)
+	}
 	return DB.Delete(&System{}, id).Error
 }
 
@@ -229,10 +265,44 @@ func ExecuteSystemInit(systemID int64, execType string) error {
 	list := strings.Split(v.GroupID, ",")
 	affectedHosts, err := hostTypeSetWithCount(&v, list, apiInstance)
 	if err != nil {
-		return systemInitError(&v, hist, err)
+		retErr := systemInitError(&v, hist, err)
+		go CleanupSystemHistory(systemID, systemHistoryKeepPerBinding)
+		return retErr
 	}
 
-	return systemInitSuccess(&v, hist, affectedHosts)
+	retErr := systemInitSuccess(&v, hist, affectedHosts)
+	// 异步清理该绑定的超额历史记录，避免历史表无限增长
+	go CleanupSystemHistory(systemID, systemHistoryKeepPerBinding)
+	return retErr
+}
+
+// systemHistoryKeepPerBinding 每条绑定保留的历史记录条数
+const systemHistoryKeepPerBinding = 50
+
+// CleanupSystemHistory 仅保留指定绑定最近 keep 条历史记录，删除更早的
+func CleanupSystemHistory(systemID int64, keep int) {
+	if keep <= 0 {
+		return
+	}
+	// 找出排在第 keep 条之后的旧记录 ID（按开始时间倒序）
+	var oldIDs []int64
+	if err := DB.Model(&SystemHistory{}).
+		Where("system_id = ?", systemID).
+		Order("start_time DESC").
+		Offset(keep).
+		Limit(100000).
+		Pluck("id", &oldIDs).Error; err != nil {
+		logger.Log.Errorf("查询待清理历史记录失败 [ID=%d]: %v", systemID, err)
+		return
+	}
+	if len(oldIDs) == 0 {
+		return
+	}
+	if err := DB.Where("id IN ?", oldIDs).Delete(&SystemHistory{}).Error; err != nil {
+		logger.Log.Errorf("清理历史记录失败 [ID=%d]: %v", systemID, err)
+		return
+	}
+	logger.Log.Infof("已清理绑定 [ID=%d] 的 %d 条旧历史记录（保留最近 %d 条）", systemID, len(oldIDs), keep)
 }
 
 func systemInitError(v *System, hist *SystemHistory, err error) error {
@@ -340,7 +410,7 @@ func HostTypeSet(s *System, groupId []string) error {
 	// 从 type_code 字段读取资产类型（动态，不再硬编码）
 	hType := s.TypeCode
 	if hType == "" {
-		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在设备绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
@@ -441,20 +511,30 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 	// 从 type_code 字段读取资产类型（动态，不再硬编码）
 	hType := s.TypeCode
 	if hType == "" {
-		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在资产绑定配置中设置 type_code", s.ID)
+		return fmt.Errorf("系统配置 [id=%d] 未设置资产类型，请先在设备绑定配置中设置 type_code", s.ID)
 	}
 	//inventory
 	InventoryPara := make(map[string]string)
 	//主机类型直接写入，不关联监控指标
 	InventoryPara["type"] = hType
-	//开启主机Inventory为自动，并归类
-	_, err = apiInstance.API.CallWithError("host.massupdate", Params{
-		"hosts":          p,
-		"inventory_mode": 1,
-		"inventory":      InventoryPara})
-	if err != nil {
-		logger.Log.Error(err)
-		return err
+
+	// 分批调用 host.massupdate（防止主机数过多时单次请求超时/内存溢出）
+	const massUpdateBatchSize = 500
+	for i := 0; i < len(p); i += massUpdateBatchSize {
+		end := i + massUpdateBatchSize
+		if end > len(p) {
+			end = len(p)
+		}
+		batch := p[i:end]
+		if _, batchErr := apiInstance.API.CallWithError("host.massupdate", Params{
+			"hosts":          batch,
+			"inventory_mode": 1,
+			"inventory":      InventoryPara,
+		}); batchErr != nil {
+			logger.Log.Errorf("host.massupdate 批次 [%d-%d] 失败: %v", i, end, batchErr)
+			return batchErr
+		}
+		logger.Log.Infof("host.massupdate [type=%s] 批次 [%d/%d] 完成", hType, end, len(p))
 	}
 	//其他指标绑定
 	inventoryItems := []struct {

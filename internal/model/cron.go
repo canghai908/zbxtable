@@ -96,7 +96,15 @@ func getScheduledTaskDefinitions() []scheduledTaskDefinition {
 			Run:            SyncOverviewData,
 		},
 		{
-			Name:           "资产绑定自动初始化",
+			Name:           "主机统计缓存刷新",
+			EnabledKey:     "host_count_sync_enabled",
+			CronKey:        "host_count_sync_cron",
+			DefaultEnabled: "1",
+			DefaultCron:    "0 */5 * * * *",
+			Run:            SyncHostCountCache,
+		},
+		{
+			Name:           "设备绑定自动初始化",
 			EnabledKey:     "binding_auto_init_enabled",
 			CronKey:        "binding_auto_init_cron",
 			DefaultEnabled: "1",
@@ -104,7 +112,7 @@ func getScheduledTaskDefinitions() []scheduledTaskDefinition {
 			Run:            AutoInitSystemBindings,
 		},
 		{
-			Name:           "资产绑定失败重试",
+			Name:           "设备绑定失败重试",
 			EnabledKey:     "binding_retry_enabled",
 			CronKey:        "binding_retry_cron",
 			DefaultEnabled: "1",
@@ -211,6 +219,33 @@ func startTaskSchedulerLocked() {
 
 	cronScheduler.Start()
 	logger.Log.Info("Cron scheduler started")
+
+	// 为每条 auto_init=1 的资产绑定注册独立的定时任务（已持锁，直接操作 scheduler）
+	systems, sysErr := GetAutoInitSystems()
+	if sysErr == nil {
+		for _, s := range systems {
+			spec := s.InitCron
+			if spec == "" {
+				spec = "0 0 2 * * *"
+			}
+			if _, parseErr := taskCronParser.Parse(spec); parseErr != nil {
+				logger.Log.Errorf("资产绑定 [ID=%d] cron 表达式无效 [%s]: %v", s.ID, spec, parseErr)
+				continue
+			}
+			id := s.ID
+			typeCode := s.TypeCode
+			if _, addErr := cronScheduler.AddFunc(spec, func() {
+				logger.Log.Infof("执行资产绑定定时初始化 [ID=%d, type=%s]", id, typeCode)
+				if err := ExecuteSystemInit(id, "auto"); err != nil {
+					logger.Log.Errorf("资产绑定定时初始化失败 [ID=%d]: %v", id, err)
+				}
+			}); addErr != nil {
+				logger.Log.Errorf("注册资产绑定 [ID=%d] cron 失败: %v", s.ID, addErr)
+				continue
+			}
+			logger.Log.Infof("资产绑定 [ID=%d, type=%s] 定时任务已注册，Cron=%s", s.ID, s.TypeCode, spec)
+		}
+	}
 }
 
 func stopTaskSchedulerLocked() {
@@ -781,11 +816,83 @@ func SyncOverviewData() error {
 			continue
 		}
 
+		// 同步写一份主机列表缓存（供资产树列表查询直接命中，避免重复打 Zabbix）
+		_ = CacheSet(hostListCacheKey(hostType), string(data), hostListCacheTTL)
+
 		logger.Log.Infof("成功同步 %s 类型主机数据到缓存，共 %d 台主机", hostType, len(allHosts))
 	}
 
+	// 新主机自动初始化检测（按主机组统计，不依赖 inventory.type）
+	DetectAndInitNewHosts()
+
 	logger.Log.Info("状态纵览数据同步完成")
 	return nil
+}
+
+// newHostGroupCountKey 按绑定 ID 保存上次主机组内主机总数（用于检测新主机）
+func newHostGroupCountKey(systemID int64) string {
+	return fmt.Sprintf("binding_group_host_count_%d", systemID)
+}
+
+// DetectAndInitNewHosts 检测开启了 init_on_new_host 的绑定，其主机组内主机总数是否增加。
+// 关键：按 group_id 统计组内主机总数（含未初始化主机），而非按 inventory.type 统计，
+// 这样新加入组、尚未打类型标签的主机才能被检测到。
+func DetectAndInitNewHosts() {
+	var systems []System
+	if err := DB.Where("init_on_new_host = 1").Find(&systems).Error; err != nil {
+		logger.Log.Errorf("查询新主机自动初始化绑定失败: %v", err)
+		return
+	}
+	if len(systems) == 0 {
+		return
+	}
+
+	for _, s := range systems {
+		if s.GroupID == "" {
+			continue
+		}
+		apiInstance, err := GetAPIByZID(s.ZID)
+		if err != nil {
+			logger.Log.Errorf("新主机检测获取实例失败 [ID=%d, zid=%d]: %v", s.ID, s.ZID, err)
+			continue
+		}
+
+		// 按主机组查询组内主机总数（countOutput，不过滤 inventory）
+		groupIDs := strings.Split(s.GroupID, ",")
+		rep, err := apiInstance.API.CallWithError("host.get", Params{
+			"countOutput": true,
+			"groupids":    groupIDs,
+		})
+		if err != nil {
+			logger.Log.Errorf("新主机检测查询主机组失败 [ID=%d]: %v", s.ID, err)
+			continue
+		}
+		currentCount := 0
+		if cntStr, ok := rep.Result.(string); ok {
+			fmt.Sscanf(cntStr, "%d", &currentCount)
+		}
+
+		countKey := newHostGroupCountKey(s.ID)
+		prevCountStr, _ := CacheGet(countKey)
+		prevCount := -1 // -1 表示从未记录过
+		if prevCountStr != "" {
+			fmt.Sscanf(prevCountStr, "%d", &prevCount)
+		}
+
+		// 更新缓存
+		_ = CacheSet(countKey, fmt.Sprintf("%d", currentCount), 0)
+
+		// 首次记录（prevCount=-1）不触发，仅建立基线；数量增加时触发初始化
+		if prevCount >= 0 && currentCount > prevCount {
+			logger.Log.Infof("检测到绑定 [ID=%d, type=%s] 主机组新增 %d 台主机，触发自动初始化",
+				s.ID, s.TypeCode, currentCount-prevCount)
+			go func(id int64) {
+				if err := ExecuteSystemInit(id, "new_host"); err != nil {
+					logger.Log.Errorf("新主机自动初始化失败 [ID=%d]: %v", id, err)
+				}
+			}(s.ID)
+		}
+	}
 }
 
 // getOverviewHostsFromInstance 从指定实例获取状态纵览主机数据
@@ -826,6 +933,7 @@ func getOverviewHostsFromInstance(inst *APIInstance, hostType string) ([]Hosts, 
 }
 
 // AutoInitSystemBindings 自动执行启用了 auto_init 的资产绑定初始化
+// AutoInitSystemBindings 立即执行一次所有 auto_init=1 的绑定初始化（用于手动触发或兜底）
 func AutoInitSystemBindings() error {
 	systems, err := GetAutoInitSystems()
 	if err != nil {
@@ -844,6 +952,48 @@ func AutoInitSystemBindings() error {
 		}(s.ID)
 	}
 	return nil
+}
+
+// RegisterSystemBindingCrons 为每条 auto_init=1 的资产绑定注册独立的 cron 任务。
+// 在调度器启动后调用，绑定保存时也应重新调用以更新调度。
+func RegisterSystemBindingCrons() {
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	if cronScheduler == nil {
+		return
+	}
+
+	systems, err := GetAutoInitSystems()
+	if err != nil {
+		logger.Log.Errorf("注册资产绑定 cron 失败，无法读取绑定列表: %v", err)
+		return
+	}
+
+	for _, s := range systems {
+		spec := s.InitCron
+		if spec == "" {
+			spec = "0 0 2 * * *" // 默认每天 2 点
+		}
+		if _, err := taskCronParser.Parse(spec); err != nil {
+			logger.Log.Errorf("资产绑定 [ID=%d, type=%s] cron 表达式无效 [%s]: %v",
+				s.ID, s.TypeCode, spec, err)
+			continue
+		}
+		id := s.ID
+		typCode := s.TypeCode
+		_, err := cronScheduler.AddFunc(spec, func() {
+			logger.Log.Infof("执行资产绑定定时初始化 [ID=%d, type=%s]", id, typCode)
+			if err := ExecuteSystemInit(id, "auto"); err != nil {
+				logger.Log.Errorf("资产绑定定时初始化失败 [ID=%d]: %v", id, err)
+			}
+		})
+		if err != nil {
+			logger.Log.Errorf("注册资产绑定 [ID=%d] cron 失败: %v", s.ID, err)
+			continue
+		}
+		logger.Log.Infof("资产绑定 [ID=%d, type=%s] 定时任务已注册，Cron=%s",
+			s.ID, s.TypeCode, spec)
+	}
 }
 
 // RetryFailedSystemBindings 重试失败的资产绑定初始化

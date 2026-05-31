@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 	"zbxtable/pkg/logger"
 )
 
@@ -54,8 +56,60 @@ func buildIndexInfoFromCounts(assetTypes []AssetType, counts map[string]int64) I
 	return info
 }
 
-// GetCountHost 获取所有实例的主机统计（多实例聚合版本，动态资产类型）
+// hostCountCacheKey 主机统计缓存键
+const hostCountCacheKey = "index_host_count"
+
+// hostCountCacheTTL 主机统计缓存有效期（10 分钟，后台每 5 分钟刷新一次，TTL > 刷新间隔确保不会因过期而让用户等待）
+const hostCountCacheTTL = 10 * time.Minute
+
+// GetCountHost 获取所有实例的主机统计（多实例聚合版本，动态资产类型）。
+// 结果缓存 60s：该统计需对 N 个资产类型 × M 个实例做 N×M 次 Zabbix 远程调用，
+// 不缓存会导致每次打开页面都串行等待多次远程往返（约 2s）。
 func GetCountHost() (IndexInfo, error) {
+	// 命中缓存直接返回
+	if cached, _ := CacheGet(hostCountCacheKey); cached != "" {
+		var info IndexInfo
+		if err := json.Unmarshal([]byte(cached), &info); err == nil {
+			return info, nil
+		}
+	}
+
+	info, err := computeCountHost()
+	if err != nil {
+		return IndexInfo{}, err
+	}
+	if b, mErr := json.Marshal(info); mErr == nil {
+		_ = CacheSet(hostCountCacheKey, string(b), hostCountCacheTTL)
+	}
+	return info, nil
+}
+
+// SyncHostCountCache 主动刷新主机统计缓存（由定时任务每 5 分钟调用一次）。
+// 直接调用 computeCountHost 绕过缓存读取，确保缓存始终是最新数据。
+func SyncHostCountCache() error {
+	info, err := computeCountHost()
+	if err != nil {
+		logger.Log.Errorf("刷新主机统计缓存失败: %v", err)
+		return err
+	}
+	if b, mErr := json.Marshal(info); mErr == nil {
+		_ = CacheSet(hostCountCacheKey, string(b), hostCountCacheTTL)
+		logger.Log.Info("主机统计缓存刷新成功")
+	}
+	return nil
+}
+
+// WarmHostCountCache 启动时异步预热主机统计缓存，首次打开资产树页面即命中缓存
+func WarmHostCountCache() {
+	go func() {
+		if err := SyncHostCountCache(); err != nil {
+			logger.Log.Warnf("启动预热主机统计缓存失败（非致命）: %v", err)
+		}
+	}()
+}
+
+// computeCountHost 实际计算主机统计（并行查询各实例，减少串行等待）
+func computeCountHost() (IndexInfo, error) {
 	instances, err := GetAllEnabledAPIInstances()
 	if err != nil {
 		logger.Log.Errorf("获取启用的实例失败: %v", err)
@@ -69,18 +123,26 @@ func GetCountHost() (IndexInfo, error) {
 	}
 
 	result := make(map[string]int64, len(assetTypes))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	// 并行：每个 (类型, 实例) 组合一个 goroutine，避免 N×M 次串行远程往返
 	for _, at := range assetTypes {
-		var total int64
 		for _, inst := range instances {
-			count, cErr := getCountByTypeFromInstance(inst, at.TypeCode)
-			if cErr != nil {
-				logger.Log.Errorf("从实例 %s 获取 %s 主机数量失败: %v", inst.Name, at.TypeCode, cErr)
-				continue
-			}
-			total += count
+			wg.Add(1)
+			go func(typeCode string, instance *APIInstance) {
+				defer wg.Done()
+				count, cErr := getCountByTypeFromInstance(instance, typeCode)
+				if cErr != nil {
+					logger.Log.Errorf("从实例 %s 获取 %s 主机数量失败: %v", instance.Name, typeCode, cErr)
+					return
+				}
+				mu.Lock()
+				result[typeCode] += count
+				mu.Unlock()
+			}(at.TypeCode, inst)
 		}
-		result[at.TypeCode] = total
 	}
+	wg.Wait()
 	return buildIndexInfoFromCounts(assetTypes, result), nil
 }
 
@@ -204,7 +266,7 @@ func GetInventory() ([]Treeinventory, error) {
 	}
 	tree := make([]Treeinventory, 1)
 	tree[0].ID = 0
-	tree[0].Name = "资产树"
+	tree[0].Name = "设备树"
 	tree[0].TwoChildren = TwoTree
 
 	return tree, nil

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
@@ -129,45 +130,71 @@ func SearchHostsMultiInstance(keyword string, limit int) ([]Hosts, error) {
 }
 
 // HostsListMultiInstance 多实例主机列表查询（聚合所有启用的实例）
-func HostsListMultiInstance(HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
-	// 获取所有启用的 API 实例
+// hostListCacheTTL 主机列表原始数据缓存时间（2 分钟）
+// 过滤/分页在缓存数据上内存完成，避免频繁打 Zabbix
+const hostListCacheTTL = 2 * time.Minute
+
+// hostListCacheKey 按设备类型生成缓存键
+func hostListCacheKey(hostType string) string {
+	return "hostlist_raw_" + hostType
+}
+
+// fetchAllHostsFromZabbix 从所有实例并发拉取指定类型的全量主机数据
+func fetchAllHostsFromZabbix(HostType string) ([]Hosts, error) {
 	instances, err := GetAllEnabledAPIInstances()
 	if err != nil {
-		logger.Log.Errorf("获取启用的实例失败: %v", err)
-		return []Hosts{}, 0, err
+		return nil, err
 	}
-
-	// 并发查询所有实例
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var allHosts []Hosts
-
 	for _, inst := range instances {
 		wg.Add(1)
 		go func(instance *APIInstance) {
 			defer wg.Done()
-
-			// 查询该实例的主机列表
-			hosts, err := queryHostsFromInstance(instance, HostType)
+			hs, err := queryHostsFromInstance(instance, HostType)
 			if err != nil {
 				logger.Log.Errorf("查询实例 %s 的主机失败: %v", instance.Name, err)
 				return
 			}
-
-			// 为每个主机添加实例信息
 			mu.Lock()
-			for i := range hosts {
-				hosts[i].ZID = instance.ZID
-				hosts[i].InstanceName = instance.Name
+			for i := range hs {
+				hs[i].ZID = instance.ZID
+				hs[i].InstanceName = instance.Name
 			}
-			allHosts = append(allHosts, hosts...)
+			allHosts = append(allHosts, hs...)
 			mu.Unlock()
 		}(inst)
 	}
-
 	wg.Wait()
+	return allHosts, nil
+}
 
-	// 过滤数据
+func HostsListMultiInstance(HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
+	var allHosts []Hosts
+
+	// 尝试读取缓存（原始全量数据，过滤/分页在内存完成）
+	cacheKey := hostListCacheKey(HostType)
+	if cached, _ := CacheGet(cacheKey); cached != "" {
+		if err := json.Unmarshal([]byte(cached), &allHosts); err != nil {
+			allHosts = nil // 缓存损坏则回源
+		}
+	}
+
+	// 缓存未命中：从 Zabbix 拉取并写缓存
+	if allHosts == nil {
+		var err error
+		allHosts, err = fetchAllHostsFromZabbix(HostType)
+		if err != nil {
+			logger.Log.Errorf("获取启用的实例失败: %v", err)
+			return []Hosts{}, 0, err
+		}
+		if b, mErr := json.Marshal(allHosts); mErr == nil {
+			_ = CacheSet(cacheKey, string(b), hostListCacheTTL)
+		}
+	}
+
+	// 过滤数据（在内存缓存上完成）
 	var filteredHosts []Hosts
 	for _, h := range allHosts {
 		if hosts != "" && !strings.Contains(h.Name, hosts) {
