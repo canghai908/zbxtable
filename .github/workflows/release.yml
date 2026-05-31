@@ -47,8 +47,11 @@ jobs:
         working-directory: ./zbxtable-web
         env:
           NODE_OPTIONS: --openssl-legacy-provider
+          # 前端版本号与发布 tag 保持一致。前端仓库为浅克隆且不含 tag，
+          # 其 git describe 无法工作，故通过 VERSION 显式注入（vue.config.js 优先读取）。
+          VERSION: ${{ github.ref_name }}
         run: |
-          echo "📦 Building frontend..."
+          echo "📦 Building frontend (version: ${VERSION})..."
           npm ci
           npm run build
           test -f web/index.html
