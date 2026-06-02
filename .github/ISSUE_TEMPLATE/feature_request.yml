@@ -1,0 +1,38 @@
+name: Feature Request
+description: Suggest an improvement or new capability for ZbxTable
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea.
+
+        Please explain the problem you are trying to solve and the outcome you want.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What limitation, pain point, or scenario is driving this request?
+      placeholder: Describe the current problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like ZbxTable to do?
+      placeholder: Describe the expected feature or workflow
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workaround or alternative approach you tried
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      description: Who benefits and how this change would help

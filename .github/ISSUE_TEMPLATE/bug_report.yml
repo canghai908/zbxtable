@@ -1,0 +1,94 @@
+name: Bug Report
+description: Report a reproducible problem in ZbxTable 3.0 backend or deployment behavior
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        Please provide enough detail for us to reproduce the issue. If the problem also involves the frontend, mention that in the description.
+  - type: input
+    id: version
+    attributes:
+      label: ZbxTable version
+      description: For example `v3.0.0` or a commit SHA
+      placeholder: v3.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment method
+      options:
+        - Binary deployment
+        - Installation script
+        - Source build
+        - Docker
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Ubuntu 22.04 / CentOS 7 / Debian 12
+    validations:
+      required: true
+  - type: input
+    id: zabbix
+    attributes:
+      label: Zabbix version
+      placeholder: 7.0 / 7.4 / 6.0 LTS
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - MySQL
+        - PostgreSQL
+        - SQLite
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps, API path, page, or operation that triggers the problem
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. Submit ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: Describe what you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: Describe what happened instead, including error text if any
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste backend logs, request payloads, stack traces, or screenshots if available
+      render: shell
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add anything else that may help with diagnosis
