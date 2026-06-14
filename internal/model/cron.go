@@ -531,7 +531,12 @@ func TOPFromInstance(inst *APIInstance, linTopN, winTopN int64) error {
 		if v.Available == "0" {
 			continue
 		}
-		hostKey := inst.Instance + "_" + v.Host
+		displayName := strings.TrimSpace(v.Name)
+		if displayName == "" {
+			displayName = strings.TrimSpace(v.Host)
+		}
+		// 统一使用 实例ID_hostid_可见名称 作为成员键，避免展示层只能拿到技术主机名。
+		hostKey := inst.Instance + "_" + v.Hostid + "_" + displayName
 		switch v.Inventory.Type {
 		case "VM_WIN":
 			var cpu, mem float64
