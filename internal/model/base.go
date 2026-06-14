@@ -61,6 +61,8 @@ const (
 
 	// 上传目录
 	UploadDir = "./upload"
+	// Logo 上传目录
+	LogoUploadDir = "./upload/logo"
 	// 背景图片上传目录
 	BackgroundImageDir = "./upload/background"
 	// 允许的图片格式
@@ -464,6 +466,12 @@ func getSystemAppearanceConfigs() []Config {
 			ConfigKey:   "system_name",
 			ConfigValue: "ZbxTable",
 			Comment:     "系统显示的名称",
+		},
+		{
+			Name:        "系统副标题",
+			ConfigKey:   "system_subtitle",
+			ConfigValue: "Zabbix 监控数据可视化平台",
+			Comment:     "登录页显示的系统副标题",
 		},
 		{
 			Name:        "系统Logo",
