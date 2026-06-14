@@ -490,7 +490,7 @@ func TOP() error {
 
 // TOPFromInstance 从指定实例收集 TOP 数据
 func TOPFromInstance(inst *APIInstance, linTopN, winTopN int64) error {
-	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
+	OutputPar := []string{"hostid", "host", "available", "active_available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	SearchInventoryKey := []string{"VM_WIN", "VM_LIN"}
 	SearchInventoryPar := make(map[string][]string)
@@ -528,7 +528,7 @@ func TOPFromInstance(inst *APIInstance, linTopN, winTopN int64) error {
 	var winCPUs, winMEMs, linCPUs, linMEMs []hostScore
 
 	for _, v := range hb {
-		if v.Available == "0" {
+		if normalizeHostAvailability(v.Available, v.ActiveAvailable) == "0" {
 			continue
 		}
 		displayName := strings.TrimSpace(v.Name)

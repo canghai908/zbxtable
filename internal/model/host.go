@@ -81,6 +81,16 @@ func searchHostsInOverviewData(overview map[string][]Hosts, keyword string, limi
 	return limitHosts(matches, limit)
 }
 
+func normalizeHostAvailability(available, activeAvailable string) string {
+	if available != "" && available != "0" {
+		return available
+	}
+	if activeAvailable == "1" || activeAvailable == "2" {
+		return activeAvailable
+	}
+	return available
+}
+
 // SearchHostsFromOverviewCache 从纵览缓存中搜索主机和资产信息。
 func SearchHostsFromOverviewCache(keyword string, limit int) ([]Hosts, error) {
 	overview, err := GetOverviewData()
@@ -306,6 +316,7 @@ func buildHostFromListHost(inst *APIInstance, v ListHost, hostType string) Hosts
 			d.Error = v.Error
 		}
 	}
+	d.Available = normalizeHostAvailability(d.Available, v.ActiveAvailable)
 
 	return d
 }
@@ -371,10 +382,10 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 		return []Hosts{}, 0, err
 	}
 	var dt []Hosts
-	var d Hosts
 	//new version
 	if ZBX_V {
 		for _, v := range hb {
+			var d Hosts
 			d.HostID = v.Hostid
 			d.Host = v.Host
 			d.Name = v.Name
@@ -404,6 +415,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 			d.Ping = v.Inventory.Poc1Name
 			d.PingLoss = v.Inventory.Poc1Email
 			d.PingSec = v.Inventory.Poc1PhoneA
+			d.Available = normalizeHostAvailability(d.Available, v.ActiveAvailable)
 			if IsHardwareType(HostType) {
 				if len(v.Interfaces) != 0 {
 					d.SerialNo = v.Inventory.SerialnoA
@@ -426,6 +438,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 	} else {
 		//老版本
 		for _, v := range hb {
+			var d Hosts
 			d.HostID = v.Hostid
 			d.Host = v.Host
 			d.Name = v.Name
@@ -470,6 +483,7 @@ func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hos
 				d.Location = v.Inventory.Location
 				d.Department = v.Inventory.SiteCity
 			}
+			d.Available = normalizeHostAvailability(d.Available, v.ActiveAvailable)
 			if hosts != "" && strings.Contains(d.Name, hosts) {
 				dt = append(dt, d)
 			} else if model != "" && strings.Contains(d.Model, model) {
@@ -761,7 +775,7 @@ func GetHostsByTagsFromInstance(inst *APIInstance, filters []HostTagFilter) ([]H
 
 // GetHostFromInstance 从指定实例获取主机详情
 func GetHostFromInstance(inst *APIInstance, hostid string) (Hosts, error) {
-	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
+	OutputPar := []string{"hostid", "host", "available", "active_available", "status", "name", "error"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	rep, err := inst.API.CallWithError("host.get", Params{
 		"output":           OutputPar,
@@ -792,7 +806,7 @@ func GetHostFromInstance(inst *APIInstance, hostid string) (Hosts, error) {
 		d.Interfaces = hb[0].Interfaces[0].IP
 	}
 	d.Status = hb[0].Status
-	d.Available = hb[0].Available
+	d.Available = normalizeHostAvailability(hb[0].Available, hb[0].ActiveAvailable)
 	d.Error = hb[0].Error
 	d.NumberOfCores = hb[0].Inventory.Software
 	d.CPUUtilization = hb[0].Inventory.SoftwareAppA
@@ -822,7 +836,7 @@ func GetHostFromInstance(inst *APIInstance, hostid string) (Hosts, error) {
 
 // host get (保留用于兼容)
 func GetHost(hostid string) (Hosts, error) {
-	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
+	OutputPar := []string{"hostid", "host", "available", "active_available", "status", "name", "error"}
 	//SelectInventoryPar := []string{"model", "chassis", "contact", "asset_tag", "location", "hardware"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	rep, err := API.CallWithError("host.get", Params{
@@ -853,7 +867,7 @@ func GetHost(hostid string) (Hosts, error) {
 		d.Interfaces = hb[0].Interfaces[0].IP
 	}
 	d.Status = hb[0].Status
-	d.Available = hb[0].Available
+	d.Available = normalizeHostAvailability(hb[0].Available, hb[0].ActiveAvailable)
 	d.Error = hb[0].Error
 	d.NumberOfCores = hb[0].Inventory.Software
 	d.CPUUtilization = hb[0].Inventory.SoftwareAppA
@@ -881,7 +895,7 @@ func GetHost(hostid string) (Hosts, error) {
 // GetHostInfoTopology host
 func GetHostInfoTopology(hostid string) (Hosts, error) {
 	//获取基本信息
-	OutputPar := []string{"hostid", "host", "available", "status", "name", "error"}
+	OutputPar := []string{"hostid", "host", "available", "active_available", "status", "name", "error"}
 	//SelectInventoryPar := []string{"model", "chassis", "contact", "asset_tag", "location", "hardware"}
 	SelectInterfacesPar := []string{"ip", "port"}
 	rep, err := API.CallWithError("host.get", Params{
@@ -916,7 +930,7 @@ func GetHostInfoTopology(hostid string) (Hosts, error) {
 	d.Name = hb[0].Name
 	d.Interfaces = hb[0].Interfaces[0].IP
 	d.Status = hb[0].Status
-	d.Available = hb[0].Available
+	d.Available = normalizeHostAvailability(hb[0].Available, hb[0].ActiveAvailable)
 	d.Error = hb[0].Error
 	d.NumberOfCores = hb[0].Inventory.Software
 	d.CPUUtilization = hb[0].Inventory.SoftwareAppA

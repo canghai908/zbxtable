@@ -97,3 +97,43 @@ func TestSearchHostsInOverviewData(t *testing.T) {
 		t.Fatalf("expected 1 limited match, got %d", len(limitedMatches))
 	}
 }
+
+func TestNormalizeHostAvailabilityUsesActiveWhenUnknown(t *testing.T) {
+	tests := []struct {
+		name            string
+		available       string
+		activeAvailable string
+		want            string
+	}{
+		{name: "active available replaces unknown", available: "0", activeAvailable: "1", want: "1"},
+		{name: "active unavailable replaces unknown", available: "0", activeAvailable: "2", want: "2"},
+		{name: "passive unavailable wins", available: "2", activeAvailable: "1", want: "2"},
+		{name: "empty active keeps current", available: "0", activeAvailable: "", want: "0"},
+		{name: "empty current uses active", available: "", activeAvailable: "1", want: "1"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeHostAvailability(tc.available, tc.activeAvailable)
+			if got != tc.want {
+				t.Fatalf("normalizeHostAvailability(%q, %q) = %q, want %q", tc.available, tc.activeAvailable, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuildHostFromListHostUsesActiveAvailabilityForActiveAgent(t *testing.T) {
+	host := buildHostFromListHost(&APIInstance{ZID: 1, Name: "zabbix", IsV54OrLater: true}, ListHost{
+		Hostid:          "10001",
+		Host:            "linux-active",
+		Name:            "Linux active",
+		ActiveAvailable: "1",
+		Interfaces: []HostListInterface{
+			{IP: "10.0.0.1", Available: "0"},
+		},
+	}, "VM_LIN")
+
+	if host.Available != "1" {
+		t.Fatalf("expected active availability to mark host available, got %q", host.Available)
+	}
+}
