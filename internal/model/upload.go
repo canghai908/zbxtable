@@ -55,22 +55,21 @@ func GenerateUniqueFilename(ext string) string {
 	return fmt.Sprintf("%s_%s%s", timestamp, uniqueID, ext)
 }
 
-// SaveBackgroundImage 保存背景图片
-func SaveBackgroundImage(file *multipart.FileHeader, savePath string) (*UploadResult, error) {
+func saveImageToDir(file *multipart.FileHeader, diskDir string, urlPrefix string) (*UploadResult, error) {
 	// 验证文件
 	if err := ValidateImageFile(file); err != nil {
 		return nil, err
 	}
 
 	// 确保目录存在
-	if err := ensureDir(BackgroundImageDir); err != nil {
+	if err := ensureDir(diskDir); err != nil {
 		return nil, err
 	}
 
 	// 生成唯一文件名
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	filename := GenerateUniqueFilename(ext)
-	fullPath := filepath.Join(BackgroundImageDir, filename)
+	fullPath := filepath.Join(diskDir, filename)
 
 	// 打开上传的文件
 	src, err := file.Open()
@@ -94,16 +93,19 @@ func SaveBackgroundImage(file *multipart.FileHeader, savePath string) (*UploadRe
 		return nil, fmt.Errorf("文件保存失败")
 	}
 
-	// 返回文件访问路径（相对路径）
-	relativePath := "/upload/background/" + filename
-
-	logger.Log.Info("Background image uploaded successfully:", relativePath)
+	relativePath := urlPrefix + "/" + filename
+	logger.Log.Info("Image uploaded successfully:", relativePath)
 
 	return &UploadResult{
 		Path:     relativePath,
 		Filename: filename,
 		Size:     file.Size,
 	}, nil
+}
+
+// SaveBackgroundImage 保存背景图片
+func SaveBackgroundImage(file *multipart.FileHeader, savePath string) (*UploadResult, error) {
+	return saveImageToDir(file, BackgroundImageDir, "/upload/background")
 }
 
 // DeleteBackgroundImage 删除背景图片
@@ -135,51 +137,10 @@ func DeleteBackgroundImage(path string) error {
 
 // SaveImage 保存通用图片
 func SaveImage(file *multipart.FileHeader) (*UploadResult, error) {
-	// 验证文件
-	if err := ValidateImageFile(file); err != nil {
-		return nil, err
-	}
+	return saveImageToDir(file, UploadDir, "/upload")
+}
 
-	// 确保目录存在
-	if err := ensureDir(UploadDir); err != nil {
-		return nil, err
-	}
-
-	// 生成唯一文件名
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	filename := GenerateUniqueFilename(ext)
-	fullPath := filepath.Join(UploadDir, filename)
-
-	// 打开上传的文件
-	src, err := file.Open()
-	if err != nil {
-		logger.Log.Error("Failed to open uploaded file:", err)
-		return nil, fmt.Errorf("文件打开失败")
-	}
-	defer src.Close()
-
-	// 创建目标文件
-	dst, err := os.Create(fullPath)
-	if err != nil {
-		logger.Log.Error("Failed to create destination file:", err)
-		return nil, fmt.Errorf("文件创建失败")
-	}
-	defer dst.Close()
-
-	// 复制文件内容
-	if _, err := dst.ReadFrom(src); err != nil {
-		logger.Log.Error("Failed to save file:", err)
-		return nil, fmt.Errorf("文件保存失败")
-	}
-
-	// 返回文件访问路径（相对路径）
-	relativePath := "/upload/" + filename
-
-	logger.Log.Info("Image uploaded successfully:", relativePath)
-
-	return &UploadResult{
-		Path:     relativePath,
-		Filename: filename,
-		Size:     file.Size,
-	}, nil
+// SaveLogoImage 保存系统 Logo
+func SaveLogoImage(file *multipart.FileHeader) (*UploadResult, error) {
+	return saveImageToDir(file, LogoUploadDir, "/upload/logo")
 }
