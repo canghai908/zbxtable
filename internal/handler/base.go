@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 	model "zbxtable/internal/model"
 	"zbxtable/pkg/logger"
@@ -21,6 +22,13 @@ var json = jsoniter.Config{
 	SortMapKeys:            true,
 	ValidateJsonRawMessage: true,
 }.Froze()
+
+// WebSocket 心跳相关超时配置
+const (
+	wsPongWait   = 60 * time.Second // 读超时：超过此时间未收到任何消息/pong 即判定连接失效
+	wsPingPeriod = 30 * time.Second // ping 间隔，需小于 wsPongWait
+	wsWriteWait  = 10 * time.Second // 单次写超时
+)
 
 // WebSocketHandlerGin WebSocket 处理（Gin版本）
 func WebSocketHandlerGin(c *gin.Context) {
@@ -47,6 +55,34 @@ func WebSocketHandlerGin(c *gin.Context) {
 	}
 	defer ws.Close()
 
+	// 心跳保活：定期 ping，配合读超时探测死连接，避免连接卡死或被代理空闲关闭
+	var writeMu sync.Mutex
+	ws.SetReadDeadline(time.Now().Add(wsPongWait))
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(wsPongWait))
+		return nil
+	})
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(wsPingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				writeMu.Lock()
+				ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
+				err := ws.WriteMessage(websocket.PingMessage, nil)
+				writeMu.Unlock()
+				if err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+	defer close(done)
+
 	for {
 		// 读取数据
 		_, ms, err := ws.ReadMessage()
@@ -64,7 +100,10 @@ func WebSocketHandlerGin(c *gin.Context) {
 			}
 			// write
 			msg, _ := json.Marshal(val)
+			writeMu.Lock()
+			ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			err = ws.WriteMessage(websocket.TextMessage, msg)
+			writeMu.Unlock()
 			if err != nil {
 				logger.Log.Debug(err)
 				continue
@@ -125,6 +164,35 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
+
+	// 心跳保活：定期 ping，配合读超时探测死连接，避免连接卡死或被代理空闲关闭
+	var writeMu sync.Mutex
+	ws.SetReadDeadline(time.Now().Add(wsPongWait))
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(wsPongWait))
+		return nil
+	})
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(wsPingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				writeMu.Lock()
+				ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
+				err := ws.WriteMessage(websocket.PingMessage, nil)
+				writeMu.Unlock()
+				if err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+	defer close(done)
+
 	for {
 		// 读取数据
 		_, ms, err := ws.ReadMessage()
@@ -147,7 +215,10 @@ func PublicWebSocketHandlerGin(c *gin.Context) {
 			}
 			// write
 			msg, _ := json.Marshal(val)
+			writeMu.Lock()
+			ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			err = ws.WriteMessage(websocket.TextMessage, msg)
+			writeMu.Unlock()
 			if err != nil {
 				logger.Log.Debug("WriteMessage error:", err)
 				continue

@@ -8,6 +8,23 @@ import (
 	"zbxtable/pkg/utils"
 )
 
+func derivePeerTrafficItemKey(name, key string) (string, error) {
+	switch {
+	case strings.Contains(key, "net.if.out"):
+		newKeyIn := strings.Replace(key, "net.if.out", "net.if.in", 1)
+		return strings.ReplaceAll(newKeyIn, "Out", "In"), nil
+	case strings.Contains(key, "net.if.in"):
+		newKeyOut := strings.Replace(key, "net.if.in", "net.if.out", 1)
+		return strings.ReplaceAll(newKeyOut, "In", "Out"), nil
+	case strings.Contains(name, "Bits sent"):
+		return strings.Replace(key, "Out", "In", 1), nil
+	case strings.Contains(name, "Bits received"):
+		return strings.Replace(key, "In", "Out", 1), nil
+	default:
+		return "", errors.New("unsupported traffic item key")
+	}
+}
+
 // last inserted Id on success.
 func AddTopoData(m *TopologyData) (id int64, err error) {
 	err = DB.Create(m).Error
@@ -83,21 +100,18 @@ func GetFlowByFlowID(FLowID string) (flow string, err error) {
 	if len(p) == 0 {
 		return "", errors.New("flow id is null")
 	} else {
-		//获取数据，判断是否为流量接口
-		var NewItemKey string
-		if strings.Contains(p[0].Name, "Bits sent") {
-			NewkeyIN := strings.Replace(p[0].Key, "net.if.out", "net.if.in", -1)
-			NewItemKey = strings.Replace(NewkeyIN, "Out", "In", -1)
-		}
-		if strings.Contains(p[0].Name, "Bits received") {
-			NewkeyOut := strings.Replace(p[0].Key, "net.if.in", "net.if.out", -1)
-			NewItemKey = strings.Replace(NewkeyOut, "In", "Out", -1)
-		}
-		NetItem, err := GetItemByKey(p[0].Hostid, NewItemKey)
+		newItemKey, err := derivePeerTrafficItemKey(p[0].Name, p[0].Key)
 		if err != nil {
 			return "", err
 		}
-		flow = utils.FormatTraffic(NetItem[0].Lastvalue) + "/" + utils.FormatTraffic(p[0].Lastvalue)
+		netItem, err := GetItemByKey(p[0].Hostid, newItemKey)
+		if err != nil {
+			return "", err
+		}
+		if len(netItem) == 0 {
+			return "", errors.New("net item not found")
+		}
+		flow = utils.FormatTraffic(netItem[0].Lastvalue) + "/" + utils.FormatTraffic(p[0].Lastvalue)
 		return flow, nil
 	}
 }
@@ -137,43 +151,46 @@ func GetFlowByFlowIDFromInstance(zid int, FLowID string) (flow string, err error
 		return "", errors.New("flow id is null")
 	}
 
-	//获取数据，判断是否为流量接口
-	var NewItemKey string
-	if strings.Contains(p[0].Name, "Bits sent") {
-		NewkeyIN := strings.Replace(p[0].Key, "net.if.out", "net.if.in", -1)
-		NewItemKey = strings.Replace(NewkeyIN, "Out", "In", -1)
-	}
-	if strings.Contains(p[0].Name, "Bits received") {
-		NewkeyOut := strings.Replace(p[0].Key, "net.if.in", "net.if.out", -1)
-		NewItemKey = strings.Replace(NewkeyOut, "In", "Out", -1)
+	newItemKey, err := derivePeerTrafficItemKey(p[0].Name, p[0].Key)
+	if err != nil {
+		return "", err
 	}
 
-	// 获取对应的另一个方向的流量
 	netItems, err := inst.API.CallWithError("item.get", Params{
 		"output":  OutputPar,
 		"hostids": p[0].Hostid,
-		"search":  Params{"key_": NewItemKey},
+		"filter":  map[string]string{"key_": newItemKey},
 	})
 	if err != nil {
 		logger.Log.Debug(err)
 		return "", err
 	}
-	netHba, err := json.Marshal(netItems.Result)
+	netItem, err := unmarshalItemsResult(netItems.Result)
 	if err != nil {
 		logger.Log.Debug(err)
 		return "", err
 	}
-	var NetItem []Item
-	err = json.Unmarshal(netHba, &NetItem)
-	if err != nil {
-		logger.Log.Debug(err)
-		return "", err
+	if len(netItem) == 0 {
+		netItems, err = inst.API.CallWithError("item.get", Params{
+			"output":  OutputPar,
+			"hostids": p[0].Hostid,
+			"search":  Params{"key_": newItemKey},
+		})
+		if err != nil {
+			logger.Log.Debug(err)
+			return "", err
+		}
+		netItem, err = unmarshalItemsResult(netItems.Result)
+		if err != nil {
+			logger.Log.Debug(err)
+			return "", err
+		}
 	}
-	if len(NetItem) == 0 {
+	if len(netItem) == 0 {
 		return "", errors.New("net item not found")
 	}
 
-	flow = utils.FormatTraffic(NetItem[0].Lastvalue) + "/" + utils.FormatTraffic(p[0].Lastvalue)
+	flow = utils.FormatTraffic(netItem[0].Lastvalue) + "/" + utils.FormatTraffic(p[0].Lastvalue)
 	return flow, nil
 }
 

@@ -640,6 +640,22 @@ func TOPFromInstance(inst *APIInstance, linTopN, winTopN int64) error {
 	return nil
 }
 
+func ensureEdgeLabel(edge *AEdge) *EdgeLabel {
+	if len(edge.Labels) == 0 {
+		edge.Labels = append(edge.Labels, EdgeLabel{
+			Position: EdgeLabelPosition{
+				Distance: "50%",
+				Offset:   20,
+				Options: EdgeLabelOptions{
+					KeepGradient:     true,
+					EnsureLegibility: true,
+				},
+			},
+		})
+	}
+	return &edge.Labels[0]
+}
+
 // update topology data
 func UpdateEdgeDataById(id int) error {
 	//get topodata
@@ -657,28 +673,45 @@ func UpdateEdgeDataById(id int) error {
 	var wg sync.WaitGroup
 	ch := make(chan struct{}, 10)
 	var aedge []AEdge
+	var mu sync.Mutex
 	for _, v := range allEdges {
 		ch <- struct{}{}
 		wg.Add(1)
 		go func(v AEdge) {
 			defer wg.Done()
-			//labels attr
-			v.Labels[0].Attrs.Label.Text = ""
-			v.Labels[0].Position.Angle = 0
-			v.Labels[0].Position.Offset = 20
-			v.Labels[0].Position.Options.EnsureLegibility = true
-			v.Labels[0].Position.Options.KeepGradient = true
+			defer func() {
+				<-ch
+			}()
+			// 兜底：避免单条边处理 panic 拖垮整个进程
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Log.Errorf("UpdateEdgeDataById 处理边 %s panic: %v", v.ID, r)
+				}
+			}()
+			label := ensureEdgeLabel(&v)
+			label.Attrs.Label.Text = ""
+			label.Position.Angle = 0
+			label.Position.Offset = 20
+			label.Position.Options.EnsureLegibility = true
+			label.Position.Options.KeepGradient = true
 			//line attrs
 			v.Attrs.Line.StrokeWidth = 4
 			v.Attrs.Line.Stroke = "#A4A4A4"
 			v.Attrs.Line.StrokeDasharray = 0
+			v.Attrs.Line.Style.Animation = ""
 			if v.Attrs.Line.FlowID != "" {
 				// 使用边上的ZID从对应实例获取流量数据
 				flow, err := GetFlowByFlowIDFromInstance(v.Attrs.Line.ZID, v.Attrs.Line.FlowID)
 				if err != nil {
 					logger.Log.Error(err)
 				}
-				v.Labels[0].Attrs.Label.Text = flow
+				label.Attrs.Label.Text = flow
+				// 只要成功关联到流量，默认显示为动态链路；若后续存在触发器状态，再由触发器覆盖颜色和动画
+				if flow != "" {
+					v.Attrs.Line.Stroke = "#00FF00"
+					v.Attrs.Line.StrokeDasharray = 5
+					v.Attrs.Line.Style.Animation = "ant-line 30s infinite linear"
+				}
 			}
 			//trigger get
 			if v.Attrs.Line.TriggerID != "" {
@@ -702,11 +735,12 @@ func UpdateEdgeDataById(id int) error {
 					v.Attrs.Line.Stroke = "#A4A4A4"
 				}
 			}
+			mu.Lock()
 			aedge = append(aedge, v)
-			<-ch
+			mu.Unlock()
 		}(v)
-		wg.Wait()
 	}
+	wg.Wait()
 	edgeStr, err := json.Marshal(aedge)
 	if err != nil {
 		logger.Log.Debug(err)

@@ -8,30 +8,54 @@ import (
 	"zbxtable/pkg/logger"
 )
 
-// GetItemByKey bye key
-func GetItemByKey(hostid, key string) (item []Item, err error) {
-	par := make(map[string]string)
-	par["key_"] = key
-	rep, err := API.Call("item.get", Params{"output": "extend",
-		"sortfield": "name", "limit": "1", "hostids": hostid, "search": par})
-
-	if err != nil {
-		logger.Log.Error(err)
-		return []Item{}, err
-	}
-	hba, err := json.Marshal(rep.Result)
+func unmarshalItemsResult(result interface{}) ([]Item, error) {
+	hba, err := json.Marshal(result)
 	if err != nil {
 		logger.Log.Error(err)
 		return []Item{}, err
 	}
 	var hb []Item
-
 	err = json.Unmarshal(hba, &hb)
 	if err != nil {
 		logger.Log.Error(err)
 		return []Item{}, err
 	}
-	return hb, err
+	return hb, nil
+}
+
+// GetItemByKey bye key
+func GetItemByKey(hostid, key string) (item []Item, err error) {
+	rep, err := API.Call("item.get", Params{
+		"output":    "extend",
+		"sortfield": "name",
+		"limit":     "1",
+		"hostids":   hostid,
+		"filter":    map[string]string{"key_": key},
+	})
+	if err != nil {
+		logger.Log.Error(err)
+		return []Item{}, err
+	}
+	hb, err := unmarshalItemsResult(rep.Result)
+	if err != nil {
+		return []Item{}, err
+	}
+	if len(hb) > 0 {
+		return hb, nil
+	}
+
+	rep, err = API.Call("item.get", Params{
+		"output":    "extend",
+		"sortfield": "name",
+		"limit":     "1",
+		"hostids":   hostid,
+		"search":    map[string]string{"key_": key},
+	})
+	if err != nil {
+		logger.Log.Error(err)
+		return []Item{}, err
+	}
+	return unmarshalItemsResult(rep.Result)
 }
 
 // GetAllItemByHostID func

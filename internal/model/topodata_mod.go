@@ -19,6 +19,31 @@ type TopologyData struct {
 
 type AllEdge []AEdge
 
+type EdgeLabelText struct {
+	Text string `json:"text"`
+}
+
+type EdgeLabelAttrs struct {
+	Label EdgeLabelText `json:"label"`
+}
+
+type EdgeLabelOptions struct {
+	KeepGradient     bool `json:"keepGradient"`
+	EnsureLegibility bool `json:"ensureLegibility"`
+}
+
+type EdgeLabelPosition struct {
+	Distance string           `json:"distance"`
+	Offset   float64          `json:"offset"`
+	Angle    int              `json:"angle"`
+	Options  EdgeLabelOptions `json:"options"`
+}
+
+type EdgeLabel struct {
+	Attrs    EdgeLabelAttrs    `json:"attrs"`
+	Position EdgeLabelPosition `json:"position"`
+}
+
 type AEdge struct {
 	Attrs struct {
 		Line struct {
@@ -52,25 +77,10 @@ type AEdge struct {
 			} `json:"targetMarker"`
 		} `json:"line"`
 	} `json:"attrs"`
-	Connector string `json:"connector"`
-	ID        string `json:"id"`
-	Labels    []struct {
-		Attrs struct {
-			Label struct {
-				Text string `json:"text"`
-			} `json:"label"`
-		} `json:"attrs"`
-		Position struct {
-			Distance string  `json:"distance"`
-			Offset   float64 `json:"offset"`
-			Angle    int     `json:"angle"`
-			Options  struct {
-				KeepGradient     bool `json:"keepGradient"`
-				EnsureLegibility bool `json:"ensureLegibility"`
-			} `json:"options"`
-		} `json:"position"`
-	} `json:"labels"`
-	Router struct {
+	Connector string      `json:"connector"`
+	ID        string      `json:"id"`
+	Labels    []EdgeLabel `json:"labels"`
+	Router    struct {
 		Name string `json:"name"`
 	} `json:"router"`
 	Shape  string `json:"shape"`
