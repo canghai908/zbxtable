@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/base64"
 	"io"
 	"net/http"
 	"strconv"
@@ -428,7 +427,7 @@ func DeleteEgressConfigHandler(c *gin.Context) {
 	response.SuccessWithMessage(c, "删除成功", nil)
 }
 
-// UploadLogo 上传系统Logo（存储为base64到数据库）
+// UploadLogo 上传系统Logo（保存到 ./upload/logo 并返回访问路径）
 func UploadLogo(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -449,40 +448,14 @@ func UploadLogo(c *gin.Context) {
 		return
 	}
 
-	// 打开文件并读取内容
-	fileContent, err := file.Open()
+	result, err := model.SaveLogoImage(file)
 	if err != nil {
-		response.InternalError(c, "读取文件失败: "+err.Error())
-		return
-	}
-	defer fileContent.Close()
-
-	// 读取文件字节
-	fileBytes, err := io.ReadAll(fileContent)
-	if err != nil {
-		response.InternalError(c, "读取文件内容失败: "+err.Error())
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	// 转换为base64
-	base64String := base64.StdEncoding.EncodeToString(fileBytes)
-
-	// 构建完整的Data URL格式（包含MIME类型）
-	var dataURL string
-	switch contentType {
-	case "image/svg+xml":
-		dataURL = "data:image/svg+xml;base64," + base64String
-	case "image/png":
-		dataURL = "data:image/png;base64," + base64String
-	case "image/jpeg", "image/jpg":
-		dataURL = "data:image/jpeg;base64," + base64String
-	default:
-		dataURL = "data:image/png;base64," + base64String
-	}
-
-	// 返回base64编码的图片数据
 	response.SuccessWithMessage(c, "上传成功", gin.H{
-		"url": dataURL,
+		"url": result.Path,
 	})
 }
 
@@ -490,12 +463,14 @@ func UploadLogo(c *gin.Context) {
 func GetPublicSystemInfo(c *gin.Context) {
 	// 默认值
 	systemName := "ZbxTable"
+	systemSubtitle := "Zabbix 监控数据可视化平台"
 	systemLogo := "/logo.png"
 	demoMode := "false"
 
 	// 尝试从数据库获取配置（如果数据库已初始化）
 	if model.DB != nil {
 		systemName = model.GetConfigValueByKey("system_name", "ZbxTable")
+		systemSubtitle = model.GetConfigValueByKey("system_subtitle", "Zabbix 监控数据可视化平台")
 		systemLogo = model.GetConfigValueByKey("system_logo", "/logo.png")
 		// 增加 demo_mode 返回
 		demoMode = model.GetConfKey("demo_mode")
@@ -505,9 +480,10 @@ func GetPublicSystemInfo(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"system_name": systemName,
-		"system_logo": systemLogo,
-		"demo_mode":   demoMode == "true",
+		"system_name":     systemName,
+		"system_subtitle": systemSubtitle,
+		"system_logo":     systemLogo,
+		"demo_mode":       demoMode == "true",
 	})
 }
 

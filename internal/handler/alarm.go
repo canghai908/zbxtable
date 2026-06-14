@@ -13,6 +13,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+var analysisAlarmFunc = model.AnalysisAlarm
+
 // GetAllAlarm 获取告警列表
 func GetAllAlarm(c *gin.Context) {
 	var Begin, End time.Time
@@ -73,16 +75,30 @@ func GetAlarmTenant(c *gin.Context) {
 	response.SuccessWithPage(c, al, cnt)
 }
 
-// AnalysisAlarm 告警分析（支持实例筛选）
-func AnalysisAlarm(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		response.BadRequest(c, "请求体读取失败")
-		return
+func parseAnalysisAlarmRequest(c *gin.Context) (model.ListAnalysisAlarm, error) {
+	var v model.ListAnalysisAlarm
+	if c.Request.Method == http.MethodGet {
+		v.Begin = c.Query("begin")
+		v.End = c.Query("end")
+		v.ZID = c.Query("zid")
+		return v, nil
 	}
 
-	var v model.ListAnalysisAlarm
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return v, err
+	}
+	if len(body) == 0 {
+		return v, nil
+	}
+
 	err = jsoniter.Unmarshal(body, &v)
+	return v, err
+}
+
+// AnalysisAlarm 告警分析（支持实例筛选）
+func AnalysisAlarm(c *gin.Context) {
+	v, err := parseAnalysisAlarmRequest(c)
 	if err != nil {
 		response.BadRequest(c, "请求参数解析失败: "+err.Error())
 		return
@@ -98,7 +114,7 @@ func AnalysisAlarm(c *gin.Context) {
 		Start, _ = time.ParseInLocation(timeLayout, v.Begin, loc)
 		End, _ = time.ParseInLocation(timeLayout, v.End, loc)
 	}
-	arraytitle, piee, na, va, err := model.AnalysisAlarm(Start, End, v.ZID)
+	arraytitle, piee, na, va, err := analysisAlarmFunc(Start, End, v.ZID)
 	if err != nil {
 		response.DatabaseError(c, "告警分析失败: "+err.Error())
 		return

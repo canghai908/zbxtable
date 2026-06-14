@@ -252,6 +252,7 @@ type HostListInterface struct {
 
 type ListHost struct {
 	AutoCompress      string              `json:"auto_compress"`
+	ActiveAvailable   string              `json:"active_available"`
 	Available         string              `json:"available"`
 	Description       string              `json:"description"`
 	DisableUntil      string              `json:"disable_until"`

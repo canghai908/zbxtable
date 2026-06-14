@@ -504,15 +504,13 @@ func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 		return []byte{}, err
 	}
 	var dt []Hosts
-	var d Hosts
 	for _, v := range hb {
+		var d Hosts
 		d.HostID = v.Hostid
 		d.Host = v.Host
 		d.Name = v.Name
 		d.Interfaces = v.Interfaces[0].IP
 		d.Status = v.Status
-		d.Available = v.Available
-		d.Error = v.Error
 		//物理服务器可用性为ipmi
 		d.Model = v.Inventory.Model
 		d.OS = v.Inventory.Os
@@ -522,10 +520,10 @@ func GetHostList(HostType, hosts, model, ip, available string) ([]byte, error) {
 		d.MemoryUsed = v.Inventory.SoftwareAppD
 		d.MemoryTotal = v.Inventory.SoftwareAppC
 		d.Uptime = v.Inventory.SoftwareAppE
-		d.Available = v.Available
+		d.Available = normalizeHostAvailability(v.Available, v.ActiveAvailable)
 		d.Error = v.Error
 		if IsHardwareType(HostType) {
-			d.Available = v.SnmpAvailable
+			d.Available = normalizeHostAvailability(v.SnmpAvailable, v.ActiveAvailable)
 			d.Error = v.SnmpError
 			d.SerialNo = v.Inventory.SerialnoA
 			d.Location = v.Inventory.LocationLon

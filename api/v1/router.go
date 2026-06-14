@@ -162,6 +162,7 @@ func InitRouter() *gin.Engine {
 			{
 				alarmGroup.GET("", handler.GetAllAlarm)
 				alarmGroup.GET("/:id", handler.GetAlarmByID)
+				alarmGroup.GET("/analysis", handler.AnalysisAlarm)
 				alarmGroup.GET("/tenant", handler.GetAlarmTenant)
 				alarmGroup.POST("/analysis", handler.AnalysisAlarm)
 				alarmGroup.POST("/export", handler.ExportAlarm)
