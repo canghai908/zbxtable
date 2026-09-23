@@ -37,6 +37,29 @@ const (
 	Vendor        = 31
 )
 
+type hostInventoryUpdateTarget struct {
+	HostID string `json:"hostid"`
+}
+
+func buildHostInventoryUpdateParams(hosts []hostInventoryUpdateTarget, inventory map[string]string) ([]Params, error) {
+	updates := make([]Params, 0, len(hosts))
+	for _, host := range hosts {
+		hostID := strings.TrimSpace(host.HostID)
+		if hostID == "" {
+			continue
+		}
+		updates = append(updates, Params{
+			"hostid":         hostID,
+			"inventory_mode": 1,
+			"inventory":      inventory,
+		})
+	}
+	if len(updates) == 0 {
+		return nil, fmt.Errorf("未在指定的主机组中找到任何有效主机")
+	}
+	return updates, nil
+}
+
 // TableName alarm
 func (t *System) TableName() string {
 	return TableName("system")
@@ -389,10 +412,7 @@ func HostTypeSet(s *System, groupId []string) error {
 	if err != nil {
 		return err
 	}
-	type hostData struct {
-		HostID string `json:"hostid"`
-	}
-	var p []hostData
+	var p []hostInventoryUpdateTarget
 	resByre, resByteErr := json.Marshal(rep.Result)
 	if resByteErr != nil {
 		return err
@@ -417,10 +437,12 @@ func HostTypeSet(s *System, groupId []string) error {
 	//主机类型直接写入，不关联监控指标
 	InventoryPara["type"] = hType
 	//开启主机Inventory为自动，并归类
-	_, err = API.CallWithError("host.massupdate", Params{
-		"hosts":          p,
-		"inventory_mode": 1,
-		"inventory":      InventoryPara})
+	updateParams, err := buildHostInventoryUpdateParams(p, InventoryPara)
+	if err != nil {
+		logger.Log.Error(err)
+		return err
+	}
+	_, err = API.CallWithError("host.update", updateParams)
 	if err != nil {
 		logger.Log.Error(err)
 		return err
@@ -471,10 +493,7 @@ func hostTypeSetWithCount(s *System, groupId []string, apiInstance *APIInstance)
 	if err2 != nil {
 		return 0, nil
 	}
-	type hostData struct {
-		HostID string `json:"hostid"`
-	}
-	var hosts []hostData
+	var hosts []hostInventoryUpdateTarget
 	if b, e := json.Marshal(rep.Result); e == nil {
 		_ = json.Unmarshal(b, &hosts)
 	}
@@ -490,10 +509,7 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 	if err != nil {
 		return err
 	}
-	type hostData struct {
-		HostID string `json:"hostid"`
-	}
-	var p []hostData
+	var p []hostInventoryUpdateTarget
 	resByre, resByteErr := json.Marshal(rep.Result)
 	if resByteErr != nil {
 		return err
@@ -518,7 +534,7 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 	//主机类型直接写入，不关联监控指标
 	InventoryPara["type"] = hType
 
-	// 分批调用 host.massupdate（防止主机数过多时单次请求超时/内存溢出）
+	// 分批调用 host.update（防止主机数过多时单次请求超时/内存溢出）
 	const massUpdateBatchSize = 500
 	for i := 0; i < len(p); i += massUpdateBatchSize {
 		end := i + massUpdateBatchSize
@@ -526,15 +542,16 @@ func HostTypeSetWithInstance(s *System, groupId []string, apiInstance *APIInstan
 			end = len(p)
 		}
 		batch := p[i:end]
-		if _, batchErr := apiInstance.API.CallWithError("host.massupdate", Params{
-			"hosts":          batch,
-			"inventory_mode": 1,
-			"inventory":      InventoryPara,
-		}); batchErr != nil {
-			logger.Log.Errorf("host.massupdate 批次 [%d-%d] 失败: %v", i, end, batchErr)
+		updateParams, batchErr := buildHostInventoryUpdateParams(batch, InventoryPara)
+		if batchErr != nil {
+			logger.Log.Errorf("host.update 批次 [%d-%d] 失败: %v", i, end, batchErr)
 			return batchErr
 		}
-		logger.Log.Infof("host.massupdate [type=%s] 批次 [%d/%d] 完成", hType, end, len(p))
+		if _, batchErr := apiInstance.API.CallWithError("host.update", updateParams); batchErr != nil {
+			logger.Log.Errorf("host.update 批次 [%d-%d] 失败: %v", i, end, batchErr)
+			return batchErr
+		}
+		logger.Log.Infof("host.update [type=%s] 批次 [%d/%d] 完成", hType, end, len(p))
 	}
 	//其他指标绑定
 	inventoryItems := []struct {
