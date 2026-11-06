@@ -1,6 +1,7 @@
 package model
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -128,12 +129,10 @@ func CacheRPop(key string) (string, error) {
 		return "", nil // 队列不存在，返回空字符串（模拟redis.Nil）
 	}
 
+	// 非阻塞弹出：队列为空时立即返回空（模拟 redis.Nil）
 	select {
 	case value := <-queue.items:
 		return string(value), nil
-	case <-time.After(100 * time.Millisecond):
-		// 超时，返回空（模拟redis.Nil）
-		return "", nil
 	default:
 		return "", nil
 	}
@@ -202,13 +201,9 @@ func CacheZRevRangeWithScores(key string, start, stop int64) ([]ZMember, error) 
 	}
 
 	// 按分数降序排序
-	for i := 0; i < len(members)-1; i++ {
-		for j := i + 1; j < len(members); j++ {
-			if members[i].Score < members[j].Score {
-				members[i], members[j] = members[j], members[i]
-			}
-		}
-	}
+	sort.Slice(members, func(i, j int) bool {
+		return members[i].Score > members[j].Score
+	})
 
 	// 应用范围
 	if start < 0 {

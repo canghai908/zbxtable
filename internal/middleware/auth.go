@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"zbxtable/internal/model"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/ini.v1"
 )
+
+// installConfirmed 一旦确认已安装即置为 true。安装是进程内单向状态
+//（完成安装需重启进程才会连接数据库），因此确认后即可跳过每请求的
+// os.Stat + ini.Load 磁盘读取。
+var installConfirmed atomic.Bool
 
 // JWTAuthMiddleware JWT 认证中间件
 func JWTAuthMiddleware() gin.HandlerFunc {
@@ -106,6 +112,12 @@ func DemoModeMiddleware() gin.HandlerFunc {
 // 注意：只在配置文件存在但配置不完整时才跳转，避免后台服务未启动时误判
 func CheckInstallStatusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 已确认安装：跳过磁盘检查
+		if installConfirmed.Load() {
+			c.Next()
+			return
+		}
+
 		// 安装相关的路由不需要检查
 		if strings.HasPrefix(c.Request.URL.Path, "/install") {
 			c.Next()
@@ -184,7 +196,8 @@ func CheckInstallStatusMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// 已安装，继续
+		// 已安装，继续（记录状态，后续请求跳过磁盘检查）
+		installConfirmed.Store(true)
 		c.Next()
 	}
 }

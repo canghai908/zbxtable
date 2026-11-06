@@ -299,20 +299,29 @@ type ListHost struct {
 type ListHosts []ListHost
 type MonItemList []MonItem
 type MonItem struct {
-	Applicationid string `json:"applicationid"`
-	Name          string `json:"name"`
-	Items         []struct {
-		Itemid     string `json:"itemid"`
-		Name       string `json:"name"`
-		Key        string `json:"key_"`
-		ValueType  string `json:"value_type"`
-		Delay      string `json:"delay"`
-		Units      string `json:"units"`
-		Lastvalue  string `json:"lastvalue"`
-		Lastclock  string `json:"lastclock"`
-		SNMPOid    string `json:"snmp_oid"`
-		ValuemapID string `json:"valuemapid"`
-	} `json:"items"`
+	Applicationid string         `json:"applicationid"`
+	Name          string         `json:"name"`
+	Items         []MonItemEntry `json:"items"`
+}
+
+// MonItemTag 监控项标签（用于分组识别，不输出给前端）
+type MonItemTag struct {
+	Tag   string `json:"tag"`
+	Value string `json:"value"`
+}
+
+// MonItemEntry 监控指标分组下的单个监控项
+type MonItemEntry struct {
+	Itemid     string `json:"itemid"`
+	Name       string `json:"name"`
+	Key        string `json:"key_"`
+	ValueType  string `json:"value_type"`
+	Delay      string `json:"delay"`
+	Units      string `json:"units"`
+	Lastvalue  string `json:"lastvalue"`
+	Lastclock  string `json:"lastclock"`
+	SNMPOid    string `json:"snmp_oid"`
+	ValuemapID string `json:"valuemapid"`
 }
 
 type InterfaceDataList []InterfaceData

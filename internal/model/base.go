@@ -37,6 +37,11 @@ var (
 	envConfig     map[string]string
 	envConfigOnce sync.Once
 	envFileExists bool
+
+	// app.conf 解析结果缓存：安装后配置文件在进程生命周期内稳定
+	//（变更配置需重启），因此只解析一次，避免每次调用都读盘。
+	appConf     *ini.File
+	appConfOnce sync.Once
 )
 
 const (
@@ -351,13 +356,19 @@ func GetConfKey(v string) string {
 		}
 		return ""
 	}
-	// 其次从 config/app.conf 读取
-	cfg, err := ini.Load("./config/app.conf")
-	if err != nil {
-		logger.Log.Error(err)
+	// 其次从 config/app.conf 读取（只解析一次并缓存）
+	appConfOnce.Do(func() {
+		cfg, err := ini.Load("./config/app.conf")
+		if err != nil {
+			logger.Log.Error(err)
+			return
+		}
+		appConf = cfg
+	})
+	if appConf == nil {
 		return ""
 	}
-	p, err := cfg.Section("").GetKey(v)
+	p, err := appConf.Section("").GetKey(v)
 	if err != nil {
 		return ""
 	}

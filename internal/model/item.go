@@ -84,6 +84,38 @@ func GetAllItemByHostID(hostid string) (item []Item, count int64, err error) {
 }
 
 // GetAllItemByHostIDFromInstance 从指定实例根据hostid获取监控项
+// GetItemsByIDsFromInstance 根据 itemids 批量查询监控项（用于编辑时回填监控项名称）
+func GetItemsByIDsFromInstance(zid string, itemids []string) (item []Items, count int64, err error) {
+	var list []Items
+	if len(itemids) == 0 {
+		return list, 0, nil
+	}
+	id, err := strconv.Atoi(zid)
+	if err != nil {
+		return list, 0, err
+	}
+	inst, err := GetAPIByZID(id)
+	if err != nil {
+		return list, 0, fmt.Errorf("获取实例API失败: %v", err)
+	}
+	output := []string{"itemid", "name", "key_", "value_type", "units", "hostid"}
+	rep, err := inst.API.Call("item.get", Params{"output": output, "itemids": itemids})
+	if err != nil {
+		logger.Log.Error(err)
+		return list, 0, err
+	}
+	hba, err := json.Marshal(rep.Result)
+	if err != nil {
+		logger.Log.Error(err)
+		return list, 0, err
+	}
+	if err = json.Unmarshal(hba, &list); err != nil {
+		logger.Log.Error(err)
+		return []Items{}, 0, err
+	}
+	return list, int64(len(list)), nil
+}
+
 func GetAllItemByHostIDFromInstance(zid, hostid string) (item []Items, count int64, err error) {
 	// 获取实例API
 	var list []Items

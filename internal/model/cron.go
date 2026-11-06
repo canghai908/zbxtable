@@ -963,9 +963,10 @@ func getOverviewHostsFromInstance(inst *APIInstance, hostType string) ([]Hosts, 
 		return nil, err
 	}
 
+	monitorType := GetMonitorType(hostType)
 	var hosts []Hosts
 	for _, v := range hb {
-		hosts = append(hosts, buildHostFromListHost(inst, v, hostType))
+		hosts = append(hosts, buildHostFromListHost(inst, v, hostType, monitorType))
 	}
 
 	return hosts, nil

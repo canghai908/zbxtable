@@ -222,6 +222,7 @@ func CreateOrUpdateSystem(m *System) error {
 	}
 	err = DB.Model(&System{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
 		"zid":                   m.ZID,
+		"name":                  m.Name,
 		"type_code":             m.TypeCode,
 		"cpu_core":              m.CPUCore,
 		"cpu_utilization_id":    m.CPUUtilizationID,
@@ -232,6 +233,14 @@ func CreateOrUpdateSystem(m *System) error {
 		"uptime_id":             m.UptimeID,
 		"model":                 m.Model,
 		"ping_template_id":      m.PingTemplateID,
+		// 各指标选用的模板 id（用于编辑回填）
+		"uptime_template_id":             m.UptimeTemplateID,
+		"cpu_core_template_id":           m.CPUCoreTemplateID,
+		"cpu_utilization_template_id":    m.CPUUtilizationTemplateID,
+		"memory_utilization_template_id": m.MemoryUtilizationTemplateID,
+		"memory_used_template_id":        m.MemoryUsedTemplateID,
+		"memory_total_template_id":       m.MemoryTotalTemplateID,
+		"model_template_id":              m.ModelTemplateID,
 		// 自动化配置字段（之前缺失导致编辑保存后不生效）
 		"auto_init":        m.AutoInit,
 		"init_cron":        initCron,

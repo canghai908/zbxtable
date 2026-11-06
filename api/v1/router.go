@@ -233,6 +233,7 @@ func InitRouter() *gin.Engine {
 			{
 				itemGroup.GET("", handler.GetItemByKey)
 				itemGroup.GET("/list", handler.GetAllItemByHostID)
+				itemGroup.GET("/by_ids", handler.GetItemsByIDs)
 				itemGroup.GET("/traffic", handler.GetAllTrafficItem)
 				itemGroup.GET("/topotraffic", handler.GetAllReceiveTrafficItem)
 			}

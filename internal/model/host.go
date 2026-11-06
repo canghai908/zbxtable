@@ -10,7 +10,13 @@ import (
 	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
+
+	"golang.org/x/sync/singleflight"
 )
+
+// zbxFetchSF 合并对 Zabbix 的并发回源请求：缓存失效瞬间，同一 key 的多个
+// 并发请求只触发一次远程拉取，其余等待复用结果，避免缓存击穿打爆 Zabbix。
+var zbxFetchSF singleflight.Group
 
 func normalizeSearchText(value string) string {
 	return strings.TrimSpace(strings.ToLower(value))
@@ -191,17 +197,30 @@ func HostsListMultiInstance(HostType, page, limit, hosts, model, ip, available s
 		}
 	}
 
-	// 缓存未命中：从 Zabbix 拉取并写缓存
+	// 缓存未命中：经 singleflight 回源，合并并发请求，避免缓存击穿
 	if allHosts == nil {
-		var err error
-		allHosts, err = fetchAllHostsFromZabbix(HostType)
+		v, err, _ := zbxFetchSF.Do(cacheKey, func() (interface{}, error) {
+			// 双检：可能已被其他并发请求填充
+			if cached, _ := CacheGet(cacheKey); cached != "" {
+				var hs []Hosts
+				if json.Unmarshal([]byte(cached), &hs) == nil {
+					return hs, nil
+				}
+			}
+			hs, fErr := fetchAllHostsFromZabbix(HostType)
+			if fErr != nil {
+				return nil, fErr
+			}
+			if b, mErr := json.Marshal(hs); mErr == nil {
+				_ = CacheSet(cacheKey, string(b), hostListCacheTTL)
+			}
+			return hs, nil
+		})
 		if err != nil {
 			logger.Log.Errorf("获取启用的实例失败: %v", err)
 			return []Hosts{}, 0, err
 		}
-		if b, mErr := json.Marshal(allHosts); mErr == nil {
-			_ = CacheSet(cacheKey, string(b), hostListCacheTTL)
-		}
+		allHosts, _ = v.([]Hosts)
 	}
 
 	// 过滤数据（在内存缓存上完成）
@@ -255,15 +274,18 @@ func queryHostsFromInstance(inst *APIInstance, HostType string) ([]Hosts, error)
 		return nil, err
 	}
 
+	// 监控类型按设备类型固定，循环外取一次，避免对每台主机都查一次库
+	monitorType := GetMonitorType(HostType)
+
 	var hosts []Hosts
 	for _, v := range hb {
-		hosts = append(hosts, buildHostFromListHost(inst, v, HostType))
+		hosts = append(hosts, buildHostFromListHost(inst, v, HostType, monitorType))
 	}
 
 	return hosts, nil
 }
 
-func buildHostFromListHost(inst *APIInstance, v ListHost, hostType string) Hosts {
+func buildHostFromListHost(inst *APIInstance, v ListHost, hostType, monitorType string) Hosts {
 	var d Hosts
 	d.HostID = v.Hostid
 	d.Host = v.Host
@@ -301,7 +323,7 @@ func buildHostFromListHost(inst *APIInstance, v ListHost, hostType string) Hosts
 	d.InstanceName = inst.Name
 
 	if !inst.IsV54OrLater {
-		switch GetMonitorType(hostType) {
+		switch monitorType {
 		case "snmp":
 			d.Available = v.SnmpAvailable
 			d.Error = v.SnmpError
@@ -353,195 +375,6 @@ func paginateHosts(hosts []Hosts, page, limit string) ([]Hosts, int64, error) {
 	}
 
 	return hosts[begin:end], total, nil
-}
-
-// HostsList func (保留原函数用于单实例兼容)
-func HostsList(HostType, page, limit, hosts, model, ip, available string) ([]Hosts, int64, error) {
-	SelectInterfacesPar := []string{"ip", "port", "available", "error"}
-	SearchInventoryInventoryPar := make(map[string]string)
-	SearchInventoryInventoryPar["type"] = HostType
-	filterPar := make(map[string]string)
-	filterPar["status"] = "0"
-	//old version
-	rep, err := API.CallWithError("host.get", Params{
-		"output":           "extend",
-		"filter":           filterPar,
-		"searchInventory":  SearchInventoryInventoryPar,
-		"selectInventory":  "extend",
-		"selectInterfaces": SelectInterfacesPar})
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	hba, err := json.Marshal(rep.Result)
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	var hb ListHosts
-	err = json.Unmarshal(hba, &hb)
-	if err != nil {
-		return []Hosts{}, 0, err
-	}
-	var dt []Hosts
-	//new version
-	if ZBX_V {
-		for _, v := range hb {
-			var d Hosts
-			d.HostID = v.Hostid
-			d.Host = v.Host
-			d.Name = v.Name
-			if len(v.Interfaces) != 0 {
-				d.Interfaces = v.Interfaces[0].IP
-				d.Available = v.Interfaces[0].Available
-				d.Error = v.Interfaces[0].Error
-			}
-			d.Status = v.Status
-			//物理服务器可用性为ipmi
-			d.Model = v.Inventory.Model
-			d.OS = v.Inventory.Os
-			d.NumberOfCores = v.Inventory.Software
-			d.CPUUtilization = v.Inventory.SoftwareAppA
-			d.MemoryUtilization = v.Inventory.SoftwareAppB
-			d.MemoryTotal = v.Inventory.SoftwareAppC
-			d.MemoryUsed = v.Inventory.SoftwareAppD
-			d.Uptime = v.Inventory.SoftwareAppE
-			d.DateHwInstall = v.Inventory.DateHwInstall
-			d.DateHwExpiry = v.Inventory.DateHwExpiry
-			d.MAC = v.Inventory.MacaddressA
-			d.ResourceID = v.Inventory.SerialnoB
-			//d.SerialNo = v.Inventory.SerialnoA
-			//d.Location = v.Inventory.Location
-			//d.Department = v.Inventory.SiteCity
-			d.Vendor = v.Inventory.Vendor
-			d.Ping = v.Inventory.Poc1Name
-			d.PingLoss = v.Inventory.Poc1Email
-			d.PingSec = v.Inventory.Poc1PhoneA
-			d.Available = normalizeHostAvailability(d.Available, v.ActiveAvailable)
-			if IsHardwareType(HostType) {
-				if len(v.Interfaces) != 0 {
-					d.SerialNo = v.Inventory.SerialnoA
-					d.Location = v.Inventory.Location
-					d.Department = v.Inventory.SiteCity
-				}
-			}
-			if hosts != "" && strings.Contains(d.Name, hosts) {
-				dt = append(dt, d)
-			} else if model != "" && strings.Contains(d.Model, model) {
-				dt = append(dt, d)
-			} else if ip != "" && strings.Contains(d.Interfaces, ip) {
-				dt = append(dt, d)
-			} else if available != "" && strings.Contains(d.Available, available) {
-				dt = append(dt, d)
-			} else if (hosts == "") && (model == "") && (ip == "") && (available == "") {
-				dt = append(dt, d)
-			}
-		}
-	} else {
-		//老版本
-		for _, v := range hb {
-			var d Hosts
-			d.HostID = v.Hostid
-			d.Host = v.Host
-			d.Name = v.Name
-			if len(v.Interfaces) != 0 {
-				d.Interfaces = v.Interfaces[0].IP
-				d.Available = v.Interfaces[0].Available
-			}
-			d.Status = v.Status
-			d.Error = v.Error
-			//物理服务器可用性为ipmi
-			d.Model = v.Inventory.Model
-			d.OS = v.Inventory.Os
-			d.NumberOfCores = v.Inventory.Software
-			d.CPUUtilization = v.Inventory.SoftwareAppA
-			d.MemoryUtilization = v.Inventory.SoftwareAppB
-			d.MemoryUsed = v.Inventory.SoftwareAppD
-			d.MemoryTotal = v.Inventory.SoftwareAppC
-			d.Uptime = v.Inventory.SoftwareAppE
-			d.DateHwInstall = v.Inventory.DateHwInstall
-			d.DateHwExpiry = v.Inventory.DateHwExpiry
-			d.MAC = v.Inventory.MacaddressA
-			d.ResourceID = v.Inventory.SerialnoB
-			//d.SerialNo = v.Inventory.SerialnoA
-			d.Location = v.Inventory.Location
-			//d.Department = v.Inventory.SiteCity
-			d.Vendor = v.Inventory.Vendor
-			d.Error = v.Error
-			d.Ping = v.Inventory.Poc1Name
-			d.PingLoss = v.Inventory.Poc1Email
-			d.PingSec = v.Inventory.Poc1PhoneA
-			switch GetMonitorType(HostType) {
-			case "snmp":
-				d.Available = v.SnmpAvailable
-				d.Error = v.SnmpError
-				d.SerialNo = v.Inventory.SerialnoA
-				d.Location = v.Inventory.Location
-				d.Department = v.Inventory.SiteCity
-			case "ipmi":
-				d.Available = v.IpmiAvailable
-				d.Error = v.IpmiError
-				d.SerialNo = v.Inventory.SerialnoA
-				d.Location = v.Inventory.Location
-				d.Department = v.Inventory.SiteCity
-			}
-			d.Available = normalizeHostAvailability(d.Available, v.ActiveAvailable)
-			if hosts != "" && strings.Contains(d.Name, hosts) {
-				dt = append(dt, d)
-			} else if model != "" && strings.Contains(d.Model, model) {
-				dt = append(dt, d)
-			} else if ip != "" && strings.Contains(d.Interfaces, ip) {
-				dt = append(dt, d)
-			} else if available != "" && strings.Contains(d.Available, available) {
-				dt = append(dt, d)
-			} else if (hosts == "") && (model == "") && (ip == "") && (available == "") {
-				dt = append(dt, d)
-			}
-		}
-
-	}
-	IntPage, err := strconv.Atoi(page)
-	if err != nil {
-		IntPage = 1
-	}
-	IntLimit, err := strconv.Atoi(limit)
-	if err != nil {
-		IntLimit = 10
-	}
-	//如果dt为空直接返回
-	if len(dt) == 0 {
-		return dt, int64(len(dt)), err
-	}
-	//分页
-	nums := len(dt)
-
-	//end int
-	//page总数
-	totalpages := int(math.Ceil(float64(nums) / float64(IntLimit)))
-	if IntPage >= totalpages {
-		IntPage = totalpages
-	}
-	if IntPage <= 0 {
-		IntPage = 1
-	}
-	//结束页数据
-	var end int
-	//begin 开始页数据
-
-	begin := (IntPage - 1) * IntLimit
-	if IntPage == totalpages {
-		end = nums
-	}
-	if IntPage < totalpages {
-		end = IntPage * IntLimit
-	} else {
-		end = nums
-	}
-	//根据开始和结束返回数据列表
-	var newthostlist []Hosts
-	for i := begin; i < end; i++ {
-		newthostlist = append(newthostlist, dt[i])
-	}
-	return newthostlist, int64(len(dt)), err
-
 }
 
 // HostsListFromInstance 从指定实例获取主机列表
@@ -639,9 +472,10 @@ func SearchHostFromInstance(inst *APIInstance, name string) ([]Hosts, error) {
 	}
 
 	keyword := strings.TrimSpace(name)
+	monitorType := GetMonitorType("")
 	hosts := make([]Hosts, 0, len(hb))
 	for _, v := range hb {
-		host := buildHostFromListHost(inst, v, "")
+		host := buildHostFromListHost(inst, v, "", monitorType)
 		if !hostMatchesKeyword(host, keyword) {
 			continue
 		}
@@ -680,9 +514,10 @@ func GetHostsByGroupIDsFromInstance(inst *APIInstance, groupIDs []string) ([]Hos
 		return nil, err
 	}
 
+	monitorType := GetMonitorType("")
 	hosts := make([]Hosts, 0, len(hb))
 	for _, v := range hb {
-		hosts = append(hosts, buildHostFromListHost(inst, v, ""))
+		hosts = append(hosts, buildHostFromListHost(inst, v, "", monitorType))
 	}
 	return hosts, nil
 }
@@ -763,12 +598,13 @@ func GetHostsByTagsFromInstance(inst *APIInstance, filters []HostTagFilter) ([]H
 		return nil, err
 	}
 
+	monitorType := GetMonitorType("")
 	hosts := make([]Hosts, 0, len(hb))
 	for _, v := range hb {
 		if !hostMatchesTagFilters(v.Tags, normalized) {
 			continue
 		}
-		hosts = append(hosts, buildHostFromListHost(inst, v.ListHost, ""))
+		hosts = append(hosts, buildHostFromListHost(inst, v.ListHost, "", monitorType))
 	}
 	return hosts, nil
 }
@@ -1581,12 +1417,71 @@ func GetGraphDataFromInstance(inst *APIInstance, hostId, start, end string) ([]P
 	return pngData, nil
 }
 
-// GetMonItemFromInstance 从指定实例获取主机监控指标
+// monItemCategories 监控指标分组顺序（原为 Zabbix application 名称）。
+// 顺序很重要：分类时命中即止，Memory 在 Filesystem 之前可确保 "swap space" 归入内存。
+var monItemCategories = []string{"CPU", "Memory", "Filesystem", "Interface"}
+
+// classifyMonItem 将监控项归入 CPU/Memory/Filesystem/Interface 之一，归类不了返回 ""。
+// Zabbix 5.4 起移除了 application，这里按优先级识别：
+//  1. component 标签（6.0+ 官方模板：cpu/memory/storage/network）——语言无关，最可靠；
+//  2. item key 前缀（agent 标准键：system.cpu / vm.memory / vfs.fs / net.if）；
+//  3. 名称关键字兜底（SNMP/自定义模板）。
+func classifyMonItem(key, name string, tags []MonItemTag) string {
+	for _, t := range tags {
+		if strings.EqualFold(t.Tag, "component") {
+			switch strings.ToLower(t.Value) {
+			case "cpu", "processor":
+				return "CPU"
+			case "memory":
+				return "Memory"
+			case "storage", "filesystem", "disk":
+				return "Filesystem"
+			case "network":
+				return "Interface"
+			}
+		}
+	}
+	k := strings.ToLower(key)
+	switch {
+	case strings.Contains(k, "vfs.fs"):
+		return "Filesystem"
+	case strings.Contains(k, "net.if") || strings.Contains(k, "ifhcin") || strings.Contains(k, "ifhcout") || strings.Contains(k, "ifinoctets") || strings.Contains(k, "ifoutoctets"):
+		return "Interface"
+	case strings.Contains(k, "vm.memory") || strings.Contains(k, "system.swap"):
+		return "Memory"
+	case strings.Contains(k, "system.cpu") || strings.Contains(k, "proc.cpu"):
+		return "CPU"
+	}
+	n := strings.ToLower(name)
+	switch {
+	case strings.Contains(n, "cpu") || strings.Contains(n, "处理器"):
+		return "CPU"
+	case strings.Contains(n, "memory") || strings.Contains(n, "swap") || strings.Contains(n, "内存") || strings.Contains(n, "交换"):
+		return "Memory"
+	case strings.Contains(n, "filesystem") || strings.Contains(n, "space utilization") || strings.Contains(n, "used space") || strings.Contains(n, "total space") ||
+		strings.Contains(n, "磁盘") || strings.Contains(n, "文件系统") || strings.Contains(n, "存储") || strings.Contains(n, "空间"):
+		return "Filesystem"
+	case strings.Contains(n, "interface") || strings.Contains(n, "接口") || strings.Contains(n, "网卡") || strings.Contains(n, "网络") || strings.Contains(n, "流量") || strings.Contains(n, "带宽"):
+		return "Interface"
+	}
+	return ""
+}
+
+// GetMonItemFromInstance 从指定实例获取主机监控指标，按 Zabbix 版本分叉：
+//   - 5.4 及以上：application 已移除，用 item.get + 标签/键/名称归类（兼容 6.0/7.x/8.0）；
+//   - 5.4 以下：仍用 application.get 按应用分组（5.0/5.2 不支持 selectTags）。
 func GetMonItemFromInstance(inst *APIInstance, hostid string) (MonItemList, error) {
+	if !inst.IsV54OrLater {
+		return getMonItemLegacy(inst, hostid)
+	}
+	return getMonItemV54(inst, hostid)
+}
+
+// getMonItemLegacy 5.4 以下：application.get 按应用分组（恢复旧行为，应用名可为中文）
+func getMonItemLegacy(inst *APIInstance, hostid string) (MonItemList, error) {
 	selectItemsPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
-	Key2Par := []string{"CPU", "Memory", "Filesystem ", "Interface "}
-	Search2Par := make(map[string][]string)
-	Search2Par["name"] = Key2Par
+	// 子串匹配，不能带尾空格，否则匹配不到 Filesystem(s) / (Network) Interface(s)
+	Search2Par := map[string][]string{"name": {"CPU", "Memory", "Filesystem", "Interface"}}
 	rep1, err := inst.API.CallWithError("application.get", Params{
 		"output":      "extend",
 		"hostids":     hostid,
@@ -1597,16 +1492,59 @@ func GetMonItemFromInstance(inst *APIInstance, hostid string) (MonItemList, erro
 	if err != nil {
 		return MonItemList{}, err
 	}
-	ApplicationResByte, err := json.Marshal(rep1.Result)
+	b, err := json.Marshal(rep1.Result)
 	if err != nil {
 		return MonItemList{}, err
 	}
-	var ApplicationRes MonItemList
-	err = json.Unmarshal(ApplicationResByte, &ApplicationRes)
+	var res MonItemList
+	if err = json.Unmarshal(b, &res); err != nil {
+		return MonItemList{}, err
+	}
+	return res, nil
+}
+
+// getMonItemV54 5.4 及以上：item.get 拉取监控项并按分类归并为原有分组结构
+func getMonItemV54(inst *APIInstance, hostid string) (MonItemList, error) {
+	outputPar := []string{"itemid", "value_type", "name", "key_", "delay", "units", "lastvalue", "lastclock"}
+	rep1, err := inst.API.CallWithError("item.get", Params{
+		"output":     outputPar,
+		"hostids":    hostid,
+		"selectTags": []string{"tag", "value"},
+		"sortfield":  "name"})
 	if err != nil {
 		return MonItemList{}, err
 	}
-	return ApplicationRes, nil
+	itemsByte, err := json.Marshal(rep1.Result)
+	if err != nil {
+		return MonItemList{}, err
+	}
+	// 带 tags 解析用于分类，输出仍为不含 tags 的 MonItemEntry
+	var items []struct {
+		MonItemEntry
+		Tags []MonItemTag `json:"tags"`
+	}
+	if err = json.Unmarshal(itemsByte, &items); err != nil {
+		return MonItemList{}, err
+	}
+
+	groups := make(map[string]*MonItem, len(monItemCategories))
+	for _, c := range monItemCategories {
+		groups[c] = &MonItem{Name: c, Items: []MonItemEntry{}}
+	}
+	for _, it := range items {
+		if c := classifyMonItem(it.Key, it.Name, it.Tags); c != "" {
+			groups[c].Items = append(groups[c].Items, it.MonItemEntry)
+		}
+	}
+
+	// 仅返回有数据的分组，保持分类顺序
+	result := make(MonItemList, 0, len(monItemCategories))
+	for _, c := range monItemCategories {
+		if len(groups[c].Items) > 0 {
+			result = append(result, *groups[c])
+		}
+	}
+	return result, nil
 }
 
 // GetInterfaceDataFromInstance 从指定实例获取网络设备接口数据
