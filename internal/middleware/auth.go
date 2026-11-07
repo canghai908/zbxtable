@@ -14,7 +14,7 @@ import (
 )
 
 // installConfirmed 一旦确认已安装即置为 true。安装是进程内单向状态
-//（完成安装需重启进程才会连接数据库），因此确认后即可跳过每请求的
+// （完成安装需重启进程才会连接数据库），因此确认后即可跳过每请求的
 // os.Stat + ini.Load 磁盘读取。
 var installConfirmed atomic.Bool
 

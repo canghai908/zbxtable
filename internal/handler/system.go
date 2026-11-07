@@ -70,9 +70,9 @@ func parseSystemBody(body string) model.System {
 		MemoryTotalTemplateID:       gjson.Get(body, "memory_total_template_id").String(),
 		ModelTemplateID:             gjson.Get(body, "model_template_id").String(),
 		AutoInit:                    int(gjson.Get(body, "auto_init").Int()),
-		InitCron:            gjson.Get(body, "init_cron").String(),
-		InitOnNewHost:       int(gjson.Get(body, "init_on_new_host").Int()),
-		MaxRetry:            int(gjson.Get(body, "max_retry").Int()),
+		InitCron:                    gjson.Get(body, "init_cron").String(),
+		InitOnNewHost:               int(gjson.Get(body, "init_on_new_host").Int()),
+		MaxRetry:                    int(gjson.Get(body, "max_retry").Int()),
 	}
 }
 

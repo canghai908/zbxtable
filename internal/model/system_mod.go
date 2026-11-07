@@ -26,9 +26,9 @@ type System struct {
 	MemoryUsedTemplateID        string `gorm:"column:memory_used_template_id;size:200" json:"memory_used_template_id"`
 	MemoryTotalTemplateID       string `gorm:"column:memory_total_template_id;size:200" json:"memory_total_template_id"`
 	ModelTemplateID             string `gorm:"column:model_template_id;size:200" json:"model_template_id"`
-	Ping                string `gorm:"column:ping;size:200" json:"ping"`
-	PingLoss            string `gorm:"column:ping_loss;size:200" json:"ping_loss"`
-	PingSec             string `gorm:"column:ping_sec;size:200" json:"ping_sec"`
+	Ping                        string `gorm:"column:ping;size:200" json:"ping"`
+	PingLoss                    string `gorm:"column:ping_loss;size:200" json:"ping_loss"`
+	PingSec                     string `gorm:"column:ping_sec;size:200" json:"ping_sec"`
 
 	// 自动化配置
 	AutoInit      int    `gorm:"column:auto_init;default:0" json:"auto_init"`
