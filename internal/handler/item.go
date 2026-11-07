@@ -1,11 +1,35 @@
 package handler
 
 import (
+	"strings"
+
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
+
+// GetItemsByIDs 根据 itemids（逗号分隔）批量查询监控项，用于编辑绑定配置时回填监控项名称
+func GetItemsByIDs(c *gin.Context) {
+	zid := c.Query("zid")
+	itemidsStr := c.Query("itemids")
+	var itemids []string
+	for _, s := range strings.Split(itemidsStr, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			itemids = append(itemids, s)
+		}
+	}
+	if zid == "" || len(itemids) == 0 {
+		response.SuccessWithPage(c, []model.Items{}, 0)
+		return
+	}
+	v, count, err := model.GetItemsByIDsFromInstance(zid, itemids)
+	if err != nil {
+		response.InternalError(c, "获取错误:"+err.Error())
+		return
+	}
+	response.SuccessWithPage(c, v, count)
+}
 
 // GetItemByKey 根据hostid及key查找item
 func GetItemByKey(c *gin.Context) {

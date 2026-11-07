@@ -17,6 +17,15 @@ type System struct {
 	CPUCore             string `gorm:"column:cpu_core;size:200" json:"cpu_core"`
 	Model               string `gorm:"column:model;size:200" json:"model"`
 	PingTemplateID      string `gorm:"column:ping_template_id;size:200" json:"ping_template_id"`
+
+	// 各指标选用的模板 id（仅用于编辑时回填模板下拉，不参与指标计算）
+	UptimeTemplateID            string `gorm:"column:uptime_template_id;size:200" json:"uptime_template_id"`
+	CPUCoreTemplateID           string `gorm:"column:cpu_core_template_id;size:200" json:"cpu_core_template_id"`
+	CPUUtilizationTemplateID    string `gorm:"column:cpu_utilization_template_id;size:200" json:"cpu_utilization_template_id"`
+	MemoryUtilizationTemplateID string `gorm:"column:memory_utilization_template_id;size:200" json:"memory_utilization_template_id"`
+	MemoryUsedTemplateID        string `gorm:"column:memory_used_template_id;size:200" json:"memory_used_template_id"`
+	MemoryTotalTemplateID       string `gorm:"column:memory_total_template_id;size:200" json:"memory_total_template_id"`
+	ModelTemplateID             string `gorm:"column:model_template_id;size:200" json:"model_template_id"`
 	Ping                string `gorm:"column:ping;size:200" json:"ping"`
 	PingLoss            string `gorm:"column:ping_loss;size:200" json:"ping_loss"`
 	PingSec             string `gorm:"column:ping_sec;size:200" json:"ping_sec"`

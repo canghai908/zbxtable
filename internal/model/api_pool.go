@@ -21,6 +21,13 @@ import (
 type APIPool struct {
 	mu    sync.RWMutex
 	pools map[int]*APIInstance // key: ZabbixInstance.ZID
+
+	// building 为每个 ZID 维护一把独立的构建锁，保证：
+	// 1）同一实例的并发请求只建连一次（避免重复握手）；
+	// 2）不同实例可并行建连；
+	// 3）建连期间的网络 I/O 不持有 mu，避免某个实例慢/宕机拖垮整个连接池。
+	buildMu  sync.Mutex
+	building map[int]*sync.Mutex
 }
 
 // APIInstance 单个 Zabbix 实例的 API 连接信息
@@ -45,33 +52,54 @@ var (
 func GetAPIPool() *APIPool {
 	apiPoolOnce.Do(func() {
 		apiPool = &APIPool{
-			pools: make(map[int]*APIInstance),
+			pools:    make(map[int]*APIInstance),
+			building: make(map[int]*sync.Mutex),
 		}
 	})
 	return apiPool
 }
 
+// getFresh 返回缓存中未过期（30 分钟内）的连接
+func (p *APIPool) getFresh(zid int) (*APIInstance, bool) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if inst, ok := p.pools[zid]; ok && time.Since(inst.LastUpdate) < 30*time.Minute {
+		return inst, true
+	}
+	return nil, false
+}
+
+// zidLock 返回指定 ZID 的构建锁（惰性创建）
+func (p *APIPool) zidLock(zid int) *sync.Mutex {
+	p.buildMu.Lock()
+	defer p.buildMu.Unlock()
+	if p.building == nil {
+		p.building = make(map[int]*sync.Mutex)
+	}
+	l, ok := p.building[zid]
+	if !ok {
+		l = &sync.Mutex{}
+		p.building[zid] = l
+	}
+	return l
+}
+
 // GetOrCreateAPI 获取或创建指定实例的 API 连接
 func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
-	p.mu.RLock()
-	if inst, ok := p.pools[zid]; ok {
-		// 如果连接存在且未过期（30分钟），直接返回
-		if time.Since(inst.LastUpdate) < 30*time.Minute {
-			p.mu.RUnlock()
-			return inst, nil
-		}
+	// 快路径：命中未过期的缓存连接
+	if inst, ok := p.getFresh(zid); ok {
+		return inst, nil
 	}
-	p.mu.RUnlock()
 
-	// 需要创建新连接
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	// 慢路径：按 ZID 加构建锁。网络握手全程不持有 p.mu，
+	// 不同实例可并行建连，同一实例的并发请求只建连一次。
+	lock := p.zidLock(zid)
+	lock.Lock()
+	defer lock.Unlock()
 
-	// 双重检查
-	if inst, ok := p.pools[zid]; ok {
-		if time.Since(inst.LastUpdate) < 30*time.Minute {
-			return inst, nil
-		}
+	// 双重检查：可能已被其他 goroutine 建好
+	if inst, ok := p.getFresh(zid); ok {
+		return inst, nil
 	}
 
 	// 从数据库加载实例配置
@@ -164,7 +192,10 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 		LastUpdate:   time.Now(),
 	}
 
+	p.mu.Lock()
 	p.pools[zid] = inst
+	p.mu.Unlock()
+
 	logger.Log.Infof("创建 API 连接成功: %s (ZID=%d, Version=%s)", instance.Name, zid, version)
 	return inst, nil
 }

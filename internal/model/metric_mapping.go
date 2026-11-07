@@ -181,10 +181,7 @@ func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []s
 		return 0, err
 	}
 
-	type hostData struct {
-		HostID string `json:"hostid"`
-	}
-	var hosts []hostData
+	var hosts []hostInventoryUpdateTarget
 	resByte, _ := json.Marshal(rep.Result)
 	json.Unmarshal(resByte, &hosts)
 
@@ -194,12 +191,11 @@ func executeMapping(apiInstance *APIInstance, config *MetricConfig, groupIDs []s
 
 	InventoryPara := make(map[string]string)
 	InventoryPara["type"] = config.HostType
-	_, err = apiInstance.API.CallWithError("host.massupdate", Params{
-		"hosts":          hosts,
-		"inventory_mode": 1,
-		"inventory":      InventoryPara,
-	})
+	updateParams, err := buildHostInventoryUpdateParams(hosts, InventoryPara)
 	if err != nil {
+		return 0, fmt.Errorf("设置主机类型失败: %w", err)
+	}
+	if _, err = apiInstance.API.CallWithError("host.update", updateParams); err != nil {
 		return 0, fmt.Errorf("设置主机类型失败: %w", err)
 	}
 

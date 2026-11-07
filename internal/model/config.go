@@ -3,10 +3,40 @@ package model
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
 )
+
+// 配置项内存缓存：config_key -> 原始 config_value（未解密）。
+// 系统配置极少变更，缓存命中可避免每次读取都查库（GetConfigValueByKey 全局调用约 80 处）。
+// 仅在 UpdateConfig 成功后按 key 失效，保证一致性；未命中（key 不存在）不缓存，
+// 以免启动阶段尚未创建的配置被永久记成“缺失”。
+var (
+	configValueCache   = make(map[string]string)
+	configValueCacheMu sync.RWMutex
+)
+
+func getCachedConfigRaw(key string) (string, bool) {
+	configValueCacheMu.RLock()
+	v, ok := configValueCache[key]
+	configValueCacheMu.RUnlock()
+	return v, ok
+}
+
+func setCachedConfigRaw(key, value string) {
+	configValueCacheMu.Lock()
+	configValueCache[key] = value
+	configValueCacheMu.Unlock()
+}
+
+// invalidateConfigCache 使指定配置项缓存失效（写入后调用）
+func invalidateConfigCache(key string) {
+	configValueCacheMu.Lock()
+	delete(configValueCache, key)
+	configValueCacheMu.Unlock()
+}
 
 // TableName alarm
 func (t *Config) TableName() string {
@@ -107,6 +137,9 @@ func UpdateConfig(m *Config) (err error) {
 		return err
 	}
 
+	// 配置已变更，使缓存失效
+	invalidateConfigCache(v.ConfigKey)
+
 	if IsTaskConfigKey(v.ConfigKey) {
 		ReloadTaskScheduler()
 	}
@@ -150,22 +183,33 @@ func GetConfigValueByKey(key string, defaultVal string) string {
 		return defaultVal
 	}
 
-	var c Config
-	err := DB.Where("config_key = ?", key).First(&c).Error
-	if err != nil || c.ConfigValue == "" {
+	// 先查内存缓存；未命中则回库并缓存原始值
+	raw, ok := getCachedConfigRaw(key)
+	if !ok {
+		var c Config
+		err := DB.Where("config_key = ?", key).First(&c).Error
+		if err != nil {
+			// 不缓存未命中，避免启动阶段尚未创建的配置被永久记成缺失
+			return defaultVal
+		}
+		raw = c.ConfigValue
+		setCachedConfigRaw(key, raw)
+	}
+
+	if raw == "" {
 		return defaultVal
 	}
 
 	// 如果是敏感字段，尝试解密
-	if isSensitiveConfigKey(key) && c.ConfigValue != "" {
-		decryptedValue, err := decryptConfigValueIfSensitive(key, c.ConfigValue, GetEncryptionKey())
+	if isSensitiveConfigKey(key) {
+		decryptedValue, err := decryptConfigValueIfSensitive(key, raw, GetEncryptionKey())
 		if err != nil {
 			// 解密失败，可能是旧数据未加密，直接返回原值
 			logger.Log.Warnf("解密配置 %s 失败，返回原值: %v", key, err)
-			return c.ConfigValue
+			return raw
 		}
 		return decryptedValue
 	}
 
-	return c.ConfigValue
+	return raw
 }

@@ -74,14 +74,28 @@ func GetCountHost() (IndexInfo, error) {
 		}
 	}
 
-	info, err := computeCountHost()
+	// 经 singleflight 回源，合并并发请求，避免缓存击穿（N×M 次远程调用只做一次）
+	v, err, _ := zbxFetchSF.Do(hostCountCacheKey, func() (interface{}, error) {
+		// 双检：可能已被其他并发请求或后台刷新填充
+		if cached, _ := CacheGet(hostCountCacheKey); cached != "" {
+			var info IndexInfo
+			if uErr := json.Unmarshal([]byte(cached), &info); uErr == nil {
+				return info, nil
+			}
+		}
+		info, cErr := computeCountHost()
+		if cErr != nil {
+			return IndexInfo{}, cErr
+		}
+		if b, mErr := json.Marshal(info); mErr == nil {
+			_ = CacheSet(hostCountCacheKey, string(b), hostCountCacheTTL)
+		}
+		return info, nil
+	})
 	if err != nil {
 		return IndexInfo{}, err
 	}
-	if b, mErr := json.Marshal(info); mErr == nil {
-		_ = CacheSet(hostCountCacheKey, string(b), hostCountCacheTTL)
-	}
-	return info, nil
+	return v.(IndexInfo), nil
 }
 
 // SyncHostCountCache 主动刷新主机统计缓存（由定时任务每 5 分钟调用一次）。

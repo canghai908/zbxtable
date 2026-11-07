@@ -131,7 +131,7 @@ func TestBuildHostFromListHostUsesActiveAvailabilityForActiveAgent(t *testing.T)
 		Interfaces: []HostListInterface{
 			{IP: "10.0.0.1", Available: "0"},
 		},
-	}, "VM_LIN")
+	}, "VM_LIN", "agent")
 
 	if host.Available != "1" {
 		t.Fatalf("expected active availability to mark host available, got %q", host.Available)
