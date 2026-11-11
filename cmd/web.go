@@ -2,15 +2,19 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 	v1 "zbxtable/api/v1"
 	"zbxtable/pkg/assets"
 	"zbxtable/pkg/logger"
+	otelinit "zbxtable/pkg/otel"
 
 	model "zbxtable/internal/model"
 
@@ -154,6 +158,20 @@ func runWeb(*cli.Context) error {
 		os.Exit(1)
 	}
 	logger.Log.Info("Database connected successfully")
+
+	// Initialize OpenTelemetry (reports to Zabbix 8 APM via OTLP).
+	// Runs after database init because its config is stored in the DB
+	// (system config, page-configurable). Changes take effect on restart.
+	otelShutdown := initOtel()
+	// Attach GORM SQL tracing now that the global provider is set.
+	model.EnableDBTracing()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			logger.Log.Error("OpenTelemetry shutdown failed:", err)
+		}
+	}()
 	if err := model.ResetStaleRunningReports(0); err != nil {
 		logger.Log.Error("Reset stale running reports failed:", err)
 	} else {
@@ -195,6 +213,101 @@ func runWeb(*cli.Context) error {
 
 	r.Run(":" + httpport)
 	return nil
+}
+
+// initOtel initializes OpenTelemetry tracing from configuration and returns a
+// shutdown function (always non-nil). Failures are logged but never fatal — the
+// service continues to run with tracing disabled.
+func initOtel() func(context.Context) error {
+	// OTel 配置存储在系统配置（数据库，可页面配置）；为平滑迁移，
+	// 数据库中为空时回退到 app.conf/.env 的同名键。修改后需重启生效。
+	getOtelConf := func(key string) string {
+		if v := model.GetConfigValueByKey(key, ""); v != "" {
+			return v
+		}
+		return GetConfKey(key)
+	}
+
+	enable := parseConfBool(getOtelConf("otel_enable"), false)
+	cfg := otelinit.Config{
+		Enabled:        enable,
+		Endpoint:       getOtelConf("otel_endpoint"),
+		Protocol:       getOtelConf("otel_protocol"),
+		Insecure:       parseConfBool(getOtelConf("otel_insecure"), true),
+		ServiceName:    getOtelConf("otel_service_name"),
+		ServiceVersion: model.Version,
+		Environment:    GetConfKey("runmode"),
+		SampleRatio:    parseConfFloat(getOtelConf("otel_sample_ratio"), 1.0),
+		// 日志上报默认跟随 otel_enable；可用 otel_logs_enable 单独关闭。
+		LogsEnabled: parseConfBool(getOtelConf("otel_logs_enable"), enable),
+		// 指标上报默认跟随 otel_enable；可用 otel_metrics_enable 单独关闭。
+		MetricsEnabled: parseConfBool(getOtelConf("otel_metrics_enable"), enable),
+		MetricInterval: time.Duration(parseConfFloat(getOtelConf("otel_metrics_interval"), 15)) * time.Second,
+	}
+	if cfg.ServiceName == "" {
+		cfg.ServiceName = "ZbxTable"
+	}
+
+	// 即使返回 err（例如日志子系统初始化失败），shutdown 仍然可用且安全，
+	// 追踪可能已成功启用，因此不能提前返回 noop。
+	shutdown, err := otelinit.Init(context.Background(), cfg)
+	if err != nil {
+		logger.Log.Error("OpenTelemetry initialization issue:", err)
+	}
+
+	if otelinit.Enabled() {
+		logger.Log.Infof("OpenTelemetry tracing enabled -> %s (%s)", cfg.Endpoint, protocolLabel(cfg.Protocol))
+	} else {
+		logger.Log.Info("OpenTelemetry tracing disabled (set otel_enable=true to report to Zabbix APM)")
+	}
+
+	// 启用日志上报时，将桥接 Hook 挂载到全局 logrus 实例。
+	if otelinit.LogsEnabled() {
+		otelinit.AttachLogrusHook(logger.Log)
+		logger.Log.Infof("OpenTelemetry logs enabled -> %s (%s)", cfg.Endpoint, protocolLabel(cfg.Protocol))
+	}
+
+	if otelinit.MetricsEnabled() {
+		logger.Log.Infof("OpenTelemetry metrics enabled -> %s (%s), interval %s", cfg.Endpoint, protocolLabel(cfg.Protocol), cfg.MetricInterval)
+	}
+
+	return shutdown
+}
+
+// protocolLabel normalizes the OTLP protocol for logging.
+func protocolLabel(p string) string {
+	if strings.EqualFold(strings.TrimSpace(p), "http") {
+		return "http"
+	}
+	return "grpc"
+}
+
+// parseConfBool parses a boolean-ish config string, falling back to def.
+func parseConfBool(v string, def bool) bool {
+	v = strings.TrimSpace(strings.ToLower(v))
+	if v == "" {
+		return def
+	}
+	switch v {
+	case "1", "true", "yes", "on", "enable", "enabled":
+		return true
+	case "0", "false", "no", "off", "disable", "disabled":
+		return false
+	}
+	return def
+}
+
+// parseConfFloat parses a float config string, falling back to def.
+func parseConfFloat(v string, def float64) float64 {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return def
+	}
+	return f
 }
 
 // initLoggerSafe safely initialize logger (not dependent on config file)

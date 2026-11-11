@@ -1,14 +1,18 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"time"
+
+	otelpkg "zbxtable/pkg/otel"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 var (
@@ -73,6 +77,18 @@ func InitGormDB(dbtype, dbhost, dbuser, dbpass, dbname, dbport string, runmode s
 	}
 
 	return nil
+}
+
+// EnableDBTracing 在 OpenTelemetry 初始化完成后挂载 GORM 追踪插件，
+// 为后续每条 SQL 生成 Span 上报到 Zabbix 8 APM。
+// 必须在 otel 全局 Provider 设置之后调用；未启用追踪时为空操作。
+func EnableDBTracing() {
+	if DB == nil || !otelpkg.Enabled() {
+		return
+	}
+	if err := DB.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
+		logger.Default.Error(context.Background(), "failed to enable gorm opentelemetry tracing: %v", err)
+	}
 }
 
 // AutoMigrate 自动迁移数据库表

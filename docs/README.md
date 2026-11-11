@@ -15,6 +15,10 @@
 - **[Docker 部署指南](../deployments/docker/README.md)** - 使用 Docker 和 Docker Compose 部署
 - **[系统说明文档](./SYSTEM.md)** - 完整的系统文档，包含安装、配置、使用等
 
+### 可观测性
+
+- **[OpenTelemetry 链路追踪](./OPENTELEMETRY.md)** - 对接 Zabbix 8 APM，上报 HTTP 与 SQL 调用链路
+
 ### 开发文档
 
 - **[贡献指南](../CONTRIBUTING.md)** - 如何为项目做出贡献

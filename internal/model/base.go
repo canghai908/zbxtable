@@ -454,6 +454,9 @@ func getDefaultConfigs() []Config {
 	// 演示模式配置
 	configs = append(configs, getDemoConfigs()...)
 
+	// OpenTelemetry / APM 配置
+	configs = append(configs, getOtelConfigs()...)
+
 	return configs
 }
 
@@ -465,6 +468,67 @@ func getDemoConfigs() []Config {
 			ConfigKey:   "demo_mode",
 			ConfigValue: "false",
 			Comment:     "是否开启演示模式（只读）：true 开启, false 关闭",
+		},
+	}
+}
+
+// getOtelConfigs OpenTelemetry / Zabbix 8 APM 配置
+// 注意：修改这些配置后需要重启服务才能生效。
+func getOtelConfigs() []Config {
+	return []Config{
+		{
+			Name:        "APM追踪开关",
+			ConfigKey:   "otel_enable",
+			ConfigValue: "false",
+			Comment:     "是否启用 OpenTelemetry 上报到 Zabbix 8 APM：true/false（修改后需重启生效）",
+		},
+		{
+			Name:        "OTLP接收端地址",
+			ConfigKey:   "otel_endpoint",
+			ConfigValue: "",
+			Comment:     "OTLP 接收端地址，不带协议前缀，例如 127.0.0.1:4317(grpc) / 127.0.0.1:4318(http)",
+		},
+		{
+			Name:        "OTLP协议",
+			ConfigKey:   "otel_protocol",
+			ConfigValue: "grpc",
+			Comment:     "传输协议：grpc 或 http",
+		},
+		{
+			Name:        "明文连接",
+			ConfigKey:   "otel_insecure",
+			ConfigValue: "true",
+			Comment:     "是否使用明文连接(不启用TLS)：true/false",
+		},
+		{
+			Name:        "服务名",
+			ConfigKey:   "otel_service_name",
+			ConfigValue: "ZbxTable",
+			Comment:     "在 Zabbix APM 中用于标识该服务的名称",
+		},
+		{
+			Name:        "采样率",
+			ConfigKey:   "otel_sample_ratio",
+			ConfigValue: "1.0",
+			Comment:     "链路采样率 [0,1]，1 表示全采样",
+		},
+		{
+			Name:        "日志上报开关",
+			ConfigKey:   "otel_logs_enable",
+			ConfigValue: "true",
+			Comment:     "是否同时上报应用日志到 Zabbix APM Logs：true/false（需 APM 追踪开关开启）",
+		},
+		{
+			Name:        "指标上报开关",
+			ConfigKey:   "otel_metrics_enable",
+			ConfigValue: "true",
+			Comment:     "是否同时上报指标到 Zabbix APM Metrics：true/false（需 APM 追踪开关开启）",
+		},
+		{
+			Name:        "指标导出周期",
+			ConfigKey:   "otel_metrics_interval",
+			ConfigValue: "15",
+			Comment:     "指标导出周期(秒)，默认 15",
 		},
 	}
 }
