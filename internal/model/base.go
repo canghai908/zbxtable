@@ -62,7 +62,7 @@ const (
 	// 默认用户头像 (空字符串，由前端处理默认头像)
 	DefaultAvatar = ""
 	//默认更新服务器
-	UpdateURL = "http://dl.cactifans.com/stable/"
+	UpdateURL = "https://dl.cactifans.com/stable/"
 
 	// 上传目录
 	UploadDir = "./upload"
@@ -70,8 +70,8 @@ const (
 	LogoUploadDir = "./upload/logo"
 	// 背景图片上传目录
 	BackgroundImageDir = "./upload/background"
-	// 允许的图片格式
-	AllowedImageExts = ".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+	// 允许的图片格式（禁止 .svg，避免上传 XSS）
+	AllowedImageExts = ".jpg,.jpeg,.png,.gif,.bmp,.webp"
 	// 最大文件大小 (10MB)
 	MaxFileSize = 10 * 1024 * 1024
 )

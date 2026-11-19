@@ -24,7 +24,7 @@ func GetPNGGraphFromInstance(inst *APIInstance, GraphID, start, end string) (png
 	client1 := &http.Client{
 		Transport: tr,
 		Jar:       inst.JAR, // 使用该实例的 JAR
-		Timeout:   99999999999992,
+		Timeout:   DefaultZabbixWebTimeout,
 	}
 
 	imgurl := inst.WebURL + "/chart2.php?"
@@ -56,14 +56,12 @@ func GetPNGGraphFromInstance(inst *APIInstance, GraphID, start, end string) (png
 	request.Header.Add("Connection", "keep-alive")
 	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
 
-	// 如果 JAR 中没有 cookie，需要先登录
+	// 如果 JAR 中没有 cookie，先登录到该实例自己的 jar，禁止覆盖为全局 JAR
 	if len(inst.JAR.cookies) == 0 && tenant.User != "" && tenant.Pass != "" {
-		if err := LoginZabbixWeb(inst.WebURL, tenant.User, tenant.Pass); err != nil {
-			logger.Log.Error("LoginZabbixWeb failed:", err)
+		if err := LoginZabbixWebToJar(inst.WebURL, tenant.User, tenant.Pass, inst.JAR); err != nil {
+			logger.Log.Error("LoginZabbixWebToJar failed:", err)
 			return "", err
 		}
-		// 更新实例的 JAR
-		inst.JAR = JAR
 	}
 
 	response1, err := client1.Do(request)

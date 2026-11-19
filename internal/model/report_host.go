@@ -580,7 +580,7 @@ func GetItemChartImageFromInstance(inst *APIInstance, itemID, start, end string)
 	client1 := &http.Client{
 		Transport: tr,
 		Jar:       jar,
-		Timeout:   99999999999992,
+		Timeout:   DefaultZabbixWebTimeout,
 	}
 
 	// 使用实例的 WebURL 获取 item 的图表

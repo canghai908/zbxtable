@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/response"
@@ -98,7 +99,7 @@ func GetImage(c *gin.Context) {
 	client1 := &http.Client{
 		Transport: tr,
 		Jar:       jarToUse,
-		Timeout:   99999999999999,
+		Timeout:   30 * time.Second,
 	}
 
 	imgurl := ZabbixWeb + "/chart2.php?"

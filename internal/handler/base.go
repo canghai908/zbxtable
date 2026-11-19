@@ -385,14 +385,11 @@ func ReceiveGin(c *gin.Context) {
 		response.BadRequest(c, res.Msg)
 		return
 	}
-	//老系统使用的是ZBX-TenantID
-	TenantID := c.GetHeader("ZBX-TenantID")
+	// 兼容旧 webhook：ZBX-TenantID；新系统：X-Instance
 	token := c.GetHeader("X-Token")
-	var Instance string
-	//如果为空可能是新webhook
-	if TenantID == "" {
-		//新系统使用的是X-Instance
-		Instance = c.GetHeader("X-Instance")
+	Instance := strings.TrimSpace(c.GetHeader("ZBX-TenantID"))
+	if Instance == "" {
+		Instance = strings.TrimSpace(c.GetHeader("X-Instance"))
 	}
 	if Instance == "" {
 		response.BadRequest(c, "instanceID not found")

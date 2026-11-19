@@ -36,9 +36,19 @@ func InitRouter() *gin.Engine {
 	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
-	// 下载 / 上传目录：禁止匿名目录列举，已知文件路径仍可直链访问
-	r.StaticFS("/download", middleware.NoListDir("./download"))
-	r.StaticFS("/upload", middleware.NoListDir("./upload"))
+	// 下载目录：禁止目录列举，且必须登录（Cookie / Header）后才能直链访问报表文件
+	downloadGroup := r.Group("/download")
+	downloadGroup.Use(middleware.JWTAuthMiddleware())
+	{
+		downloadGroup.StaticFS("/", middleware.NoListDir("./download"))
+	}
+
+	// 上传目录：禁止目录列举；logo/background 可匿名（登录页与公开拓扑），其余需登录
+	uploadGroup := r.Group("/upload")
+	uploadGroup.Use(middleware.JWTAuthUnless("/upload/logo", "/upload/background"))
+	{
+		uploadGroup.StaticFS("/", middleware.NoListDir("./upload"))
+	}
 
 	// 获取嵌入的前端文件系统
 	distFS := web.GetDistFSRoot()
@@ -458,7 +468,8 @@ func InitRouter() *gin.Engine {
 		if strings.HasPrefix(path, "/v1") ||
 			strings.HasPrefix(path, "/install") ||
 			strings.HasPrefix(path, "/ws") ||
-			strings.HasPrefix(path, "/download") {
+			strings.HasPrefix(path, "/download") ||
+			strings.HasPrefix(path, "/upload") {
 			c.JSON(404, gin.H{"code": 404, "message": "Not Found"})
 			return
 		}

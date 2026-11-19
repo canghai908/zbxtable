@@ -27,11 +27,22 @@ func (jar *Jar) Cookies(u *url.URL) []*http.Cookie {
 	return jar.cookies
 }
 
-// JAR st
+// JAR 全局备用 Cookie 罐（兼容旧路径）；多实例场景应使用各 APIInstance.JAR。
 var JAR = new(Jar)
 
-// LoginZabbixWeb 登录 Zabbix Web（图表回退路径）。失败只记日志，绝不退出进程。
+// DefaultZabbixWebTimeout 图表 / Web 登录请求超时，避免无限挂起。
+const DefaultZabbixWebTimeout = 30 * time.Second
+
+// LoginZabbixWeb 登录到全局 JAR（兼容旧调用）。
 func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) error {
+	return LoginZabbixWebToJar(ZabbixWeb, ZabbixUser, ZabbixPass, JAR)
+}
+
+// LoginZabbixWebToJar 登录并将 Cookie 写入指定 jar，避免多实例互相覆盖。
+func LoginZabbixWebToJar(ZabbixWeb, ZabbixUser, ZabbixPass string, jar *Jar) error {
+	if jar == nil {
+		jar = JAR
+	}
 	v := url.Values{}
 	v.Set("name", ZabbixUser)
 	v.Add("password", ZabbixPass)
@@ -42,8 +53,8 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) error {
 	}
 	client := &http.Client{
 		Transport: tr,
-		Jar:       JAR,
-		Timeout:   30 * time.Second,
+		Jar:       jar,
+		Timeout:   DefaultZabbixWebTimeout,
 	}
 	request, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
@@ -86,21 +97,19 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) error {
 		return err
 	}
 
-	// 开发模式下打印详细信息
 	runmode := GetConfKey("runmode")
 	if runmode == "dev" {
 		logger.Log.Info("Login to zabbix  successfully！http status code:", response.StatusCode)
 	} else {
 		logger.Log.Info("Login to zabbix  successfully!")
 	}
-	//解析并把cookies存如redis
+
 	u, err := url.Parse(ZabbixWeb)
 	if err != nil {
 		logger.Log.Errorf("failed to parse URL: %v", err)
 		return err
 	}
-	//把cookies设置到缓存中
-	cookies := JAR.Cookies(u) // 从 CookieJar 中获取指定 URL 的 Cookies
+	cookies := jar.Cookies(u)
 	for _, cookie := range cookies {
 		value, err := url.QueryUnescape(cookie.Value)
 		if err != nil {

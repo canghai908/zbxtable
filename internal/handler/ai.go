@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
@@ -16,7 +18,20 @@ import (
 
 var alarmPromptVarPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_]+)\s*\}\}`)
 var aiConfigValueByKey = model.GetConfigValueByKey
-var aiHTTPClient = &http.Client{}
+
+// aiHTTPClient 不设整体 Timeout（流式响应可能较长），但限制建连与响应头等待。
+var aiHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   15 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: 60 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   15 * time.Second,
+	},
+}
 
 func extractAlarmContext(rawMessage string) (string, string) {
 	parts := strings.SplitN(rawMessage, "\n\n", 2)
@@ -241,8 +256,21 @@ func handleOllamaChat(c *gin.Context, message string) {
 
 	ollamaURL := fmt.Sprintf("%s/api/chat", ollamaHost)
 
-	// 发送请求到 Ollama
-	resp, err := http.Post(ollamaURL, "application/json", bytes.NewBuffer(jsonData))
+	// 发送请求到 Ollama（带建连/响应头超时，避免无限挂起）
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, ollamaURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		var AIRes struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			Data    string `json:"data"`
+		}
+		AIRes.Code = 500
+		AIRes.Message = fmt.Sprintf("创建 Ollama 请求失败: %v", err)
+		c.JSON(http.StatusOK, AIRes)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := aiHTTPClient.Do(req)
 	if err != nil {
 		var AIRes struct {
 			Code    int    `json:"code"`

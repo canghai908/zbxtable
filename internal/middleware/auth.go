@@ -19,48 +19,66 @@ import (
 // os.Stat + ini.Load 磁盘读取。
 var installConfirmed atomic.Bool
 
+// extractRequestToken 从 header / Bearer / Cookie 提取登录令牌。
+// 静态资源（如 <a href="/download/...">、<img src="/upload/...">）只能依赖 Cookie。
+func extractRequestToken(c *gin.Context) string {
+	if token := strings.TrimSpace(c.GetHeader("X-Token")); token != "" {
+		return token
+	}
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	}
+	if cookie, err := c.Cookie("X-Token"); err == nil {
+		return strings.TrimSpace(cookie)
+	}
+	return ""
+}
+
+func abortUnauthorizedToken(c *gin.Context) {
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"code":    50014,
+		"message": "token过期或非法的token",
+		"data": gin.H{
+			"items": "",
+			"total": 0,
+		},
+	})
+	c.Abort()
+}
+
 // JWTAuthMiddleware JWT 认证中间件
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("X-Token")
+		tokenString := extractRequestToken(c)
 		if tokenString == "" {
-			// 尝试从 Authorization header 获取
-			authHeader := c.GetHeader("Authorization")
-			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-				tokenString = strings.TrimPrefix(authHeader, "Bearer ")
-			}
-		}
-
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    50014,
-				"message": "token过期或非法的token",
-				"data": gin.H{
-					"items": "",
-					"total": 0,
-				},
-			})
-			c.Abort()
+			abortUnauthorizedToken(c)
 			return
 		}
 
 		valid, username, _ := auth.ValidateToken(tokenString)
 		if !valid {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    50014,
-				"message": "token过期或非法的token",
-				"data": gin.H{
-					"items": "",
-					"total": 0,
-				},
-			})
-			c.Abort()
+			abortUnauthorizedToken(c)
 			return
 		}
 
-		// 将用户名存储到上下文中
 		c.Set("username", username)
 		c.Next()
+	}
+}
+
+// JWTAuthUnless 对指定前缀放行，其余路径要求登录。
+// 用于 /upload：logo/background 需给登录页与公开分享页匿名访问。
+func JWTAuthUnless(publicPrefixes ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		for _, prefix := range publicPrefixes {
+			if path == prefix || strings.HasPrefix(path, prefix+"/") {
+				c.Next()
+				return
+			}
+		}
+		JWTAuthMiddleware()(c)
 	}
 }
 
