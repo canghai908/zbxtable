@@ -87,6 +87,7 @@ Configure Webhook media type in Zabbix to send alerts to ZbxTable's Webhook endp
 
 | Zabbix Version | Compatibility |
 |:---------------|:-------------:|
+| 8.0.x LTS      |       ✅       |
 | 7.4.x          |       ✅       |
 | 7.2.x          |       ✅       |
 | 7.0.x LTS      |       ✅       |
