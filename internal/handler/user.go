@@ -203,6 +203,39 @@ func DeleteUserGin(c *gin.Context) {
 	response.SuccessWithMessage(c, "删除成功", nil)
 }
 
+// UpdateSelfThemeGin 当前登录用户更新自己的主题配置（不要求管理员）。
+func UpdateSelfThemeGin(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		response.BadRequest(c, "请求体读取失败")
+		return
+	}
+
+	theme := gjson.Get(string(body), "theme").String()
+	if theme == "" {
+		response.ValidationError(c, "主题配置不能为空")
+		return
+	}
+
+	usernameValue, ok := c.Get("username")
+	if !ok {
+		response.Unauthorized(c, "登录状态失效")
+		return
+	}
+	username, _ := usernameValue.(string)
+	if username == "" {
+		response.Unauthorized(c, "登录状态失效")
+		return
+	}
+
+	if err := model.UpdateUserTheme(username, theme); err != nil {
+		response.DatabaseError(c, "更新主题失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "主题保存成功", nil)
+}
+
 // ChangePasswordGin 修改当前登录用户密码
 func ChangePasswordGin(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)

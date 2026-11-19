@@ -122,6 +122,17 @@ func AddUser(m *User) (id int64, err error) {
 	return int64(m.ID), nil
 }
 
+// UpdateUserTheme 更新指定用户名的主题配置（仅允许改自己的 theme）。
+func UpdateUserTheme(username, theme string) error {
+	if username == "" {
+		return errors.New("username is empty")
+	}
+	if theme == "" {
+		return errors.New("theme is empty")
+	}
+	return DB.Model(&User{}).Where("username = ?", username).Update("theme", theme).Error
+}
+
 // UpdateUser 更新用户信息（仅管理员可改密码 / 角色 / 他人资料）
 func UpdateUser(m *User, tuser string) error {
 	//role检查

@@ -124,22 +124,22 @@ func InitRouter() *gin.Engine {
 		api.Use(middleware.JWTAuthMiddleware())
 		api.Use(middleware.DemoModeMiddleware())
 		{
-			// Zabbix 租户管理（合并后的统一接口）
+			// Zabbix 租户管理（写操作仅管理员）
 			zabbixGroup := api.Group("/zabbix")
 			{
 				// 租户管理
 				zabbixGroup.GET("/instance", handler.ListZabbixInstanceGin)
 				zabbixGroup.GET("/instance/:id", handler.GetZabbixInstanceGin)
-				zabbixGroup.POST("/instance", handler.CreateZabbixInstanceGin)
-				zabbixGroup.POST("/instance/test", handler.TestZabbixInstanceConfigGin)
-				zabbixGroup.POST("/instance/:id/test", handler.TestZabbixInstanceGin)
-				zabbixGroup.PUT("/instance/:id", handler.UpdateZabbixInstanceGin)
-				zabbixGroup.DELETE("/instance/:id", handler.DeleteZabbixInstanceGin)
-				zabbixGroup.PUT("/instance/:id/enabled", handler.EnableZabbixInstanceGin)
+				zabbixGroup.POST("/instance", middleware.RequireAdmin(), handler.CreateZabbixInstanceGin)
+				zabbixGroup.POST("/instance/test", middleware.RequireAdmin(), handler.TestZabbixInstanceConfigGin)
+				zabbixGroup.POST("/instance/:id/test", middleware.RequireAdmin(), handler.TestZabbixInstanceGin)
+				zabbixGroup.PUT("/instance/:id", middleware.RequireAdmin(), handler.UpdateZabbixInstanceGin)
+				zabbixGroup.DELETE("/instance/:id", middleware.RequireAdmin(), handler.DeleteZabbixInstanceGin)
+				zabbixGroup.PUT("/instance/:id/enabled", middleware.RequireAdmin(), handler.EnableZabbixInstanceGin)
 				// Webhook 安装相关
-				zabbixGroup.POST("/instance/:id/install-webhook", handler.InstallWebhookGin)
+				zabbixGroup.POST("/instance/:id/install-webhook", middleware.RequireAdmin(), handler.InstallWebhookGin)
 				zabbixGroup.GET("/instance/:id/webhook-info", handler.GetWebhookInfoGin)
-				zabbixGroup.DELETE("/instance/:id/uninstall-webhook", handler.UninstallWebhookGin)
+				zabbixGroup.DELETE("/instance/:id/uninstall-webhook", middleware.RequireAdmin(), handler.UninstallWebhookGin)
 			}
 
 			// 首页/仪表板
@@ -281,32 +281,32 @@ func InitRouter() *gin.Engine {
 				topodataGroup.POST("", handler.CreateTopoData)
 			}
 
-			// 系统配置
+			// 系统配置（写操作仅管理员；版本查询保持登录可读）
 			systemGroup := api.Group("/system")
 			{
 				systemGroup.GET("", handler.GetAllSystem)
-				systemGroup.POST("", handler.CreateSystem)
+				systemGroup.POST("", middleware.RequireAdmin(), handler.CreateSystem)
 				systemGroup.GET("/:id", handler.GetSystemByID)
-				systemGroup.PUT("/:id", handler.UpdateSystem)
-				systemGroup.DELETE("/:id", handler.DeleteSystem)
-				systemGroup.POST("/init/:id", handler.SystemInit)
+				systemGroup.PUT("/:id", middleware.RequireAdmin(), handler.UpdateSystem)
+				systemGroup.DELETE("/:id", middleware.RequireAdmin(), handler.DeleteSystem)
+				systemGroup.POST("/init/:id", middleware.RequireAdmin(), handler.SystemInit)
 				systemGroup.GET("/:id/history", handler.GetSystemHistory)
 				systemGroup.GET("/config", handler.GetAllConfig)
-				systemGroup.PUT("/config/:id", handler.UpdateConfig)
-				systemGroup.POST("/upload-logo", handler.UploadLogo)
+				systemGroup.PUT("/config/:id", middleware.RequireAdmin(), handler.UpdateConfig)
+				systemGroup.POST("/upload-logo", middleware.RequireAdmin(), handler.UploadLogo)
 
 				// 初始配置状态
 				systemGroup.GET("/setup-status", handler.GetInitialSetupStatus)
-				systemGroup.POST("/complete-setup", handler.CompleteInitialSetup)
+				systemGroup.POST("/complete-setup", middleware.RequireAdmin(), handler.CompleteInitialSetup)
 
 				// 配置测试
-				systemGroup.POST("/test-email", handler.TestEmailConfig)
-				systemGroup.POST("/test-wechat", handler.TestWechatConfig)
+				systemGroup.POST("/test-email", middleware.RequireAdmin(), handler.TestEmailConfig)
+				systemGroup.POST("/test-wechat", middleware.RequireAdmin(), handler.TestWechatConfig)
 
 				// 系统更新
 				systemGroup.GET("/version", handler.GetCurrentVersion)
 				systemGroup.GET("/check-update", handler.CheckUpdate)
-				systemGroup.POST("/update", handler.DoUpdate)
+				systemGroup.POST("/update", middleware.RequireAdmin(), handler.DoUpdate)
 			}
 
 			// 设备分组管理（一级菜单分类）
@@ -401,11 +401,12 @@ func InitRouter() *gin.Engine {
 				ruleGroup.DELETE("/:id", handler.DeleteRule)
 			}
 
-			// 用户管理（写操作仅管理员）
+			// 用户管理（写操作仅管理员；主题允许登录用户改自己的）
 			userGroup := api.Group("/user")
 			{
 				userGroup.GET("", handler.GetUserGin)
 				userGroup.POST("", middleware.RequireAdmin(), handler.CreateUserGin)
+				userGroup.PUT("/theme", handler.UpdateSelfThemeGin)
 				userGroup.PUT("/:id", middleware.RequireAdmin(), handler.UpdateUserGin)
 				userGroup.DELETE("/:id", middleware.RequireAdmin(), handler.DeleteUserGin)
 			}
