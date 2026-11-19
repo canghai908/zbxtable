@@ -346,11 +346,11 @@ func buildHostFromListHost(inst *APIInstance, v ListHost, hostType, monitorType 
 // paginateHosts 分页处理
 func paginateHosts(hosts []Hosts, page, limit string) ([]Hosts, int64, error) {
 	IntPage, err := strconv.Atoi(page)
-	if err != nil {
+	if err != nil || IntPage <= 0 {
 		IntPage = 1
 	}
 	IntLimit, err := strconv.Atoi(limit)
-	if err != nil {
+	if err != nil || IntLimit <= 0 {
 		IntLimit = 10
 	}
 
@@ -364,14 +364,17 @@ func paginateHosts(hosts []Hosts, page, limit string) ([]Hosts, int64, error) {
 	if IntPage > totalpages {
 		IntPage = totalpages
 	}
-	if IntPage <= 0 {
-		IntPage = 1
-	}
 
 	begin := (IntPage - 1) * IntLimit
 	end := IntPage * IntLimit
+	if begin < 0 {
+		begin = 0
+	}
 	if end > int(total) {
 		end = int(total)
+	}
+	if begin > end {
+		begin = end
 	}
 
 	return hosts[begin:end], total, nil

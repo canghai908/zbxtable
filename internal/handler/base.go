@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	model "zbxtable/internal/model"
@@ -31,10 +32,36 @@ const (
 	wsWriteWait  = 10 * time.Second // 单次写超时
 )
 
+// extractWSToken 从 query / header / cookie 提取登录令牌（WebSocket 无法自定义 header 时用 query）。
+func extractWSToken(c *gin.Context) string {
+	if token := strings.TrimSpace(c.Query("token")); token != "" {
+		return token
+	}
+	if token := strings.TrimSpace(c.GetHeader("X-Token")); token != "" {
+		return token
+	}
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	}
+	if cookie, err := c.Cookie("X-Token"); err == nil {
+		return strings.TrimSpace(cookie)
+	}
+	return ""
+}
+
 // WebSocketHandlerGin WebSocket 处理（Gin版本）
 func WebSocketHandlerGin(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
+
+	tokenString := extractWSToken(c)
+	valid, username, _ := auth.ValidateToken(tokenString)
+	if !valid {
+		response.Unauthorized(c, "token过期或非法的token")
+		return
+	}
+	c.Set("username", username)
 
 	// 使用与 websocket.go 相同的 upgrader 配置
 	upgrader := websocket.Upgrader{

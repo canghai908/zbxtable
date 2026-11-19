@@ -3,11 +3,12 @@ package model
 import (
 	"compress/gzip"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
+	"time"
 	"zbxtable/pkg/logger"
 )
 
@@ -29,8 +30,8 @@ func (jar *Jar) Cookies(u *url.URL) []*http.Cookie {
 // JAR st
 var JAR = new(Jar)
 
-// LoginZabbixWeb a
-func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
+// LoginZabbixWeb 登录 Zabbix Web（图表回退路径）。失败只记日志，绝不退出进程。
+func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) error {
 	v := url.Values{}
 	v.Set("name", ZabbixUser)
 	v.Add("password", ZabbixPass)
@@ -42,12 +43,12 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	client := &http.Client{
 		Transport: tr,
 		Jar:       JAR,
-		Timeout:   99999999999999,
+		Timeout:   30 * time.Second,
 	}
 	request, err := http.NewRequest("POST", ZabbixWeb+"/index.php", strings.NewReader(v.Encode()))
 	if err != nil {
 		logger.Log.Error("Fatal error ", err.Error())
-		return
+		return err
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	request.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
@@ -58,27 +59,31 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	response, err := client.Do(request)
 	if err != nil {
 		logger.Log.Error("Fatal error ", err.Error())
-		return
+		return err
 	}
 	defer response.Body.Close()
-	if response.StatusCode == 200 {
-		var reader io.Reader
-		switch response.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, _ = gzip.NewReader(response.Body)
-		default:
-			reader = response.Body
-		}
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			logger.Log.Errorf("failed to read response data: %+v", err)
-		}
-		if strings.Contains(string(data), "blocked") {
-			logger.Log.Error("login to Zabbix failed!")
-			os.Exit(1)
-		}
-	} else {
-		os.Exit(1)
+	if response.StatusCode != 200 {
+		err := fmt.Errorf("login to zabbix web failed, status=%d", response.StatusCode)
+		logger.Log.Error(err)
+		return err
+	}
+
+	var reader io.Reader
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, _ = gzip.NewReader(response.Body)
+	default:
+		reader = response.Body
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		logger.Log.Errorf("failed to read response data: %+v", err)
+		return err
+	}
+	if strings.Contains(string(data), "blocked") {
+		err := fmt.Errorf("login to Zabbix failed: account blocked")
+		logger.Log.Error(err)
+		return err
 	}
 
 	// 开发模式下打印详细信息
@@ -92,7 +97,7 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 	u, err := url.Parse(ZabbixWeb)
 	if err != nil {
 		logger.Log.Errorf("failed to parse URL: %v", err)
-		return
+		return err
 	}
 	//把cookies设置到缓存中
 	cookies := JAR.Cookies(u) // 从 CookieJar 中获取指定 URL 的 Cookies
@@ -100,12 +105,13 @@ func LoginZabbixWeb(ZabbixWeb, ZabbixUser, ZabbixPass string) {
 		value, err := url.QueryUnescape(cookie.Value)
 		if err != nil {
 			logger.Log.Error("解码失败:", err)
-			return
+			return err
 		}
 		err = CacheSet("zbx_session", value, 0)
 		if err != nil {
 			logger.Log.Error(err)
-			return
+			return err
 		}
 	}
+	return nil
 }

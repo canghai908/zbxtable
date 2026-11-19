@@ -13,7 +13,6 @@ import (
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/response"
 
-	"github.com/canghai908/zabbix-go"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -49,8 +48,8 @@ func checkZabbixAPISafe(address, user, pass, token string) (string, error) {
 	if resp.StatusCode != http.StatusPreconditionFailed {
 		return "", &ZabbixAPIError{Message: "Zabbix API 地址不正确，状态码: " + strconv.Itoa(resp.StatusCode)}
 	}
-	// api定义
-	api := zabbix.NewAPI(addURL)
+	// api定义（带超时，避免安装探活挂死）
+	api := model.NewZabbixAPI(addURL)
 	if token != "" {
 		api.SetAuth(token)
 	} else {
@@ -231,8 +230,27 @@ type CheckDatabaseRequest struct {
 	DBPort string `json:"dbport"`
 }
 
+// isSystemInstalled 根据配置文件判断系统是否已完成安装。
+func isSystemInstalled() bool {
+	confPath := "./config/app.conf"
+	cfg, err := ini.Load(confPath)
+	if err != nil {
+		return false
+	}
+	dbtype := cfg.Section("").Key("dbtype").String()
+	dbname := cfg.Section("").Key("dbname").String()
+	dbhost := cfg.Section("").Key("dbhost").String()
+	return dbtype != "" && dbname != "" && dbhost != ""
+}
+
 // CheckDatabase 检查数据库连接
 func CheckDatabase(c *gin.Context) {
+	// 安装完成后禁止匿名探活，避免被当作端口/数据库扫描器
+	if isSystemInstalled() {
+		response.Forbidden(c, "系统已安装，禁止数据库探活")
+		return
+	}
+
 	var req CheckDatabaseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误: "+err.Error())

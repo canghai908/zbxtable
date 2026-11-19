@@ -10,8 +10,6 @@ import (
 	"time"
 	"zbxtable/pkg/logger"
 	"zbxtable/pkg/utils"
-
-	zabbix "github.com/canghai908/zabbix-go"
 )
 
 // TestZabbixInstanceConfig 测试 Zabbix 配置能否连通
@@ -35,7 +33,7 @@ func TestZabbixInstanceConfig(webURL, user, pass, token string) (string, error) 
 		return "", errors.New("Zabbix API 地址不正确，状态码: " + strconv.Itoa(resp.StatusCode))
 	}
 
-	api := zabbix.NewAPI(apiURL)
+	api := NewZabbixAPI(apiURL)
 	if strings.TrimSpace(token) != "" {
 		api.SetAuth(strings.TrimSpace(token))
 	} else {
@@ -315,7 +313,7 @@ func UninstallMSAgentFromZabbixInstance(zid int) error {
 
 	// 解密密码和Token
 	decryptedPass, decryptedToken := DecryptInstanceCredentials(instance)
-	api := zabbix.NewAPI(instance.URL + "/api_jsonrpc.php")
+	api := NewZabbixAPI(instance.URL + "/api_jsonrpc.php")
 	if decryptedToken != "" {
 		api.Auth = decryptedToken
 	} else {

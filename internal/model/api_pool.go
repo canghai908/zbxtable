@@ -134,8 +134,8 @@ func (p *APIPool) GetOrCreateAPI(zid int) (*APIInstance, error) {
 		return nil, fmt.Errorf("API 地址不正确，状态码: %d", resp.StatusCode)
 	}
 
-	// 创建 API 对象
-	api := zabbix.NewAPI(apiURL)
+	// 创建 API 对象（带请求超时，避免 JSON-RPC 挂起）
+	api := NewZabbixAPI(apiURL)
 	if strings.TrimSpace(decryptedToken) != "" {
 		api.SetAuth(strings.TrimSpace(decryptedToken))
 	} else if strings.TrimSpace(instance.User) != "" && strings.TrimSpace(decryptedPass) != "" {

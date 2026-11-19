@@ -58,7 +58,10 @@ func GetPNGGraphFromInstance(inst *APIInstance, GraphID, start, end string) (png
 
 	// 如果 JAR 中没有 cookie，需要先登录
 	if len(inst.JAR.cookies) == 0 && tenant.User != "" && tenant.Pass != "" {
-		LoginZabbixWeb(inst.WebURL, tenant.User, tenant.Pass)
+		if err := LoginZabbixWeb(inst.WebURL, tenant.User, tenant.Pass); err != nil {
+			logger.Log.Error("LoginZabbixWeb failed:", err)
+			return "", err
+		}
 		// 更新实例的 JAR
 		inst.JAR = JAR
 	}

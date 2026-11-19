@@ -54,6 +54,20 @@ func TestLimitHosts(t *testing.T) {
 	}
 }
 
+func TestPaginateHostsNegativeLimit(t *testing.T) {
+	hosts := []Hosts{{HostID: "1"}, {HostID: "2"}, {HostID: "3"}}
+	got, total, err := paginateHosts(hosts, "1", "-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 3 {
+		t.Fatalf("total = %d, want 3", total)
+	}
+	if len(got) != 3 {
+		t.Fatalf("len = %d, want 3 (default page size covers all)", len(got))
+	}
+}
+
 func TestSearchHostsInOverviewData(t *testing.T) {
 	overview := map[string][]Hosts{
 		"VM_LIN": {

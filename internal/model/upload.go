@@ -115,9 +115,16 @@ func DeleteBackgroundImage(path string) error {
 		return fmt.Errorf("无效的文件路径")
 	}
 
-	// 转换为实际文件路径
-	filename := strings.TrimPrefix(path, "/upload/background/")
-	filePath := filepath.Join(BackgroundImageDir, filename)
+	// 仅允许 basename，禁止 ../ 逃出上传目录
+	filename := filepath.Base(strings.TrimPrefix(path, "/upload/background/"))
+	if filename == "" || filename == "." || filename == ".." {
+		return fmt.Errorf("无效的文件路径")
+	}
+
+	filePath, err := safePathUnder(BackgroundImageDir, filename)
+	if err != nil {
+		return fmt.Errorf("无效的文件路径")
+	}
 
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -133,6 +140,24 @@ func DeleteBackgroundImage(path string) error {
 	logger.Log.Info("Background image deleted successfully:", path)
 
 	return nil
+}
+
+// safePathUnder 将 name 拼到 base 下，并确认最终绝对路径仍位于 base 内。
+func safePathUnder(base, name string) (string, error) {
+	baseAbs, err := filepath.Abs(base)
+	if err != nil {
+		return "", err
+	}
+	full := filepath.Join(baseAbs, name)
+	fullAbs, err := filepath.Abs(full)
+	if err != nil {
+		return "", err
+	}
+	sep := string(os.PathSeparator)
+	if fullAbs != baseAbs && !strings.HasPrefix(fullAbs, baseAbs+sep) {
+		return "", fmt.Errorf("path escapes base directory")
+	}
+	return fullAbs, nil
 }
 
 // SaveImage 保存通用图片
