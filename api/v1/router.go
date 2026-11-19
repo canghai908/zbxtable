@@ -36,11 +36,9 @@ func InitRouter() *gin.Engine {
 	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
-	// 下载文件目录（使用文件系统）
-	r.Static("/download", "./download")
-
-	// 上传文件目录（静态文件服务）
-	r.Static("/upload", "./upload")
+	// 下载 / 上传目录：禁止匿名目录列举，已知文件路径仍可直链访问
+	r.StaticFS("/download", middleware.NoListDir("./download"))
+	r.StaticFS("/upload", middleware.NoListDir("./upload"))
 
 	// 获取嵌入的前端文件系统
 	distFS := web.GetDistFSRoot()
@@ -403,13 +401,13 @@ func InitRouter() *gin.Engine {
 				ruleGroup.DELETE("/:id", handler.DeleteRule)
 			}
 
-			// 用户管理
+			// 用户管理（写操作仅管理员）
 			userGroup := api.Group("/user")
 			{
 				userGroup.GET("", handler.GetUserGin)
-				userGroup.POST("", handler.CreateUserGin)
-				userGroup.PUT("/:id", handler.UpdateUserGin)
-				userGroup.DELETE("/:id", handler.DeleteUserGin)
+				userGroup.POST("", middleware.RequireAdmin(), handler.CreateUserGin)
+				userGroup.PUT("/:id", middleware.RequireAdmin(), handler.UpdateUserGin)
+				userGroup.DELETE("/:id", middleware.RequireAdmin(), handler.DeleteUserGin)
 			}
 
 			// 用户组管理

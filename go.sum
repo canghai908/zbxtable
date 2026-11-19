@@ -12,8 +12,6 @@ github.com/bytedance/sonic v1.14.1 h1:FBMC0zVz5XUmE4z9wF4Jey0An5FueFvOsTKKKtwIl7
 github.com/bytedance/sonic v1.14.1/go.mod h1:gi6uhQLMbTdeP0muCnrjHLeCUPyb70ujhnNlhOylAFc=
 github.com/bytedance/sonic/loader v0.3.0 h1:dskwH8edlzNMctoruo8FPTJDF3vLtDT0sXZwvZJyqeA=
 github.com/bytedance/sonic/loader v0.3.0/go.mod h1:N8A3vUdtUebEY2/VQC0MyhYeKUFosQU6FxH2JmUe6VI=
-github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e h1:gIJlATHNUZKU9Wl6OvJlT+gjGs47E+9jPVFgUVvyI84=
-github.com/canghai908/jwt-beego v0.0.0-20210814140549-930145f4313e/go.mod h1:+1/uFfi85e3IKXAeS2MKv6/eyzEincV+YBUf4MZTFNs=
 github.com/canghai908/reflector v0.0.0-20230322064147-12d37cdd08b2 h1:3QlyUX1sbiA9I+itbd5ajhomvwh+HrFDinL+K4yeR4w=
 github.com/canghai908/reflector v0.0.0-20230322064147-12d37cdd08b2/go.mod h1:Slnu9pyBZxRPCSA0WlYaOSXVPLAm/y5jEROSyrpnm6w=
 github.com/canghai908/zabbix-go v1.0.1 h1:NWKXEBWWJ8WMn8uasxMbvIa3qOQUkcJCaPgHDw9k67o=

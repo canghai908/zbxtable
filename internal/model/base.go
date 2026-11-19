@@ -405,9 +405,37 @@ func IsPasswordConfigured() bool {
 	return pass != "" && user != ""
 }
 
+// encryptionKeyOverride 仅供测试注入安装级密钥，生产环境应始终为空。
+var (
+	encryptionKeyOverride   string
+	encryptionKeyOverrideMu sync.RWMutex
+)
+
+// SetEncryptionKeyForTest 覆盖 GetEncryptionKey 的返回值，返回清理函数。
+// 仅用于单测，勿在生产路径调用。
+func SetEncryptionKeyForTest(key string) func() {
+	encryptionKeyOverrideMu.Lock()
+	prev := encryptionKeyOverride
+	encryptionKeyOverride = key
+	encryptionKeyOverrideMu.Unlock()
+	return func() {
+		encryptionKeyOverrideMu.Lock()
+		encryptionKeyOverride = prev
+		encryptionKeyOverrideMu.Unlock()
+	}
+}
+
 // GetEncryptionKey 获取加密密钥
 // 优先从数据库读取，如果数据库中没有则从环境变量读取，最后使用默认密钥
 func GetEncryptionKey() string {
+	encryptionKeyOverrideMu.RLock()
+	if encryptionKeyOverride != "" {
+		key := encryptionKeyOverride
+		encryptionKeyOverrideMu.RUnlock()
+		return key
+	}
+	encryptionKeyOverrideMu.RUnlock()
+
 	// 1. 优先从数据库读取
 	key := GetConfigValueByKey("encryption_key", "")
 	if key != "" {

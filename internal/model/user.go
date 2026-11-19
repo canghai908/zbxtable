@@ -122,7 +122,7 @@ func AddUser(m *User) (id int64, err error) {
 	return int64(m.ID), nil
 }
 
-// UpdateUser 更新用户信息
+// UpdateUser 更新用户信息（仅管理员可改密码 / 角色 / 他人资料）
 func UpdateUser(m *User, tuser string) error {
 	//role检查
 	var p User
@@ -130,7 +130,7 @@ func UpdateUser(m *User, tuser string) error {
 	if err != nil {
 		return err
 	}
-	if p.Role != "admin" && m.Role == "admin" {
+	if p.Role != "admin" {
 		return errors.New("no permission")
 	}
 

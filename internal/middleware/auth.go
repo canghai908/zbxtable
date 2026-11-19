@@ -6,9 +6,10 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"zbxtable/internal/auth"
 	"zbxtable/internal/model"
+	"zbxtable/pkg/response"
 
-	jwtbeego "github.com/canghai908/jwt-beego"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/ini.v1"
 )
@@ -43,8 +44,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		et := jwtbeego.EasyToken{}
-		valid, username, _ := et.ValidateToken(tokenString)
+		valid, username, _ := auth.ValidateToken(tokenString)
 		if !valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code":    50014,
@@ -60,6 +60,39 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 
 		// 将用户名存储到上下文中
 		c.Set("username", username)
+		c.Next()
+	}
+}
+
+// RequireAdmin 要求当前登录用户角色为 admin。
+// 用于用户管理、系统配置等高危写接口，防止任意有效令牌提权。
+func RequireAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		usernameValue, ok := c.Get("username")
+		if !ok {
+			response.Unauthorized(c, "登录状态失效")
+			c.Abort()
+			return
+		}
+		username, _ := usernameValue.(string)
+		if username == "" {
+			response.Unauthorized(c, "登录状态失效")
+			c.Abort()
+			return
+		}
+
+		var user model.User
+		if err := model.GetDB().Where("username = ?", username).First(&user).Error; err != nil {
+			response.Forbidden(c, "无权限执行此操作")
+			c.Abort()
+			return
+		}
+		if user.Role != "admin" {
+			response.Forbidden(c, "需要管理员权限")
+			c.Abort()
+			return
+		}
+		c.Set("role", user.Role)
 		c.Next()
 	}
 }

@@ -11,7 +11,8 @@ import (
 	"zbxtable/pkg/response"
 	"zbxtable/pkg/utils"
 
-	jwtbeego "github.com/canghai908/jwt-beego"
+	"zbxtable/internal/auth"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
@@ -272,11 +273,14 @@ func LoginGin(c *gin.Context) {
 	// bcrypt encrypt
 	err = utils.ComparePass(user.Password, reqUser.Password)
 	if err == nil {
-		et := jwtbeego.EasyToken{
-			Username: user.Username,
-			Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
+		tokenString, tokenErr := auth.IssueToken(
+			user.Username,
+			time.Now().Add(time.Hour*time.Duration(SessionTimeout)).Unix(),
+		)
+		if tokenErr != nil {
+			response.InternalError(c, "签发登录令牌失败")
+			return
 		}
-		tokenString, _ := et.GetToken()
 
 		// 获取演示模式开关
 		demoMode := model.GetConfKey("demo_mode")
@@ -327,11 +331,14 @@ func RefreshTokenGin(c *gin.Context) {
 		SessionTimeout = 12
 	}
 
-	et := jwtbeego.EasyToken{
-		Username: username.(string),
-		Expires:  time.Now().Add(time.Hour * time.Duration(SessionTimeout)).Unix(),
+	tokenString, err := auth.IssueToken(
+		username.(string),
+		time.Now().Add(time.Hour*time.Duration(SessionTimeout)).Unix(),
+	)
+	if err != nil {
+		response.InternalError(c, "刷新令牌失败")
+		return
 	}
-	tokenString, _ := et.GetToken()
 
 	response.SuccessWithMessage(c, "刷新成功", gin.H{
 		"token": tokenString,
