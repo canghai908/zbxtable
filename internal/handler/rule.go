@@ -3,6 +3,7 @@ package handler
 import (
 	"io"
 	"strconv"
+	"zbxtable/internal/middleware"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
 
@@ -68,7 +69,31 @@ func CreateRule(c *gin.Context) {
 		return
 	}
 
-	v := model.Rule{Name: name, Conditions: conditions,
+	if err := model.ValidateRuleConditions(conditions, m_type); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+
+	scheduleIDs, scheduleErr := parseRuleScheduleIDs(body)
+	if scheduleErr != nil {
+		response.ValidationError(c, scheduleErr.Error())
+		return
+	}
+	if len(scheduleIDs) > 0 {
+		middleware.RequireAdmin()(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+	if len(scheduleIDs) > 0 && m_type == "3" {
+		response.ValidationError(c, "屏蔽规则不支持排班接收人")
+		return
+	}
+	if err := model.ValidateScheduleReferences(scheduleIDs); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+	v := model.Rule{Name: name, Conditions: conditions, ScheduleIDs: scheduleIDs,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
 	_, err = model.AddRule(&v)
@@ -109,7 +134,31 @@ func UpdateRule(c *gin.Context) {
 		tuserStr = tuser.(string)
 	}
 
-	v := model.Rule{ID: id, Name: name, Conditions: conditions,
+	if err := model.ValidateRuleConditions(conditions, m_type); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+
+	scheduleIDs, scheduleErr := parseRuleScheduleIDs(body)
+	if scheduleErr != nil {
+		response.ValidationError(c, scheduleErr.Error())
+		return
+	}
+	if len(scheduleIDs) > 0 {
+		middleware.RequireAdmin()(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+	if len(scheduleIDs) > 0 && m_type == "3" {
+		response.ValidationError(c, "屏蔽规则不支持排班接收人")
+		return
+	}
+	if err := model.ValidateScheduleReferences(scheduleIDs); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+	v := model.Rule{ID: id, Name: name, Conditions: conditions, ScheduleIDs: scheduleIDs,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
 		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
 	err = model.UpdateRule(&v, tuserStr)
@@ -165,4 +214,45 @@ func DeleteRule(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// TestRuleConditions previews only predicates; it never sends notifications.
+func TestRuleConditions(c *gin.Context) {
+	var req struct {
+		Conditions string         `json:"conditions"`
+		Data       map[string]any `json:"data"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "无效测试请求")
+		return
+	}
+	tree, err := model.ParseConditionTree(req.Conditions)
+	if err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+	if tree == nil {
+		response.ValidationError(c, "请配置需要测试的条件")
+		return
+	}
+	response.Success(c, model.EvaluateConditionTree(tree, req.Data))
+}
+
+func parseRuleScheduleIDs(body []byte) ([]int, error) {
+	value := gjson.GetBytes(body, "schedule_ids")
+	if !value.Exists() {
+		return nil, nil
+	}
+	raw := value.Raw
+	if value.Type == gjson.String {
+		raw = value.String()
+	}
+	ids := []int{}
+	if err := json.Unmarshal([]byte(raw), &ids); err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		ids = []int{}
+	}
+	return ids, nil
 }

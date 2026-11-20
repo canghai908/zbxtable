@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 
 	"fmt"
 	"html/template"
@@ -46,8 +47,6 @@ func SendMail(mail *Event) {
 	if err != nil {
 		logger.Log.Error(err)
 	}
-	mail.Level = utils.AlertSeverityTo(mail.Level)
-	mail.Status = utils.AlertType(mail.Status)
 	for _, v := range plist {
 		SendEmailAlert(mail, v)
 	}
@@ -90,8 +89,13 @@ func SendEmailAlert(event *Event, user User) error {
 		logger.Log.Error(err)
 		return err
 	}
+	// Keep raw status for template selection and leave the queued event intact
+	// when the same event is delivered to multiple recipients.
+	display := *event
+	display.Level = utils.AlertSeverityTo(event.Level)
+	display.Status = utils.AlertType(event.Status)
 	var body bytes.Buffer
-	err = tmpl.Execute(&body, event) //将str的值合成到tmpl模版的{{.}}中，并将合成得到的文本输入到os.Stdout,返回hello, world
+	err = tmpl.Execute(&body, &display)
 	if err != nil {
 		logger.Log.Error(err)
 		return err
@@ -117,7 +121,7 @@ func SendEmailAlert(event *Event, user User) error {
 		e.From = from
 	}
 	e.To = []string{user.Email}
-	e.Subject = "[" + event.Status + "]" + "[" + event.Message + "]" + event.Hostname + "(" + event.HostsIP + ")"
+	e.Subject = "[" + display.Status + "]" + "[" + event.Message + "]" + event.Hostname + "(" + event.HostsIP + ")"
 	e.HTML = body.Bytes()
 	hostAddr := fmt.Sprintf("%s:%d", host, port)
 	if isSSL {
@@ -140,9 +144,9 @@ func SendEmailAlert(event *Event, user User) error {
 		}
 	}
 	//add event log
-	_, err = AddEventLog(&elog)
-	if err != nil {
-		logger.Log.Error(err)
+	_, logErr := AddEventLog(&elog)
+	if logErr != nil {
+		logger.Log.Error(logErr)
 	}
-	return nil
+	return errors.Join(err, logErr)
 }

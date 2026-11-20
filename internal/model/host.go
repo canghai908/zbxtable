@@ -1326,6 +1326,7 @@ type PNGData struct {
 type GraphReq struct {
 	Start string `json:"start"`
 	End   string `json:"end"`
+	ZID   int    `json:"zid"`
 }
 
 // FindInstanceByHostID 根据 hostid 查找所属的实例
@@ -1394,13 +1395,18 @@ func GetGraphDataFromInstance(inst *APIInstance, hostId, start, end string) ([]P
 
 	var wg sync.WaitGroup
 	pngDataChan := make(chan PNGData, len(hba))
+	graphErrChan := make(chan error, len(hba))
 
 	for _, v := range hba {
 		wg.Add(1)
 		go func(v GraphData) {
 			defer wg.Done()
 			// 使用该实例的 JAR 获取图形
-			png, _ := GetPNGGraphFromInstance(inst, v.GraphId, start, end)
+			png, err := GetPNGGraphFromInstance(inst, v.GraphId, start, end)
+			if err != nil {
+				graphErrChan <- fmt.Errorf("获取图表 %q 失败: %w", v.Name, err)
+				return
+			}
 			pngDataChan <- PNGData{
 				Name: v.Name,
 				Png:  png,
@@ -1411,10 +1417,16 @@ func GetGraphDataFromInstance(inst *APIInstance, hostId, start, end string) ([]P
 	go func() {
 		wg.Wait()
 		close(pngDataChan)
+		close(graphErrChan)
 	}()
 
 	for data := range pngDataChan {
 		pngData = append(pngData, data)
+	}
+	for err := range graphErrChan {
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return pngData, nil

@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -71,20 +72,25 @@ func GetPNGGraphFromInstance(inst *APIInstance, GraphID, start, end string) (png
 	}
 	defer response1.Body.Close()
 
-	if response1.StatusCode == 200 {
-		var reader io.Reader
-		switch response1.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, _ = gzip.NewReader(response1.Body)
-		default:
-			reader = response1.Body
-		}
-		body, err := io.ReadAll(reader)
-		if err != nil {
-			return "", err
-		}
-		res := base64.StdEncoding.EncodeToString(body)
-		return res, nil
+	if response1.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Zabbix Web returned HTTP %d for graph %s", response1.StatusCode, GraphID)
 	}
-	return "", err
+
+	var reader io.Reader = response1.Body
+	if response1.Header.Get("Content-Encoding") == "gzip" {
+		gzipReader, err := gzip.NewReader(response1.Body)
+		if err != nil {
+			return "", fmt.Errorf("open compressed graph response: %w", err)
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+	}
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	if http.DetectContentType(body) != "image/png" {
+		return "", fmt.Errorf("Zabbix Web returned a non-PNG response for graph %s", GraphID)
+	}
+	return base64.StdEncoding.EncodeToString(body), nil
 }

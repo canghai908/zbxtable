@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"gorm.io/gorm"
 	"strconv"
 	"zbxtable/pkg/utils"
 )
@@ -18,7 +19,12 @@ func AddRule(m *Rule) (id int64, err error) {
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
-	err = DB.Create(m).Error
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := LockScheduleReferences(tx, m.ScheduleIDs); err != nil {
+			return err
+		}
+		return tx.Create(m).Error
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +77,7 @@ func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist
 
 	// 获取分页数据
 	offset := (pages - 1) * limits
-	err = query.Select("id", "name", "conditions", "z_ids", "note",
+	err = query.Select("id", "name", "schedule_ids", "conditions", "z_ids", "note", "m_type", "s_week",
 		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
 		Limit(limits).Offset(offset).Find(&rules).Error
 	if err != nil {
@@ -129,7 +135,7 @@ func UpdateRule(m *Rule, tuser string) error {
 		mConditions = m.Conditions
 		mZIds = m.ZIDs
 	}
-	err = DB.Model(&Rule{}).Where("id = ?", m.ID).Updates(map[string]interface{}{
+	updates := map[string]interface{}{
 		"name":       m.Name,
 		"z_ids":      mZIds,
 		"conditions": mConditions,
@@ -142,7 +148,16 @@ func UpdateRule(m *Rule, tuser string) error {
 		"group_ids":  m.GroupIds,
 		"note":       m.Note,
 		"status":     m.Status,
-	}).Error
+	}
+	if m.ScheduleIDs != nil {
+		updates["schedule_ids"] = serializedScheduleIDs(m.ScheduleIDs)
+	}
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := LockScheduleReferences(tx, m.ScheduleIDs); err != nil {
+			return err
+		}
+		return tx.Model(&Rule{}).Where("id = ?", m.ID).Updates(updates).Error
+	})
 	if err != nil {
 		return err
 	}

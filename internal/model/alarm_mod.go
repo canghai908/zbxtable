@@ -3,9 +3,10 @@ package model
 import "time"
 
 const (
-	NotifySuccess = iota // 0
-	NotifyMuted          // 1
-	NotifyDefault        // 2
+	NotifySuccess     = iota // 0
+	NotifyMuted              // 1
+	NotifyDefault            // 2
+	NotifyNoRecipient        // 3
 )
 
 // Alarm struct

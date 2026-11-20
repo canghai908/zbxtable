@@ -161,31 +161,23 @@ func GenAlert(alarm *Alarm) {
 		return
 	}
 
-	// 聚合 渠道 -> 用户集合
-	chanRecipients := make(map[string]map[string]struct{})
-	for _, r := range matchedRules {
-		chans := strings.Split(r.Channel, ",")
-		rUsers := getRuleUserIDs(r.UserIds, r.GroupIds, userMap)
-		for _, c := range chans {
-			c = strings.TrimSpace(c)
-			if c == "" {
-				continue
-			}
-			if _, ok := chanRecipients[c]; !ok {
-				chanRecipients[c] = make(map[string]struct{})
-			}
-			for _, uid := range rUsers {
-				chanRecipients[c][uid] = struct{}{}
-			}
-		}
+	// Resolve schedule recipients at notification generation time, not at the
+	// original event time. Fixed user/group rules retain their original behavior.
+	channels, err := ResolveEventDispatchRecipients(matchedRules, userMap, time.Now(), alarm.ZID, alarm.EventID, LoadScheduleDelivery, FindOnCallDispatchSnapshot)
+	if err != nil {
+		logger.Log.Error("resolve schedule recipients:", err)
+		UpdateAlarmStatus(&Alarm{ID: alarm.ID, NotifyStatus: strconv.Itoa(NotifyNoRecipient)})
+		return
 	}
 
 	// 4. 按渠道静默检查并推送到缓存
 	sentCount := 0
 	mutedCount := 0
 
-	for channel, users := range chanRecipients {
-		if len(users) == 0 {
+	for _, delivery := range channels {
+		channel := delivery.Channel
+		if len(delivery.UserIDs) == 0 {
+			logger.Log.Warnf("no available recipients for channel %s: %+v", channel, delivery.Schedules)
 			continue
 		}
 
@@ -219,10 +211,15 @@ func GenAlert(alarm *Alarm) {
 			continue
 		}
 
-		// 发送
-		uList := make([]string, 0, len(users))
-		for uid := range users {
-			uList = append(uList, uid)
+		delivery, err = SnapshotDispatchRecipients(alarm.ZID, alarm.EventID, delivery)
+		if err != nil {
+			logger.Log.Error("persist on-call recipients:", err)
+			continue
+		}
+		// IDs are fixed in the queue payload, so consumers never re-resolve shifts.
+		uList := make([]string, 0, len(delivery.UserIDs))
+		for _, uid := range delivery.UserIDs {
+			uList = append(uList, strconv.Itoa(uid))
 		}
 		event.ToUsers = strings.Join(uList, ",")
 
@@ -233,7 +230,10 @@ func GenAlert(alarm *Alarm) {
 
 	// 5. 更新告警状态
 	finalStatus := strconv.Itoa(NotifySuccess)
-	if ruleType == strconv.Itoa(RuleDefault) {
+	if sentCount == 0 && mutedCount == 0 {
+		finalStatus = strconv.Itoa(NotifyNoRecipient)
+	}
+	if sentCount > 0 && ruleType == strconv.Itoa(RuleDefault) {
 		finalStatus = strconv.Itoa(NotifyDefault)
 	}
 	if sentCount == 0 && mutedCount > 0 {
@@ -275,26 +275,14 @@ func filterMatchedRules(rules []Rule, matchData map[string]any, occurTime time.T
 }
 
 func matchRule(rule *Rule, matchData map[string]any, matcher *CELMatcher) bool {
-	conds, err := parseRuleConditions(rule.Conditions)
+	tree, err := ParseConditionTree(rule.Conditions)
 	if err != nil {
 		return false
 	}
-	if len(conds) == 0 {
+	if tree == nil {
 		return rule.MType == "2"
 	}
-	return matcher.Match(conds, matchData)
-}
-
-func parseRuleConditions(raw string) ([]Conditions, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil, nil
-	}
-	var conds []Conditions
-	if err := json.Unmarshal([]byte(raw), &conds); err != nil {
-		return nil, err
-	}
-	return conds, nil
+	return EvaluateConditionTree(tree, matchData).Matched
 }
 
 func queryRules(mType string, zid int, isGlobal bool) []Rule {
@@ -307,7 +295,7 @@ func queryRules(mType string, zid int, isGlobal bool) []Rule {
 		if DB.Dialector.Name() == "postgres" {
 			query = query.Where("(',' || z_ids || ',') LIKE ?", "%,"+zidStr+",%")
 		} else {
-			query = query.Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", zidStr, "%"+zidStr+"%")
+			query = query.Where("FIND_IN_SET(?, z_ids) > 0", zidStr)
 		}
 	} else {
 		return nil
@@ -325,7 +313,9 @@ func getBatchUsers(uids, gids map[string]struct{}) (map[string][]string, error) 
 		for k := range gids {
 			keys = append(keys, k)
 		}
-		if err := DB.Where("id IN ?", keys).Find(&groups).Error; err == nil {
+		if err := DB.Where("id IN ?", keys).Find(&groups).Error; err != nil {
+			return nil, err
+		} else {
 			for _, g := range groups {
 				groupMemberMap[strconv.Itoa(g.ID)] = strings.Split(g.Member, ",")
 			}
@@ -387,7 +377,7 @@ func IsMuted(event *Event) bool {
 			query = query.Where("(',' || z_ids || ',') LIKE ?", "%,"+zidStr+",%")
 		} else {
 			// MySQL: 使用 FIND_IN_SET
-			query = query.Where("(FIND_IN_SET(?, z_ids) > 0 OR z_ids LIKE ?)", zidStr, "%"+zidStr+"%")
+			query = query.Where("FIND_IN_SET(?, z_ids) > 0", zidStr)
 		}
 
 		err = query.Select("id", "name", "conditions", "z_ids", "note", "s_week",

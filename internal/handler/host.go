@@ -370,11 +370,15 @@ func GetHostGraph(c *gin.Context) {
 
 	hostId := c.Param("hostid")
 
-	// 查找该主机所属的实例
-	instanceID, err := model.FindInstanceByHostID(hostId)
-	if err != nil {
-		response.InternalError(c, fmt.Sprintf("无法找到主机所属实例: %v", err))
-		return
+	// Prefer the instance supplied by the caller. Host IDs can overlap across
+	// Zabbix instances, so searching by host ID alone may select the wrong one.
+	instanceID := v.ZID
+	if instanceID <= 0 {
+		instanceID, err = model.FindInstanceByHostID(hostId)
+		if err != nil {
+			response.InternalError(c, fmt.Sprintf("无法找到主机所属实例: %v", err))
+			return
+		}
 	}
 
 	// 获取该实例的 API 连接

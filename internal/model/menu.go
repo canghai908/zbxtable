@@ -62,6 +62,7 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 6, Name: "告警查询", Path: "list", Router: "alarmList", Icon: "eye", Role: "admin,user"},
 		{ParentId: 6, Name: "告警分发", Path: "rule", Router: "alarmRule", Icon: "message", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 6, Name: "屏蔽规则", Path: "mutes", Router: "alarmMutes", Icon: "stop", Role: "admin,user"},
+		{ParentId: 6, Name: "值班排班", Path: "oncall", Router: "alarmOnCall", Icon: "calendar", Role: "admin"},
 		//拓扑管理 (ParentId: 7)
 		{ParentId: 7, Name: "拓扑维护", Path: "list", Router: "topologyList", Icon: "environment", Role: "admin,user"},
 		{ParentId: 7, Name: "拓扑编辑", Path: "detail", Router: "topologyDetail", Invisible: true, Highlight: "/topology", Role: "admin,user"},

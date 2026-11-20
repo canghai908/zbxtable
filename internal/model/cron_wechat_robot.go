@@ -2,6 +2,8 @@ package model
 
 import (
 	"bytes"
+	"errors"
+	"io"
 
 	"fmt"
 	"html/template"
@@ -129,48 +131,42 @@ func SendWechatRobotAlert(user User, event *Event, content string, decryptedKey 
 		return err
 	}
 
-	// 发送HTTP POST请求
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(messageBytes))
-	if err != nil {
-		logger.Log.Error("Failed to send wechat robot message:", err)
-		elog := EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
-			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
-			NotifyTime: time.Now(), NotifyContent: content,
-			Status: strconv.Itoa(EventFailed), NotifyError: err.Error(),
-		}
-		_, err = AddEventLog(&elog)
-		if err != nil {
-			logger.Log.Error(err)
-		}
-		return err
-	}
-	defer resp.Body.Close()
-
-	// 检查响应状态
-	var elog EventLog
-	if resp.StatusCode != http.StatusOK {
-		errorMsg := fmt.Sprintf("HTTP status code: %d", resp.StatusCode)
-		logger.Log.Error("Wechat robot API returned error:", errorMsg)
-		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
-			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
-			NotifyTime: time.Now(), NotifyContent: content,
-			Status: strconv.Itoa(EventFailed), NotifyError: errorMsg,
-		}
+	// A successful HTTP response can still be a rejected WeCom request.
+	resp, sendErr := http.Post(webhookURL, "application/json", bytes.NewBuffer(messageBytes))
+	if sendErr != nil {
+		// http.Post errors contain the request URL, including the private webhook key.
+		sendErr = errors.New("企业微信群机器人请求失败")
 	} else {
-		elog = EventLog{AlarmID: int64(event.ID), EventID: event.EventID,
-			Rule: event.Rule, Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
-			NotifyTime: time.Now(), NotifyContent: content,
-			Status: strconv.Itoa(EventSuccess), NotifyError: "",
+		defer resp.Body.Close()
+		switch {
+		case resp.StatusCode != http.StatusOK:
+			sendErr = fmt.Errorf("企业微信群机器人 HTTP status code: %d", resp.StatusCode)
+		default:
+			const responseLimit = 64 * 1024
+			body, err := io.ReadAll(io.LimitReader(resp.Body, responseLimit+1))
+			var result struct {
+				ErrCode *int `json:"errcode"`
+			}
+			if err != nil || len(body) > responseLimit || json.Unmarshal(body, &result) != nil || result.ErrCode == nil {
+				sendErr = errors.New("企业微信群机器人返回无效响应")
+			} else if *result.ErrCode != 0 {
+				sendErr = fmt.Errorf("企业微信群机器人拒绝消息，errcode: %d", *result.ErrCode)
+			}
 		}
 	}
-
-	// 添加事件日志
-	_, err = AddEventLog(&elog)
-	if err != nil {
-		logger.Log.Error(err)
+	elog := EventLog{AlarmID: int64(event.ID), EventID: event.EventID, Rule: event.Rule,
+		Channel: "wechat_robot", User: user.Username, Account: user.WechatRobotKey,
+		NotifyTime: time.Now(), NotifyContent: content, Status: strconv.Itoa(EventSuccess)}
+	if sendErr != nil {
+		elog.Status = strconv.Itoa(EventFailed)
+		elog.NotifyError = sendErr.Error()
+		logger.Log.Error(sendErr)
 	}
-
-	return nil
+	_, logErr := AddEventLog(&elog)
+	if logErr != nil {
+		logger.Log.Error(logErr)
+	}
+	return errors.Join(sendErr, logErr)
 }
 
 // PopAllWechatRobot 从内存队列中弹出所有企业微信群机器人消息
