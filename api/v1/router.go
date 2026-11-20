@@ -7,10 +7,12 @@ import (
 	"zbxtable/api/v1/web"
 	"zbxtable/internal/handler"
 	"zbxtable/internal/middleware"
+	otelpkg "zbxtable/pkg/otel"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // InitRouter 初始化 Gin 路由
@@ -19,6 +21,15 @@ func InitRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	//gin.SetMode(gin.DebugMode)
 	r := gin.New()
+
+	// OpenTelemetry 追踪中间件：为每个 HTTP 请求创建 Span 并上报到
+	// Zabbix 8 APM。未启用追踪时使用全局 Noop Provider，开销可忽略。
+	// 需放在业务中间件之前，以覆盖完整的请求处理链路。
+	r.Use(otelgin.Middleware("ZbxTable"))
+
+	// OpenTelemetry HTTP 业务指标中间件：按 方法/路由/状态码 记录请求数与
+	// 耗时直方图，上报到 Zabbix 8 APM Metrics。未启用时为 Noop，开销可忽略。
+	r.Use(otelpkg.GinMetricsMiddleware())
 
 	// 中间件
 	r.Use(gin.Logger())

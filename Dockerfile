@@ -12,7 +12,7 @@ COPY zbxtable-web/ ./
 RUN npm run build
 
 # 阶段2: 构建后端
-FROM golang:1.23-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 
 # 安装必要的构建工具
 RUN apk add --no-cache git gcc musl-dev
