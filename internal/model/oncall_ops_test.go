@@ -108,3 +108,62 @@ func TestOnCallPersonalHorizonUsesScheduleCivilDaysAcrossDST(t *testing.T) {
 		t.Fatalf("lost personal cover in local-day horizon: %s", role)
 	}
 }
+
+func TestOnCallMidnightDailyHandoff(t *testing.T) {
+	for _, zone := range []string{"Asia/Shanghai", "UTC", "America/New_York"} {
+		t.Run(zone, func(t *testing.T) {
+			loc, err := time.LoadLocation(zone)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := testSchedule()
+			s.Timezone = zone
+			anchor := time.Date(2026, 11, 1, 0, 0, 0, 0, loc)
+			s.Start = anchor.Format(time.RFC3339)
+			for day := 0; day < 7; day++ {
+				start := anchor.AddDate(0, 0, day)
+				end := anchor.AddDate(0, 0, day+1)
+				want := []int{s.Members[day%len(s.Members)]}
+				for _, at := range []time.Time{start, start.Add(time.Nanosecond), end.Add(-time.Nanosecond)} {
+					got, err := ResolveOnCall(s, nil, at)
+					if err != nil || !reflect.DeepEqual(got.UserIDs, want) {
+						t.Fatalf("%s: got %+v err %v, want %v", at, got, err, want)
+					}
+				}
+				row := BuildOnCallOverview(s, nil, want[0], nil, start.Add(12*time.Hour))
+				wantSlots := 1
+				// A DST transition is displayed as an explicit timezone boundary,
+				// but both parts must retain the same person without a gap.
+				if zone == "America/New_York" && day == 0 {
+					wantSlots = 2
+				}
+				if row.Error != "" || len(row.Today) != wantSlots {
+					t.Fatalf("day %d should have one complete shift: %+v", day, row)
+				}
+				if row.Today[0].Start != start.Format(time.RFC3339Nano) || row.Today[len(row.Today)-1].End != end.Format(time.RFC3339Nano) {
+					t.Fatalf("day %d has partial coverage: %+v", day, row.Today)
+				}
+				for i, slot := range row.Today {
+					if !reflect.DeepEqual(slot.UserIDs, want) || (i > 0 && row.Today[i-1].End != slot.Start) {
+						t.Fatalf("day %d has a gap or wrong member: %+v", day, row.Today)
+					}
+				}
+			}
+			slots, err := PreviewOnCallSlots(s, nil, anchor, 7)
+			wantSlots := 7
+			if zone == "America/New_York" {
+				wantSlots = 8
+			}
+			if err != nil || len(slots) != wantSlots {
+				t.Fatalf("seven-day preview: %+v, err %v", slots, err)
+			}
+			for i, slot := range slots {
+				at := mustScheduleTime(t, slot.Start).In(loc)
+				day := int(civilDay(at) - civilDay(anchor))
+				if !reflect.DeepEqual(slot.UserIDs, []int{s.Members[day%len(s.Members)]}) || (i > 0 && slots[i-1].End != slot.Start) {
+					t.Fatalf("preview gap, overlap or incorrect member at %d: %+v", i, slots)
+				}
+			}
+		})
+	}
+}
