@@ -424,19 +424,7 @@ func InitRouter() *gin.Engine {
 				ruleGroup.DELETE("/:id", handler.DeleteRule)
 			}
 
-			oncallGroup := api.Group("/oncall/schedules")
-			oncallGroup.Use(middleware.RequireAdmin())
-			{
-				oncallGroup.GET("", handler.ListOnCallSchedules)
-				oncallGroup.POST("", handler.CreateOnCallSchedule)
-				oncallGroup.GET("/:id", handler.GetOnCallSchedule)
-				oncallGroup.PUT("/:id", handler.UpdateOnCallSchedule)
-				oncallGroup.DELETE("/:id", handler.DeleteOnCallSchedule)
-				oncallGroup.POST("/:id/preview", handler.PreviewOnCallSchedule)
-				oncallGroup.POST("/:id/overrides", handler.CreateOnCallOverride)
-				oncallGroup.DELETE("/:id/overrides/:override_id", handler.DeleteOnCallOverride)
-				oncallGroup.GET("/:id/audit", handler.ListOnCallAudit)
-			}
+			handler.RegisterOnCallRoutes(api.Group("/oncall/schedules"))
 
 			// 用户管理（写操作仅管理员；主题允许登录用户改自己的）
 			userGroup := api.Group("/user")

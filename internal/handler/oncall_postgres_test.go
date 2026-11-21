@@ -73,21 +73,16 @@ func TestOnCallAPIWithPostgres(t *testing.T) {
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
 		actor := c.GetHeader("X-Test-Actor")
+		if actor == "anonymous" {
+			c.Next()
+			return
+		}
 		if actor == "" {
 			actor = "admin"
 		}
 		c.Set("username", actor)
 	})
-	group := r.Group("/oncall/schedules", middleware.RequireAdmin())
-	group.GET("", ListOnCallSchedules)
-	group.POST("", CreateOnCallSchedule)
-	group.GET("/:id", GetOnCallSchedule)
-	group.PUT("/:id", UpdateOnCallSchedule)
-	group.DELETE("/:id", DeleteOnCallSchedule)
-	group.POST("/:id/preview", PreviewOnCallSchedule)
-	group.POST("/:id/overrides", CreateOnCallOverride)
-	group.DELETE("/:id/overrides/:override_id", DeleteOnCallOverride)
-	group.GET("/:id/audit", ListOnCallAudit)
+	RegisterOnCallRoutes(r.Group("/oncall/schedules"))
 	r.POST("/rule", CreateRule)
 	r.DELETE("/rule/:id", DeleteRule)
 	r.POST("/rule/preview", middleware.RequireAdmin(), PreviewRuleDispatch)
@@ -107,7 +102,7 @@ func TestOnCallAPIWithPostgres(t *testing.T) {
 		}
 		return got
 	}
-	call("GET", "/oncall/schedules", "", "backup", 403)
+	call("GET", "/oncall/schedules", "", "backup", 200)
 	created := call("POST", "/oncall/schedules", `{"name":"API ops","timezone":"Asia/Shanghai","rotation":"daily","start":"2026-11-20T09:00:00+08:00","members":[1,2],"weekdays":[0,1,2,3,4,5,6],"window_start":"00:00","window_end":"00:00","fallback_user_ids":[2],"fallback_group_ids":[],"enabled":true}`, "admin", 200)
 	sid := int(created["data"].(map[string]any)["id"].(float64))
 	path := fmt.Sprintf("/oncall/schedules/%d", sid)
@@ -316,6 +311,97 @@ func TestOnCallAPIWithPostgres(t *testing.T) {
 		}
 		if listed["data"].(map[string]any)["total"] != float64(1) {
 			t.Fatalf("alarm not queryable: %+v", listed)
+		}
+	})
+
+	t.Run("operator_read_only_directory_and_personal_pagination", func(t *testing.T) {
+		if err := db.Model(&model.User{}).Where("id = ?", 2).Updates(map[string]any{"password": "private-password-fixture", "wechat_robot_key": "private-robot-fixture", "phone": "private-phone-fixture"}).Error; err != nil {
+			t.Fatal(err)
+		}
+		directory := call("GET", "/oncall/schedules/directory", "", "backup", 200)["data"].(map[string]any)
+		if directory["viewer"].(map[string]any)["id"] != float64(2) {
+			t.Fatal("viewer is not authenticated user")
+		}
+		raw, _ := json.Marshal(directory)
+		for _, secret := range []string{"private-password-fixture", "private-robot-fixture", "private-phone-fixture", "backup@example.test", "one@example.test"} {
+			if strings.Contains(string(raw), secret) {
+				t.Fatal("directory exposed notification credentials")
+			}
+		}
+		for _, entry := range directory["users"].([]any) {
+			row := entry.(map[string]any)
+			if len(row) != 4 || row["channels"] == nil {
+				t.Fatalf("unexpected directory fields %+v", row)
+			}
+		}
+		if err := db.Create(&model.User{ID: 88, Username: "disabled-viewer", Role: "user", Status: 1}).Error; err != nil {
+			t.Fatal(err)
+		}
+		call("GET", "/oncall/schedules", "", "disabled-viewer", 403)
+		if err := db.Create(&model.UserGroup{ID: 91, Name: "operator backups", Member: "2"}).Error; err != nil {
+			t.Fatal(err)
+		}
+		now := time.Now()
+		makeSchedule := func(name string, members, fallback []int, groups []int) model.OnCallSchedule {
+			t.Helper()
+			s := model.OnCallSchedule{Name: name, Timezone: "Asia/Shanghai", Rotation: "fixed", Start: now.Add(-24 * time.Hour).Format(time.RFC3339), Members: members, Weekdays: []int{0, 1, 2, 3, 4, 5, 6}, WindowStart: "00:00", WindowEnd: "00:00", FallbackUserIDs: fallback, FallbackGroupIDs: groups, Enabled: true}
+			if err := model.SaveOnCallSchedule(&s, "admin"); err != nil {
+				t.Fatal(err)
+			}
+			return s
+		}
+		own := makeSchedule("ops-view-own", []int{2}, nil, nil)
+		cover := makeSchedule("ops-view-cover", []int{1}, nil, nil)
+		override := model.OnCallOverride{ScheduleID: cover.ID, Start: now.Add(-time.Hour).Format(time.RFC3339), End: now.Add(time.Hour).Format(time.RFC3339), UserIDs: []int{2}, Reason: "cover"}
+		if err := model.AddOnCallOverride(&override, "admin"); err != nil {
+			t.Fatal(err)
+		}
+		fallback := makeSchedule("ops-view-backup", []int{1}, nil, []int{91})
+		other := makeSchedule("ops-view-other", []int{1}, nil, nil)
+		ids := []float64{}
+		for page := 1; page <= 3; page++ {
+			url := fmt.Sprintf("/oncall/schedules/overview?mine=1&name=ops-view-&limit=1&page=%d&user_id=1", page)
+			data := call("GET", url, "", "backup", 200)["data"].(map[string]any)
+			if data["total"] != float64(3) {
+				t.Fatalf("mine total %+v", data)
+			}
+			rows := data["items"].([]any)
+			if len(rows) != 1 {
+				t.Fatalf("page %d rows %+v", page, data)
+			}
+			row := rows[0].(map[string]any)
+			ids = append(ids, row["schedule"].(map[string]any)["id"].(float64))
+			if len(row["today"].([]any)) == 0 || row["lookup_until"] == "" {
+				t.Fatalf("missing overview %+v", row)
+			}
+		}
+		if !reflect.DeepEqual(ids, []float64{float64(fallback.ID), float64(cover.ID), float64(own.ID)}) {
+			t.Fatalf("personal membership/pagination %v", ids)
+		}
+		all := call("GET", "/oncall/schedules/overview?name=ops-view-", "", "backup", 200)["data"].(map[string]any)
+		if all["total"] != float64(4) {
+			t.Fatalf("all view %+v", all)
+		}
+		empty := call("GET", "/oncall/schedules/overview?mine=1&name=ops-view-&page=9223372036854775807", "", "backup", 200)["data"].(map[string]any)
+		if len(empty["items"].([]any)) != 0 {
+			t.Fatal("out-of-range page should be empty")
+		}
+		path := fmt.Sprintf("/oncall/schedules/%d", own.ID)
+		call("GET", path, "", "backup", 200)
+		call("POST", path+"/preview", fmt.Sprintf(`{"at":%q,"days":1}`, now.Format(time.RFC3339)), "backup", 200)
+		for _, item := range []struct{ method, path string }{{"POST", "/oncall/schedules"}, {"PUT", path}, {"DELETE", path}, {"POST", path + "/overrides"}, {"DELETE", path + "/overrides/1"}, {"GET", path + "/audit"}} {
+			call(item.method, item.path, "{}", "backup", 403)
+		}
+		for _, p := range []string{"/oncall/schedules", "/oncall/schedules/directory", "/oncall/schedules/overview", path} {
+			call("GET", p, "", "anonymous", 401)
+		}
+		if err := db.Model(&model.OnCallSchedule{}).Where("id = ?", other.ID).Update("timezone", "invalid-zone").Error; err != nil {
+			t.Fatal(err)
+		}
+		broken := call("GET", "/oncall/schedules/overview?name=ops-view-", "", "backup", 200)["data"].(map[string]any)
+		rows := broken["items"].([]any)
+		if len(rows) != 4 || rows[0].(map[string]any)["error"] == nil {
+			t.Fatalf("bad schedule must be isolated %+v", broken)
 		}
 	})
 

@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"zbxtable/internal/middleware"
 )
 
 func TestRulePreviewRejectsInvalidInputWithoutDatabase(t *testing.T) {
@@ -60,13 +59,12 @@ func TestScheduleRulesRequireAdminSession(t *testing.T) {
 		t.Fatalf("schedule rule bypassed admin: %s", w.Body.String())
 	}
 	protected := gin.New()
-	protected.Use(middleware.RequireAdmin())
-	protected.GET("/schedules", ListOnCallSchedules)
+	RegisterOnCallRoutes(protected.Group("/schedules"))
 	w = httptest.NewRecorder()
 	protected.ServeHTTP(w, httptest.NewRequest("GET", "/schedules", nil))
 	_ = json.Unmarshal(w.Body.Bytes(), &got)
 	if got.Code != 401 {
-		t.Fatalf("schedule list bypassed admin: %s", w.Body.String())
+		t.Fatalf("schedule list bypassed login: %s", w.Body.String())
 	}
 }
 
