@@ -201,6 +201,10 @@ func runWeb(*cli.Context) error {
 	go model.ConsumeMail()
 	go model.ConsumeWechat()
 	go model.ConsumeWechatRobot()
+	go model.ConsumeDingTalkRobot()
+	go model.ConsumeFeishuRobot()
+	go model.ConsumeWebhookChannel()
+	model.StartAlertLifecycleWorker()
 	logger.Log.Info("Message sending service started successfully")
 
 	// Use Gin framework directly

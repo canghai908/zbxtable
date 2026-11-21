@@ -84,6 +84,11 @@ type User struct {
 	WechatRobotKey string    `gorm:"column:wechat_robot_key;size:255" json:"wechat_robot_key"`
 	Phone          string    `gorm:"column:phone;size:255" json:"phone"`
 	DingTalk       string    `gorm:"column:ding_talk;size:255" json:"ding_talk"`
+	DingTalkSecret string    `gorm:"column:ding_talk_secret;size:255" json:"ding_talk_secret"`
+	FeishuRobotKey string    `gorm:"column:feishu_robot_key;size:255" json:"feishu_robot_key"`
+	FeishuSecret   string    `gorm:"column:feishu_secret;size:255" json:"feishu_secret"`
+	WebhookURL     string    `gorm:"column:webhook_url;size:500" json:"webhook_url"`
+	WebhookToken   string    `gorm:"column:webhook_token;size:255" json:"webhook_token"`
 	Theme          string    `gorm:"column:theme;type:text" json:"theme,omitempty"`
 	Created        time.Time `gorm:"column:created;autoCreateTime" json:"created"`
 	Updated        time.Time `gorm:"column:updated;autoUpdateTime" json:"updated_at"`
@@ -92,6 +97,32 @@ type User struct {
 // TableName string
 func (t *User) TableName() string {
 	return TableName("user")
+}
+
+func encryptUserSecrets(m *User) error {
+	encryptionKey := GetEncryptionKey()
+	targets := []struct {
+		label string
+		val   *string
+	}{
+		{"企业微信群机器人Key", &m.WechatRobotKey},
+		{"钉钉机器人Key", &m.DingTalk},
+		{"钉钉加签密钥", &m.DingTalkSecret},
+		{"飞书群机器人Key", &m.FeishuRobotKey},
+		{"飞书签名密钥", &m.FeishuSecret},
+		{"Webhook令牌", &m.WebhookToken},
+	}
+	for _, t := range targets {
+		if *t.val == "" {
+			continue
+		}
+		encrypted, err := utils.EncryptString(*t.val, encryptionKey)
+		if err != nil {
+			return errors.New("加密" + t.label + "失败: " + err.Error())
+		}
+		*t.val = encrypted
+	}
+	return nil
 }
 
 // AddManager insert a new Manager into database and returns
@@ -104,14 +135,8 @@ func AddUser(m *User) (id int64, err error) {
 		return 0, errors.New("用户已存在")
 	}
 
-	// 如果有企业微信群机器人Key，进行加密
-	if m.WechatRobotKey != "" {
-		encryptionKey := GetEncryptionKey()
-		encryptedKey, err := utils.EncryptString(m.WechatRobotKey, encryptionKey)
-		if err != nil {
-			return 0, errors.New("加密企业微信群机器人Key失败: " + err.Error())
-		}
-		m.WechatRobotKey = encryptedKey
+	if err := encryptUserSecrets(m); err != nil {
+		return 0, err
 	}
 
 	// 插入
@@ -168,22 +193,31 @@ func UpdateUser(m *User, tuser string) error {
 	if m.Wechat != "" {
 		updates["wechat"] = m.Wechat
 	}
-	if m.WechatRobotKey != "" {
-		// 如果是星号，表示前端未修改，跳过更新
-		if m.WechatRobotKey == "********" {
-			// 不更新该字段，保持原值
-		} else {
-			// 对企业微信群机器人Key进行加密
-			encryptionKey := GetEncryptionKey()
-			encryptedKey, err := utils.EncryptString(m.WechatRobotKey, encryptionKey)
-			if err != nil {
-				return errors.New("加密企业微信群机器人Key失败: " + err.Error())
-			}
-			updates["wechat_robot_key"] = encryptedKey
-		}
+	encryptionKey := GetEncryptionKey()
+	secretColumns := []struct {
+		label  string
+		column string
+		value  string
+	}{
+		{"企业微信群机器人Key", "wechat_robot_key", m.WechatRobotKey},
+		{"钉钉机器人Key", "ding_talk", m.DingTalk},
+		{"钉钉加签密钥", "ding_talk_secret", m.DingTalkSecret},
+		{"飞书群机器人Key", "feishu_robot_key", m.FeishuRobotKey},
+		{"飞书签名密钥", "feishu_secret", m.FeishuSecret},
+		{"Webhook令牌", "webhook_token", m.WebhookToken},
 	}
-	if m.DingTalk != "" {
-		updates["ding_talk"] = m.DingTalk
+	for _, sc := range secretColumns {
+		if sc.value == "" || sc.value == "********" {
+			continue
+		}
+		encryptedVal, err := utils.EncryptString(sc.value, encryptionKey)
+		if err != nil {
+			return errors.New("加密" + sc.label + "失败: " + err.Error())
+		}
+		updates[sc.column] = encryptedVal
+	}
+	if m.WebhookURL != "" {
+		updates["webhook_url"] = m.WebhookURL
 	}
 
 	// 主题字段
@@ -265,6 +299,7 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	// 分页查询
 	offset := (pages - 1) * limits
 	err = query.Select("id", "username", "role", "avatar", "email", "ding_talk",
+		"ding_talk_secret", "feishu_robot_key", "feishu_secret", "webhook_url", "webhook_token",
 		"phone", "created", "status", "wechat", "wechat_robot_key").
 		Limit(limits).Offset(offset).Find(&users).Error
 	if err != nil {
@@ -274,8 +309,22 @@ func GetUser(page, limit, tuser, username, status string) (cnt int64, userlist [
 	// 对敏感字段进行脱敏处理
 	for i := range users {
 		if users[i].WechatRobotKey != "" {
-			// 替换为星号，隐藏真实的Key
 			users[i].WechatRobotKey = "********"
+		}
+		if users[i].DingTalk != "" {
+			users[i].DingTalk = "********"
+		}
+		if users[i].DingTalkSecret != "" {
+			users[i].DingTalkSecret = "********"
+		}
+		if users[i].FeishuRobotKey != "" {
+			users[i].FeishuRobotKey = "********"
+		}
+		if users[i].FeishuSecret != "" {
+			users[i].FeishuSecret = "********"
+		}
+		if users[i].WebhookToken != "" {
+			users[i].WebhookToken = "********"
 		}
 	}
 

@@ -63,6 +63,12 @@ func CreateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
+	suppressWindow := int(gjson.GetBytes(body, "suppress_window").Int())
+	suppressThreshold := int(gjson.GetBytes(body, "suppress_threshold").Int())
+	escalationMinutes := int(gjson.GetBytes(body, "escalation_minutes").Int())
+	escalationUserIDs := gjson.GetBytes(body, "escalation_user_ids").String()
+	escalationGroupIDs := gjson.GetBytes(body, "escalation_group_ids").String()
+	escalationChannel := gjson.GetBytes(body, "escalation_channel").String()
 
 	if name == "" {
 		response.ValidationError(c, "规则名称不能为空")
@@ -95,7 +101,10 @@ func CreateRule(c *gin.Context) {
 	}
 	v := model.Rule{Name: name, Conditions: conditions, ScheduleIDs: scheduleIDs,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note,
+		SuppressWindow: suppressWindow, SuppressThreshold: suppressThreshold,
+		EscalationMinutes: escalationMinutes, EscalationUserIDs: escalationUserIDs,
+		EscalationGroupIDs: escalationGroupIDs, EscalationChannel: escalationChannel}
 	_, err = model.AddRule(&v)
 	if err != nil {
 		response.DatabaseError(c, "创建规则失败: "+err.Error())
@@ -127,6 +136,12 @@ func UpdateRule(c *gin.Context) {
 	m_type := gjson.Get(string(body), "m_type").String()
 	note := gjson.Get(string(body), "note").String()
 	status := gjson.Get(string(body), "status").String()
+	suppressWindow := int(gjson.GetBytes(body, "suppress_window").Int())
+	suppressThreshold := int(gjson.GetBytes(body, "suppress_threshold").Int())
+	escalationMinutes := int(gjson.GetBytes(body, "escalation_minutes").Int())
+	escalationUserIDs := gjson.GetBytes(body, "escalation_user_ids").String()
+	escalationGroupIDs := gjson.GetBytes(body, "escalation_group_ids").String()
+	escalationChannel := gjson.GetBytes(body, "escalation_channel").String()
 
 	tuser, _ := c.Get("username")
 	tuserStr := ""
@@ -160,7 +175,10 @@ func UpdateRule(c *gin.Context) {
 	}
 	v := model.Rule{ID: id, Name: name, Conditions: conditions, ScheduleIDs: scheduleIDs,
 		Sweek: sweek, Stime: stime, Etime: etime, Channel: channel, MType: m_type,
-		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note}
+		UserIds: user_ids, GroupIds: group_ids, ZIDs: zids, Status: status, Note: note,
+		SuppressWindow: suppressWindow, SuppressThreshold: suppressThreshold,
+		EscalationMinutes: escalationMinutes, EscalationUserIDs: escalationUserIDs,
+		EscalationGroupIDs: escalationGroupIDs, EscalationChannel: escalationChannel}
 	err = model.UpdateRule(&v, tuserStr)
 	if err != nil {
 		response.DatabaseError(c, "更新规则失败: "+err.Error())

@@ -51,6 +51,11 @@ func CreateUserGin(c *gin.Context) {
 	wechat_robot_key := gjson.Get(string(body), "wechat_robot_key").String()
 	phone := gjson.Get(string(body), "phone").String()
 	ding_talk := gjson.Get(string(body), "ding_talk").String()
+	ding_talk_secret := gjson.Get(string(body), "ding_talk_secret").String()
+	feishu_robot_key := gjson.Get(string(body), "feishu_robot_key").String()
+	feishu_secret := gjson.Get(string(body), "feishu_secret").String()
+	webhook_url := gjson.Get(string(body), "webhook_url").String()
+	webhook_token := gjson.Get(string(body), "webhook_token").String()
 
 	// 验证必填字段
 	if username == "" {
@@ -82,6 +87,11 @@ func CreateUserGin(c *gin.Context) {
 		WechatRobotKey: wechat_robot_key,
 		Phone:          phone,
 		DingTalk:       ding_talk,
+		DingTalkSecret: ding_talk_secret,
+		FeishuRobotKey: feishu_robot_key,
+		FeishuSecret:   feishu_secret,
+		WebhookURL:     webhook_url,
+		WebhookToken:   webhook_token,
 		Status:         0,
 		Role:           role,
 		Created:        time.Now(),
@@ -162,6 +172,21 @@ func UpdateUserGin(c *gin.Context) {
 	}
 	if bodyJSON.Get("ding_talk").Exists() {
 		v.DingTalk = bodyJSON.Get("ding_talk").String()
+	}
+	if bodyJSON.Get("ding_talk_secret").Exists() {
+		v.DingTalkSecret = bodyJSON.Get("ding_talk_secret").String()
+	}
+	if bodyJSON.Get("feishu_robot_key").Exists() {
+		v.FeishuRobotKey = bodyJSON.Get("feishu_robot_key").String()
+	}
+	if bodyJSON.Get("feishu_secret").Exists() {
+		v.FeishuSecret = bodyJSON.Get("feishu_secret").String()
+	}
+	if bodyJSON.Get("webhook_url").Exists() {
+		v.WebhookURL = bodyJSON.Get("webhook_url").String()
+	}
+	if bodyJSON.Get("webhook_token").Exists() {
+		v.WebhookToken = bodyJSON.Get("webhook_token").String()
 	}
 	if bodyJSON.Get("theme").Exists() {
 		v.Theme = bodyJSON.Get("theme").String()

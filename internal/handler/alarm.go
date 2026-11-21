@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"zbxtable/internal/model"
 	"zbxtable/pkg/response"
@@ -186,4 +187,68 @@ func UpdateAlarm(c *gin.Context) {
 // DeleteAlarm 删除告警（占位符）
 func DeleteAlarm(c *gin.Context) {
 	response.SuccessWithMessage(c, "Not implemented yet", nil)
+}
+
+type ackAlarmRequest struct {
+	IDs        []int  `json:"ids"`
+	Note       string `json:"note"`
+	SyncZabbix bool   `json:"sync_zabbix"`
+}
+
+func currentActorName(c *gin.Context) string {
+	v, _ := c.Get("username")
+	s, _ := v.(string)
+	return strings.TrimSpace(s)
+}
+
+// AcknowledgeAlarm 认领单条告警
+func AcknowledgeAlarm(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "无效告警ID")
+		return
+	}
+	var req ackAlarmRequest
+	if c.Request.Body != nil {
+		body, readErr := io.ReadAll(c.Request.Body)
+		if readErr != nil {
+			response.BadRequest(c, "请求体读取失败")
+			return
+		}
+		if len(strings.TrimSpace(string(body))) > 0 {
+			if err := jsoniter.Unmarshal(body, &req); err != nil {
+				response.BadRequest(c, "请求参数解析失败: "+err.Error())
+				return
+			}
+		}
+	}
+	affected, err := model.AcknowledgeAlarms([]int{id}, currentActorName(c), req.Note, req.SyncZabbix)
+	if err != nil {
+		response.DatabaseError(c, "认领告警失败: "+err.Error())
+		return
+	}
+	if affected == 0 {
+		response.NotFound(c, "告警不存在")
+		return
+	}
+	response.SuccessWithMessage(c, "认领成功", gin.H{"acknowledged": affected})
+}
+
+// BatchAcknowledgeAlarm 批量认领告警
+func BatchAcknowledgeAlarm(c *gin.Context) {
+	var req ackAlarmRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请求参数解析失败: "+err.Error())
+		return
+	}
+	if len(req.IDs) == 0 {
+		response.ValidationError(c, "请选择需要认领的告警")
+		return
+	}
+	affected, err := model.AcknowledgeAlarms(req.IDs, currentActorName(c), req.Note, req.SyncZabbix)
+	if err != nil {
+		response.DatabaseError(c, "批量认领失败: "+err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "批量认领成功", gin.H{"acknowledged": affected})
 }

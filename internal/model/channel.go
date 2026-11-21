@@ -120,6 +120,8 @@ func (m *CELMatcher) getProgram(expr string) (cel.Program, error) {
 
 // 根据规则生成告警
 func GenAlert(alarm *Alarm) {
+	markRecoveredAlarmsClosed(alarm)
+
 	// 准备匹配数据
 	matchData := map[string]any{
 		"host":     alarm.Host,
@@ -137,6 +139,7 @@ func GenAlert(alarm *Alarm) {
 		return
 	}
 	firstRule := &matchedRules[0]
+	alarm.MatchedRuleID = firstRule.ID
 
 	// 3. 聚合去重：同人同渠道只生成一条，优化 GetEventUser 调用
 	allUserIDs := make(map[string]struct{})
@@ -166,13 +169,14 @@ func GenAlert(alarm *Alarm) {
 	channels, err := ResolveEventDispatchRecipients(matchedRules, userMap, time.Now(), alarm.ZID, alarm.EventID, LoadScheduleDelivery, FindOnCallDispatchSnapshot)
 	if err != nil {
 		logger.Log.Error("resolve schedule recipients:", err)
-		UpdateAlarmStatus(&Alarm{ID: alarm.ID, NotifyStatus: strconv.Itoa(NotifyNoRecipient)})
+		updateAlarmDispatchState(alarm.ID, strconv.Itoa(NotifyNoRecipient), firstRule.ID)
 		return
 	}
 
-	// 4. 按渠道静默检查并推送到缓存
+	// 4. 按渠道静默检查、风暴抑制检查并推送到缓存
 	sentCount := 0
 	mutedCount := 0
+	suppressedCount := 0
 
 	for _, delivery := range channels {
 		channel := delivery.Channel
@@ -223,6 +227,11 @@ func GenAlert(alarm *Alarm) {
 		}
 		event.ToUsers = strings.Join(uList, ",")
 
+		if shouldSuppressAndBuffer(firstRule, alarm, event, time.Now()) {
+			suppressedCount++
+			continue
+		}
+
 		// 填充实例信息并入队
 		sendToQueue(event)
 		sentCount++
@@ -230,18 +239,17 @@ func GenAlert(alarm *Alarm) {
 
 	// 5. 更新告警状态
 	finalStatus := strconv.Itoa(NotifySuccess)
-	if sentCount == 0 && mutedCount == 0 {
+	if sentCount == 0 && suppressedCount > 0 {
+		finalStatus = strconv.Itoa(NotifySuppressed)
+	} else if sentCount == 0 && mutedCount == 0 {
 		finalStatus = strconv.Itoa(NotifyNoRecipient)
-	}
-	if sentCount > 0 && ruleType == strconv.Itoa(RuleDefault) {
+	} else if sentCount > 0 && ruleType == strconv.Itoa(RuleDefault) {
 		finalStatus = strconv.Itoa(NotifyDefault)
-	}
-	if sentCount == 0 && mutedCount > 0 {
+	} else if sentCount == 0 && mutedCount > 0 {
 		finalStatus = strconv.Itoa(NotifyMuted)
 	}
 
-	ala := Alarm{ID: alarm.ID, NotifyStatus: finalStatus}
-	UpdateAlarmStatus(&ala)
+	updateAlarmDispatchState(alarm.ID, finalStatus, firstRule.ID)
 }
 
 func getDispatchRules(zid int, matchData map[string]any, occurTime time.Time) ([]Rule, string) {
@@ -348,7 +356,7 @@ func getRuleUserIDs(uidsStr, gidsStr string, groupMap map[string][]string) []str
 }
 
 func sendToQueue(event *Event) {
-	if event.ZID > 0 {
+	if event.ZID > 0 && DB != nil {
 		instance, err := GetZabbixInstanceByZID(event.ZID)
 		if err == nil && instance != nil {
 			event.Instance = instance.Instance
@@ -456,8 +464,24 @@ func normalizeChannel(ch string) string {
 	switch ch {
 	case "wechatrobot", "wechat-robot":
 		return "wechat_robot"
+	case "dingtalk", "dingding", "ding_talk", "dingtalk-robot", "dingtalkrobot":
+		return "dingtalk_robot"
+	case "feishu", "lark", "feishu-robot", "feishurobot":
+		return "feishu_robot"
+	case "custom_webhook", "http_webhook":
+		return "webhook"
 	default:
 		return ch
+	}
+}
+
+// IsSupportedChannel checks whether a channel name or alias maps to a supported notification channel.
+func IsSupportedChannel(ch string) bool {
+	switch normalizeChannel(ch) {
+	case "mail", "wechat", "wechat_robot", "dingtalk_robot", "feishu_robot", "webhook":
+		return true
+	default:
+		return false
 	}
 }
 
