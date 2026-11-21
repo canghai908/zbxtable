@@ -58,7 +58,12 @@ func TestDispatchOvernightAndBoundaries(t *testing.T) {
 }
 
 func TestMuteRuleConditionTimeChannel(t *testing.T) {
-	loc := time.Local
+	// Legacy mute timestamps are parsed in Asia/Shanghai by utils.ParTime,
+	// independently of the host timezone (GitHub runners normally use UTC).
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatal(err)
+	}
 	at := time.Date(2026, 11, 20, 10, 0, 0, 0, loc)
 	r := Rule{MType: "3", Conditions: workflowConditions, Stime: "2026-11-20 09:00:00", Etime: "2026-11-20 11:00:00", Channel: "wechat_robot,mail"}
 	for _, tt := range []struct {

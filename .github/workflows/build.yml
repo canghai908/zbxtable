@@ -86,6 +86,12 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Check rule tests across host timezones
+        run: |
+          for zone in UTC Asia/Shanghai America/New_York; do
+            TZ="$zone" go test ./internal/model -run 'Test(MuteRuleConditionTimeChannel|DispatchRuleWorkflow|DispatchOvernightAndBoundaries)$' -count=1
+          done
+
       - name: Generate coverage report
         run: make coverage
 
