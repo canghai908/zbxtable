@@ -13,7 +13,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/cel-go v0.27.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.10.7
