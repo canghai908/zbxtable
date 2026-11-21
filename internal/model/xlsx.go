@@ -63,7 +63,7 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 
 	xlsx := excelize.NewFile()
 	// 创建一个工作表
-	index := xlsx.NewSheet("Sheet1")
+	index := 0
 	//设置列宽
 	xlsx.SetColWidth("Sheet1", "A", "A", 20)
 	xlsx.SetColWidth("Sheet1", "B", "D", 15)
@@ -83,11 +83,11 @@ func Crt(Filedata []FileSystemDataALL, host, itemtype string, start, end int64) 
 	xlsx.SetCellValue("Sheet1", "B4", StrEnd)
 
 	//数据样式设置
-	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 	if err != nil {
 		logger.Log.Error("创建样式失败", err)
 	}
-	styleleft, err := xlsx.NewStyle(`{"alignment":{"horizontal":"left"}}`)
+	styleleft, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "left"}})
 	if err != nil {
 		logger.Log.Error("创建样式失败", err)
 	}
@@ -144,7 +144,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 
 	xlsx := excelize.NewFile()
 	// 创建一个工作表
-	index := xlsx.NewSheet("Sheet1")
+	index := 0
 	//设置列宽
 	xlsx.SetColWidth("Sheet1", "A", "A", 20)
 	xlsx.SetColWidth("Sheet1", "B", "D", 15)
@@ -190,7 +190,7 @@ func CreateTrenXlsx(Filedata []Trend, v ListQueryAll, start, end int64) ([]byte,
 	xlsx.SetCellValue("Sheet1", "B7", StrEnd)
 
 	//数据样式设置
-	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 	if err != nil {
 		logger.Log.Error(err)
 	}
@@ -236,7 +236,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 
 	xlsx := excelize.NewFile()
 	// 创建一个工作表
-	index := xlsx.NewSheet("Sheet1")
+	index := 0
 	//设置列宽
 	xlsx.SetColWidth("Sheet1", "A", "B", 20)
 	xlsx.SetColWidth("Sheet1", "B", "B", 30)
@@ -281,7 +281,7 @@ func CreateHistoryXlsx(Filedata []History, v ListQueryAll, start, end int64) ([]
 	xlsx.SetCellValue("Sheet1", "B7", StrEnd)
 
 	//数据样式设置
-	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 	if err != nil {
 		logger.Log.Error(err)
 	}
@@ -318,7 +318,7 @@ func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 
 	xlsx := excelize.NewFile()
 	// 创建一个工作表
-	index := xlsx.NewSheet("Sheet1")
+	index := 0
 	//设置列宽
 	xlsx.SetColWidth("Sheet1", "A", "B", 20)
 	xlsx.SetColWidth("Sheet1", "B", "B", 30)
@@ -341,7 +341,7 @@ func CreateHistoryReportXlsx(Filedata []History, name, hostname, itemname,
 	xlsx.SetCellValue("Sheet1", "A6", "结束时间")
 	xlsx.SetCellValue("Sheet1", "B6", end)
 	//数据样式设置
-	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 	if err != nil {
 		logger.Log.Error(err)
 	}
@@ -427,7 +427,7 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 
 	xlsx := excelize.NewFile()
 	// 创建一个工作表
-	index := xlsx.NewSheet("Sheet1")
+	index := 0
 	//设置列宽
 	xlsx.SetColWidth("Sheet1", "B", "B", 30)
 	xlsx.SetColWidth("Sheet1", "C", "C", 20)
@@ -480,8 +480,8 @@ func CreateAlarmXlsx(Filedata []Alarm, cnt, start, end int64) ([]byte, error) {
 // CreateHostListInfoXlsx 主机信息导出
 func CreateHostListInfoXlsx(Filedata []Hosts, HostType string) ([]byte, error) {
 	xlsx := excelize.NewFile()
-	index := xlsx.NewSheet("Sheet1")
-	stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+	index := 0
+	stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 	if err != nil {
 		logger.Log.Error(err)
 	}

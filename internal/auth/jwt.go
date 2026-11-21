@@ -6,7 +6,7 @@ import (
 
 	"zbxtable/internal/model"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // 与 model.GetEncryptionKey 回退值保持一致：安装后应使用数据库中的随机密钥，

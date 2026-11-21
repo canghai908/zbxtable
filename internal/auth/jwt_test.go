@@ -6,7 +6,7 @@ import (
 
 	"zbxtable/internal/model"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func TestIssueAndValidateToken(t *testing.T) {

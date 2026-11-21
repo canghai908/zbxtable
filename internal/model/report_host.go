@@ -907,7 +907,11 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 			firstSheetCreated = true
 		} else {
 			// 创建新的sheet
-			index = xlsx.NewSheet(sheetName)
+			newSheetIndex, err := xlsx.NewSheet(sheetName)
+			if err != nil {
+				return "", err
+			}
+			index = newSheetIndex
 		}
 
 		// 设置列宽
@@ -954,7 +958,7 @@ func CreateMultiSheetHostReportXlsx(itemsData []ItemData, reportName, cycle, sta
 		const dataStartRow = 13
 
 		// 数据样式设置
-		stylecenter, err := xlsx.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+		stylecenter, err := xlsx.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "center"}})
 		if err != nil {
 			logger.Log.Error("创建样式失败:", err)
 		}
