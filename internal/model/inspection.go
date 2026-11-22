@@ -1140,43 +1140,78 @@ func batchFetchInstanceHostMetrics(inst *APIInstance, hostIDs []string) map[stri
 	return result
 }
 
-func getActiveTriggersFromInstanceSafe(inst *APIInstance) []InspectionAlarmItem {
-	if inst == nil || inst.API == nil {
-		return nil
-	}
-	rep, err := inst.API.CallWithError("trigger.get", Params{
-		"output":          "extend",
-		"sortfield":       "lastchange",
-		"sortorder":       "DESC",
-		"selectHosts":     []string{"hostid", "name", "host"},
-		"selectLastEvent": "extend",
-		"filter":          map[string]string{"value": "1"},
-		"maintenance":     false,
-		"only_true":       true,
-		"monitored":       true,
-	})
-	if err != nil {
-		logger.Log.Warnf("巡检获取实例 %s 活跃触发器失败: %v", inst.Name, err)
-		return nil
-	}
-	raw, err := json.Marshal(rep.Result)
-	if err != nil {
-		return nil
-	}
-	var triggers []LastTriggers
-	if err := json.Unmarshal(raw, &triggers); err != nil {
-		return nil
-	}
+type inspectRawTrigger struct {
+	Triggerid   string `json:"triggerid"`
+	Description string `json:"description"`
+	Lastchange  string `json:"lastchange"`
+	Priority    string `json:"priority"`
+	Value       string `json:"value"`
+	Hosts       []struct {
+		Hostid string `json:"hostid"`
+		Host   string `json:"host"`
+		Name   string `json:"name"`
+	} `json:"hosts"`
+	LastEvent struct {
+		Acknowledged string `json:"acknowledged"`
+		Clock        string `json:"clock"`
+		Eventid      string `json:"eventid"`
+		Name         string `json:"name"`
+		Severity     string `json:"severity"`
+		Value        string `json:"value"`
+	} `json:"lastEvent"`
+}
+
+func extractActiveTriggerAlarms(zid int, instName string, triggers []inspectRawTrigger, allowedHostIDs map[string]bool, seen map[string]bool) []InspectionAlarmItem {
 	out := make([]InspectionAlarmItem, 0, len(triggers))
 	for _, tr := range triggers {
 		if len(tr.Hosts) == 0 {
 			continue
 		}
-		hostID := tr.Hosts[0].Hostid
-		hostname := tr.Hosts[0].Name
-		if hostname == "" {
-			hostname = tr.Description
+		// 仅保留当前仍处于故障(PROBLEM)状态的触发器及其最近事件
+		if v := strings.TrimSpace(tr.Value); v != "" && v != "1" {
+			continue
 		}
+		if evVal := strings.TrimSpace(tr.LastEvent.Value); evVal == "0" {
+			continue
+		}
+
+		matchedHostIdx := -1
+		if len(allowedHostIDs) > 0 {
+			for i, h := range tr.Hosts {
+				if allowedHostIDs[strings.TrimSpace(h.Hostid)] {
+					matchedHostIdx = i
+					break
+				}
+			}
+			if matchedHostIdx < 0 {
+				continue
+			}
+		} else {
+			matchedHostIdx = 0
+		}
+
+		th := tr.Hosts[matchedHostIdx]
+		hostID := strings.TrimSpace(th.Hostid)
+		hostname := strings.TrimSpace(th.Name)
+		hostCode := strings.TrimSpace(th.Host)
+		if hostCode == "" {
+			hostCode = hostname
+		}
+		if hostname == "" {
+			hostname = hostCode
+		}
+		if hostname == "" {
+			hostname = strings.TrimSpace(tr.Description)
+		}
+
+		if seen != nil {
+			dedupKey := fmt.Sprintf("%d|%s|%s", zid, tr.Triggerid, hostID)
+			if seen[dedupKey] {
+				continue
+			}
+			seen[dedupKey] = true
+		}
+
 		sevStr := tr.LastEvent.Severity
 		if sevStr == "" {
 			sevStr = tr.Priority
@@ -1195,38 +1230,246 @@ func getActiveTriggersFromInstanceSafe(inst *APIInstance) []InspectionAlarmItem 
 			occurTime = time.Unix(ts, 0).Format("2006-01-02 15:04:05")
 		}
 		out = append(out, InspectionAlarmItem{
-			ZID:          inst.ZID,
-			InstanceName: inst.Name,
+			ZID:          zid,
+			InstanceName: instName,
 			HostID:       hostID,
-			Host:         hostname,
+			Host:         hostCode,
 			Hostname:     hostname,
 			Level:        sevLabel,
 			SeverityNum:  sevNum,
 			Message:      msg,
 			OccurTime:    occurTime,
-			EventID:      tr.LastEvent.Eventid,
-			Acknowledged: tr.LastEvent.Acknowledged == "1",
+			EventID:      strings.TrimSpace(tr.LastEvent.Eventid),
+			Acknowledged: strings.TrimSpace(tr.LastEvent.Acknowledged) == "1",
 		})
 	}
 	return out
 }
 
-func loadLocalUnclosedAlarms(zid int) []InspectionAlarmItem {
-	if DB == nil {
-		return nil
+func getActiveTriggersFromInstanceSafe(inst *APIInstance, hostIDs []string) ([]InspectionAlarmItem, bool) {
+	if inst == nil || inst.API == nil {
+		return nil, false
 	}
-	since := time.Now().Add(-7 * 24 * time.Hour)
+	if len(hostIDs) == 0 {
+		return []InspectionAlarmItem{}, true
+	}
+
+	allowedHostIDs := make(map[string]bool, len(hostIDs))
+	for _, hid := range hostIDs {
+		if trimmed := strings.TrimSpace(hid); trimmed != "" {
+			allowedHostIDs[trimmed] = true
+		}
+	}
+	if len(allowedHostIDs) == 0 {
+		return []InspectionAlarmItem{}, true
+	}
+
+	// 与 GetTriggersFromInstance 保持完全兼容的 Zabbix API 查询参数；
+	// 不向 trigger.get 传递 hostids / status / active 等易在部分 Zabbix 版本触发 -32500 SQL 报错的联合过滤参数，
+	// 而是在内存中按 allowedHostIDs 及 trigger/lastEvent 状态进行严格过滤。
+	rep, err := inst.API.CallWithError("trigger.get", Params{
+		"output":          "extend",
+		"sortfield":       "lastchange",
+		"sortorder":       "DESC",
+		"selectHosts":     []string{"hostid", "name", "host"},
+		"selectLastEvent": "extend",
+		"filter":          map[string]string{"value": "1"},
+		"maintenance":     false,
+		"only_true":       true,
+		"monitored":       true,
+	})
+	if err != nil {
+		logger.Log.Warnf("巡检获取实例 %s 活跃触发器失败: %v", inst.Name, err)
+		return nil, false
+	}
+	raw, err := json.Marshal(rep.Result)
+	if err != nil {
+		logger.Log.Warnf("巡检序列化实例 %s 触发器结果失败: %v", inst.Name, err)
+		return nil, false
+	}
+	var triggers []inspectRawTrigger
+	if err := json.Unmarshal(raw, &triggers); err != nil {
+		logger.Log.Warnf("巡检解析实例 %s 触发器结构失败: %v", inst.Name, err)
+		return nil, false
+	}
+	return extractActiveTriggerAlarms(inst.ZID, inst.Name, triggers, allowedHostIDs, make(map[string]bool)), true
+}
+
+func enrichActiveAlarmsFromLocalDB(zid int, alarms []InspectionAlarmItem) {
+	if DB == nil || len(alarms) == 0 {
+		return
+	}
+	eventIDs := make([]int64, 0, len(alarms))
+	seenIDs := make(map[int64]bool, len(alarms))
+	for _, a := range alarms {
+		evID, err := strconv.ParseInt(strings.TrimSpace(a.EventID), 10, 64)
+		if err != nil || evID <= 0 || seenIDs[evID] {
+			continue
+		}
+		seenIDs[evID] = true
+		eventIDs = append(eventIDs, evID)
+	}
+	if len(eventIDs) == 0 {
+		return
+	}
+
 	var rows []Alarm
-	q := DB.Model(&Alarm{}).
-		Where("escalation_step >= 0 AND (status = ? OR status = ?) AND occurtime >= ?", "1", "故障", since)
+	q := DB.Model(&Alarm{}).Where("event_id IN ?", eventIDs)
 	if zid > 0 {
 		q = q.Where("zid = ?", zid)
 	}
-	if err := q.Order("occurtime DESC").Limit(500).Find(&rows).Error; err != nil {
+	if err := q.Order("id DESC").Find(&rows).Error; err != nil || len(rows) == 0 {
+		return
+	}
+
+	byEventID := make(map[string]Alarm, len(rows))
+	for _, row := range rows {
+		key := strconv.FormatInt(row.EventID, 10)
+		prev, exists := byEventID[key]
+		if !exists {
+			byEventID[key] = row
+			continue
+		}
+		if prev.ItemName == "" && row.ItemName != "" {
+			prev.ItemName = row.ItemName
+		}
+		if prev.HostsIP == "" && row.HostsIP != "" {
+			prev.HostsIP = row.HostsIP
+		}
+		if row.AckStatus == 1 {
+			prev.AckStatus = 1
+		}
+		byEventID[key] = prev
+	}
+
+	for i := range alarms {
+		evKey := strings.TrimSpace(alarms[i].EventID)
+		row, ok := byEventID[evKey]
+		if !ok {
+			continue
+		}
+		if alarms[i].ItemName == "" && row.ItemName != "" {
+			alarms[i].ItemName = row.ItemName
+		}
+		if alarms[i].HostIP == "" && row.HostsIP != "" {
+			alarms[i].HostIP = row.HostsIP
+		}
+		if row.AckStatus == 1 {
+			alarms[i].Acknowledged = true
+		}
+	}
+}
+
+func sameAlarmHost(a, b Alarm) bool {
+	if hidA, hidB := strings.TrimSpace(a.HostID), strings.TrimSpace(b.HostID); hidA != "" && hidB != "" && hidA == hidB {
+		return true
+	}
+	if hA, hB := strings.TrimSpace(a.Host), strings.TrimSpace(b.Host); hA != "" && hB != "" && hA == hB {
+		return true
+	}
+	if hnA, hnB := strings.TrimSpace(a.Hostname), strings.TrimSpace(b.Hostname); hnA != "" && hnB != "" && hnA == hnB {
+		return true
+	}
+	return false
+}
+
+func isAlarmRecoveredByRecord(problem, recovery Alarm) bool {
+	if problem.ZID != recovery.ZID && problem.ZID > 0 && recovery.ZID > 0 {
+		return false
+	}
+	if problem.EventID > 0 && recovery.EventID == problem.EventID {
+		return true
+	}
+	if !sameAlarmHost(problem, recovery) {
+		return false
+	}
+
+	matchedSignal := (problem.TriggerID > 0 && recovery.TriggerID == problem.TriggerID) ||
+		(strings.TrimSpace(problem.Hkey) != "" && strings.TrimSpace(recovery.Hkey) == strings.TrimSpace(problem.Hkey)) ||
+		(strings.TrimSpace(problem.Message) != "" && strings.TrimSpace(recovery.Message) == strings.TrimSpace(problem.Message))
+	if !matchedSignal {
+		return false
+	}
+
+	afterTime := !recovery.OccurTime.IsZero() && !problem.OccurTime.IsZero() && !recovery.OccurTime.Before(problem.OccurTime)
+	afterID := recovery.ID > 0 && problem.ID > 0 && recovery.ID > problem.ID
+	if !afterTime && !afterID {
+		// 若时间与ID均未设置，仍视为未发生序后恢复
+		return recovery.OccurTime.IsZero() && problem.OccurTime.IsZero() && recovery.ID == 0 && problem.ID == 0
+	}
+	return true
+}
+
+func filterUnclosedLocalAlarms(rows []Alarm, allowedHostIDs map[string]bool) []InspectionAlarmItem {
+	if len(rows) == 0 {
 		return nil
 	}
-	out := make([]InspectionAlarmItem, 0, len(rows))
-	for _, a := range rows {
+	sorted := make([]Alarm, len(rows))
+	copy(sorted, rows)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if !sorted[i].OccurTime.Equal(sorted[j].OccurTime) {
+			return sorted[i].OccurTime.After(sorted[j].OccurTime)
+		}
+		return sorted[i].ID > sorted[j].ID
+	})
+
+	recoveriesByZID := make(map[int][]Alarm)
+	recoveredEventIDs := make(map[string]bool)
+	for _, r := range sorted {
+		if !isRecoveryStatus(r.Status) {
+			continue
+		}
+		recoveriesByZID[r.ZID] = append(recoveriesByZID[r.ZID], r)
+		if r.EventID > 0 {
+			recoveredEventIDs[fmt.Sprintf("%d|%d", r.ZID, r.EventID)] = true
+		}
+	}
+
+	seenActive := make(map[string]bool)
+	out := make([]InspectionAlarmItem, 0)
+	for _, a := range sorted {
+		if !isProblemStatus(a.Status) || a.EscalationStep < 0 {
+			continue
+		}
+		if allowedHostIDs != nil && !allowedHostIDs[strings.TrimSpace(a.HostID)] {
+			continue
+		}
+		if a.EventID > 0 && recoveredEventIDs[fmt.Sprintf("%d|%d", a.ZID, a.EventID)] {
+			continue
+		}
+		recovered := false
+		for _, rec := range recoveriesByZID[a.ZID] {
+			if isAlarmRecoveredByRecord(a, rec) {
+				recovered = true
+				break
+			}
+		}
+		if recovered {
+			continue
+		}
+
+		hostKey := strings.TrimSpace(a.HostID)
+		if hostKey == "" {
+			hostKey = strings.TrimSpace(a.Host)
+		}
+		if hostKey == "" {
+			hostKey = strings.TrimSpace(a.Hostname)
+		}
+		sigKey := ""
+		switch {
+		case a.TriggerID > 0:
+			sigKey = "T:" + strconv.FormatInt(a.TriggerID, 10)
+		case strings.TrimSpace(a.Hkey) != "":
+			sigKey = "K:" + strings.TrimSpace(a.Hkey)
+		default:
+			sigKey = "M:" + strings.TrimSpace(a.Message)
+		}
+		dedupKey := fmt.Sprintf("%d|%s|%s", a.ZID, hostKey, sigKey)
+		if seenActive[dedupKey] {
+			continue
+		}
+		seenActive[dedupKey] = true
+
 		sevNum, sevLabel := severityToNumAndLabel(a.Level)
 		hName := strings.TrimSpace(a.Hostname)
 		if hName == "" {
@@ -1250,6 +1493,53 @@ func loadLocalUnclosedAlarms(zid int) []InspectionAlarmItem {
 	return out
 }
 
+func loadLocalUnclosedAlarms(zid int, allowedHostIDs map[string]bool) []InspectionAlarmItem {
+	if DB == nil {
+		return nil
+	}
+	since := time.Now().Add(-7 * 24 * time.Hour)
+	var rows []Alarm
+	q := DB.Model(&Alarm{}).Where("occurtime >= ?", since)
+	if zid > 0 {
+		q = q.Where("zid = ?", zid)
+	}
+	if err := q.Order("occurtime DESC, id DESC").Limit(2000).Find(&rows).Error; err != nil {
+		return nil
+	}
+	return filterUnclosedLocalAlarms(rows, allowedHostIDs)
+}
+
+func hostIDSetFromItems(hosts []InspectionHostItem) map[string]bool {
+	set := make(map[string]bool, len(hosts))
+	for _, h := range hosts {
+		if hid := strings.TrimSpace(h.HostID); hid != "" {
+			set[hid] = true
+		}
+	}
+	return set
+}
+
+func fallbackInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[string]bool, groupIDs []string, typeNameMap map[string]string, errMsg string) (InspectionInstanceStat, []InspectionHostItem, []InspectionAlarmItem) {
+	stat := InspectionInstanceStat{
+		ZID:          instCfg.ID,
+		InstanceName: instCfg.Name,
+		Reachable:    false,
+		Error:        errMsg,
+	}
+	fallbackHosts := loadFallbackHostsFromCache(instCfg, allowedTypes, typeNameMap)
+	var hostFilter map[string]bool
+	if len(fallbackHosts) > 0 || len(allowedTypes) > 0 || len(groupIDs) > 0 {
+		hostFilter = hostIDSetFromItems(fallbackHosts)
+	}
+	localAlarms := loadLocalUnclosedAlarms(instCfg.ID, hostFilter)
+	for i := range localAlarms {
+		localAlarms[i].InstanceName = instCfg.Name
+	}
+	stat.TotalHosts = len(fallbackHosts)
+	stat.ActiveAlarms = len(localAlarms)
+	return stat, fallbackHosts, localAlarms
+}
+
 func collectInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[string]bool, groupIDs []string, typeNameMap map[string]string) (InspectionInstanceStat, []InspectionHostItem, []InspectionAlarmItem) {
 	stat := InspectionInstanceStat{
 		ZID:          instCfg.ID,
@@ -1258,21 +1548,11 @@ func collectInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[stri
 
 	inst, err := GetAPIByZID(instCfg.ID)
 	if err != nil || inst == nil || inst.API == nil {
-		stat.Reachable = false
+		errMsg := "实例 API 不可用"
 		if err != nil {
-			stat.Error = err.Error()
-		} else {
-			stat.Error = "实例 API 不可用"
+			errMsg = err.Error()
 		}
-		// 连接失败时尝试回退读取本地缓存及本地告警
-		fallbackHosts := loadFallbackHostsFromCache(instCfg, allowedTypes, typeNameMap)
-		localAlarms := loadLocalUnclosedAlarms(instCfg.ID)
-		for i := range localAlarms {
-			localAlarms[i].InstanceName = instCfg.Name
-		}
-		stat.TotalHosts = len(fallbackHosts)
-		stat.ActiveAlarms = len(localAlarms)
-		return stat, fallbackHosts, localAlarms
+		return fallbackInstanceInspectionData(instCfg, allowedTypes, groupIDs, typeNameMap, errMsg)
 	}
 
 	stat.Reachable = true
@@ -1287,16 +1567,7 @@ func collectInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[stri
 	}
 	rep, err := inst.API.CallWithError("host.get", params)
 	if err != nil {
-		stat.Reachable = false
-		stat.Error = err.Error()
-		fallbackHosts := loadFallbackHostsFromCache(instCfg, allowedTypes, typeNameMap)
-		localAlarms := loadLocalUnclosedAlarms(instCfg.ID)
-		for i := range localAlarms {
-			localAlarms[i].InstanceName = instCfg.Name
-		}
-		stat.TotalHosts = len(fallbackHosts)
-		stat.ActiveAlarms = len(localAlarms)
-		return stat, fallbackHosts, localAlarms
+		return fallbackInstanceInspectionData(instCfg, allowedTypes, groupIDs, typeNameMap, err.Error())
 	}
 
 	rawBytes, err := json.Marshal(rep.Result)
@@ -1312,6 +1583,7 @@ func collectInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[stri
 
 	matchedRaw := make([]inspectRawHost, 0, len(rawHosts))
 	hostIDs := make([]string, 0, len(rawHosts))
+	hostIDSet := make(map[string]bool, len(rawHosts))
 	for _, rh := range rawHosts {
 		tc := strings.ToUpper(strings.TrimSpace(rh.Inventory.Type))
 		if len(allowedTypes) > 0 && !allowedTypes[tc] {
@@ -1319,33 +1591,26 @@ func collectInstanceInspectionData(instCfg ZabbixInstance, allowedTypes map[stri
 		}
 		matchedRaw = append(matchedRaw, rh)
 		hostIDs = append(hostIDs, rh.Hostid)
+		if hid := strings.TrimSpace(rh.Hostid); hid != "" {
+			hostIDSet[hid] = true
+		}
 	}
 
 	itemsByHost := batchFetchInstanceHostMetrics(inst, hostIDs)
-	triggerAlarms := getActiveTriggersFromInstanceSafe(inst)
-	localAlarms := loadLocalUnclosedAlarms(inst.ZID)
+	triggerAlarms, triggersOK := getActiveTriggersFromInstanceSafe(inst, hostIDs)
 
-	// 合并活跃告警，按 hostID + eventid/message 去重
-	alarmMap := make(map[string]InspectionAlarmItem)
-	allAlarms := make([]InspectionAlarmItem, 0, len(triggerAlarms)+len(localAlarms))
-	for _, a := range triggerAlarms {
-		key := fmt.Sprintf("%d|%s|%s", inst.ZID, a.EventID, a.HostID)
-		if a.EventID == "" || a.EventID == "0" {
-			key = fmt.Sprintf("%d|%s|%s", inst.ZID, a.HostID, a.Message)
+	var allAlarms []InspectionAlarmItem
+	if triggersOK {
+		// Zabbix 在线且触发器查询成功时，以 Zabbix 实时未恢复触发器为权威来源，
+		// 仅使用本地数据库补充关联指标名称、IP 与本地确认状态，避免合并已恢复的历史告警。
+		allAlarms = triggerAlarms
+		enrichActiveAlarmsFromLocalDB(inst.ZID, allAlarms)
+	} else {
+		localAlarms := loadLocalUnclosedAlarms(inst.ZID, hostIDSet)
+		for i := range localAlarms {
+			localAlarms[i].InstanceName = inst.Name
 		}
-		alarmMap[key] = a
-		allAlarms = append(allAlarms, a)
-	}
-	for _, a := range localAlarms {
-		a.InstanceName = inst.Name
-		key := fmt.Sprintf("%d|%s|%s", inst.ZID, a.EventID, a.HostID)
-		if a.EventID == "" || a.EventID == "0" {
-			key = fmt.Sprintf("%d|%s|%s", inst.ZID, a.HostID, a.Message)
-		}
-		if _, exists := alarmMap[key]; !exists {
-			alarmMap[key] = a
-			allAlarms = append(allAlarms, a)
-		}
+		allAlarms = localAlarms
 	}
 
 	// 按主机索引告警数
@@ -1606,7 +1871,7 @@ func RunInspectionTask(taskID int, triggerType string) (*InspectionReport, error
 
 	if len(instances) == 0 {
 		// 即使尚未配置启用任何 Zabbix 实例，也检查本地未关闭告警并给出完整健康报告
-		localAlarms := loadLocalUnclosedAlarms(0)
+		localAlarms := loadLocalUnclosedAlarms(0, nil)
 		allAlarms = append(allAlarms, localAlarms...)
 	} else {
 		var wg sync.WaitGroup

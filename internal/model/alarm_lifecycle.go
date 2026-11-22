@@ -62,14 +62,19 @@ func markRecoveredAlarmsClosed(alarm *Alarm) {
 		return
 	}
 	q := DB.Model(&Alarm{}).
-		Where("zid = ? AND escalation_step = 0 AND (status = ? OR status = ?)", alarm.ZID, "1", "故障")
+		Where("zid = ? AND escalation_step >= 0 AND (status = ? OR status = ?)", alarm.ZID, "1", "故障")
+	hasMsg := alarm.Host != "" && strings.TrimSpace(alarm.Message) != ""
 	switch {
 	case alarm.EventID > 0 && alarm.TriggerID > 0:
 		q = q.Where("event_id = ? OR (host = ? AND trigger_id = ?)", alarm.EventID, alarm.Host, alarm.TriggerID)
+	case alarm.EventID > 0 && hasMsg:
+		q = q.Where("event_id = ? OR (host = ? AND message = ?)", alarm.EventID, alarm.Host, alarm.Message)
 	case alarm.EventID > 0:
 		q = q.Where("event_id = ?", alarm.EventID)
 	case alarm.TriggerID > 0:
 		q = q.Where("host = ? AND trigger_id = ?", alarm.Host, alarm.TriggerID)
+	case hasMsg:
+		q = q.Where("host = ? AND message = ?", alarm.Host, alarm.Message)
 	default:
 		return
 	}
@@ -243,15 +248,31 @@ func isAlarmRecovered(alarm Alarm) bool {
 	if DB == nil || alarm.ZID <= 0 {
 		return false
 	}
+	if alarm.EventID > 0 {
+		var evCount int64
+		if err := DB.Model(&Alarm{}).
+			Where("zid = ? AND event_id = ? AND (status = ? OR status = ?)", alarm.ZID, alarm.EventID, "0", "恢复").
+			Count(&evCount).Error; err == nil && evCount > 0 {
+			return true
+		}
+	}
+
 	q := DB.Model(&Alarm{}).
-		Where("zid = ? AND (status = ? OR status = ?) AND occurtime >= ?", alarm.ZID, "0", "恢复", alarm.OccurTime)
+		Where("zid = ? AND (status = ? OR status = ?)", alarm.ZID, "0", "恢复")
+	if alarm.ID > 0 {
+		q = q.Where("occurtime >= ? OR id > ?", alarm.OccurTime, alarm.ID)
+	} else {
+		q = q.Where("occurtime >= ?", alarm.OccurTime)
+	}
+
+	hasMsg := alarm.Host != "" && strings.TrimSpace(alarm.Message) != ""
 	switch {
-	case alarm.EventID > 0 && alarm.TriggerID > 0:
-		q = q.Where("event_id = ? OR (host = ? AND trigger_id = ?)", alarm.EventID, alarm.Host, alarm.TriggerID)
-	case alarm.EventID > 0:
-		q = q.Where("event_id = ?", alarm.EventID)
+	case alarm.TriggerID > 0 && hasMsg:
+		q = q.Where("(host = ? AND trigger_id = ?) OR (host = ? AND message = ?)", alarm.Host, alarm.TriggerID, alarm.Host, alarm.Message)
 	case alarm.TriggerID > 0:
 		q = q.Where("host = ? AND trigger_id = ?", alarm.Host, alarm.TriggerID)
+	case hasMsg:
+		q = q.Where("host = ? AND message = ?", alarm.Host, alarm.Message)
 	default:
 		return false
 	}
