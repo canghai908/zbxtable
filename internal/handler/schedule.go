@@ -175,8 +175,8 @@ func PreviewOnCallSchedule(c *gin.Context) {
 		response.ValidationError(c, "预览天数必须为1至31天")
 		return
 	}
-	if req.Channel != "" && req.Channel != "mail" && req.Channel != "wechat" && req.Channel != "wechat_robot" {
-		response.ValidationError(c, "预览渠道必须为 mail/wechat/wechat_robot")
+	if req.Channel != "" && !model.IsSupportedChannel(req.Channel) {
+		response.ValidationError(c, "预览渠道必须为 mail/wechat/wechat_robot/dingtalk_robot/feishu_robot/webhook")
 		return
 	}
 	s, o, err := model.LoadOnCallSchedule(id)

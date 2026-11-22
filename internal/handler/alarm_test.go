@@ -102,3 +102,38 @@ func TestAnalysisAlarmStillSupportsPostBody(t *testing.T) {
 		t.Fatalf("unexpected level list: %#v", resp.Data.Level)
 	}
 }
+
+func TestAcknowledgeAlarmValidationWithoutDatabase(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/alarm/:id/ack", AcknowledgeAlarm)
+	r.POST("/alarm/ack", BatchAcknowledgeAlarm)
+
+	tests := []struct {
+		method, path, body string
+		wantCode           int
+	}{
+		{http.MethodPost, "/alarm/0/ack", `{}`, 400},
+		{http.MethodPost, "/alarm/not-a-number/ack", `{}`, 400},
+		{http.MethodPost, "/alarm/1/ack", `{invalid`, 400},
+		{http.MethodPost, "/alarm/ack", `{invalid`, 400},
+		{http.MethodPost, "/alarm/ack", `{"ids":[]}`, 422},
+	}
+
+	for _, tt := range tests {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		var got struct {
+			Code int `json:"code"`
+		}
+		if err := jsoniter.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatalf("%s %s unmarshal error: %v", tt.method, tt.path, err)
+		}
+		if got.Code != tt.wantCode {
+			t.Fatalf("%s %s got code %d want %d, body=%s", tt.method, tt.path, got.Code, tt.wantCode, w.Body.String())
+		}
+	}
+}

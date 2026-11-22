@@ -58,6 +58,12 @@ func onCallUserDeliverable(u User, channel string) bool {
 		return strings.TrimSpace(u.Wechat) != ""
 	case "wechat_robot":
 		return strings.TrimSpace(u.WechatRobotKey) != ""
+	case "dingtalk_robot":
+		return strings.TrimSpace(u.DingTalk) != ""
+	case "feishu_robot":
+		return strings.TrimSpace(u.FeishuRobotKey) != ""
+	case "webhook":
+		return strings.TrimSpace(u.WebhookURL) != ""
 	}
 	return false
 }
@@ -139,7 +145,7 @@ func LoadScheduleDeliveryInputs(s OnCallSchedule, overrides []OnCallOverride) (m
 	users := map[int]User{}
 	if len(ids) > 0 {
 		var rows []User
-		if err := DB.Select("id", "status", "email", "wechat", "wechat_robot_key").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		if err := DB.Select("id", "status", "email", "wechat", "wechat_robot_key", "ding_talk", "feishu_robot_key", "webhook_url").Where("id IN ?", ids).Find(&rows).Error; err != nil {
 			return nil, nil, err
 		}
 		for _, u := range rows {

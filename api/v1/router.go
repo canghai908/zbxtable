@@ -180,11 +180,13 @@ func InitRouter() *gin.Engine {
 			alarmGroup := api.Group("/alarm")
 			{
 				alarmGroup.GET("", handler.GetAllAlarm)
-				alarmGroup.GET("/:id", handler.GetAlarmByID)
 				alarmGroup.GET("/analysis", handler.AnalysisAlarm)
 				alarmGroup.GET("/tenant", handler.GetAlarmTenant)
 				alarmGroup.POST("/analysis", handler.AnalysisAlarm)
 				alarmGroup.POST("/export", handler.ExportAlarm)
+				alarmGroup.POST("/ack", handler.BatchAcknowledgeAlarm)
+				alarmGroup.POST("/:id/ack", handler.AcknowledgeAlarm)
+				alarmGroup.GET("/:id", handler.GetAlarmByID)
 				alarmGroup.POST("", handler.CreateAlarm)
 				alarmGroup.PUT("/:id", handler.UpdateAlarm)
 				alarmGroup.DELETE("/:id", handler.DeleteAlarm)
@@ -396,6 +398,22 @@ func InitRouter() *gin.Engine {
 				reportGroup.DELETE("/:id", handler.DeleteReportGin)
 				reportGroup.POST("/checknow", handler.CheckNowGin)
 				reportGroup.POST("/status", handler.UpdateReportStatusGin)
+			}
+
+			// 自动化巡检中心
+			inspectionGroup := api.Group("/inspection")
+			{
+				inspectionGroup.GET("/overview", handler.GetInspectionOverviewGin)
+				inspectionGroup.GET("/tasks", handler.ListInspectionTasksGin)
+				inspectionGroup.GET("/tasks/:id", handler.GetInspectionTaskGin)
+				inspectionGroup.POST("/tasks", handler.CreateInspectionTaskGin)
+				inspectionGroup.PUT("/tasks/:id", handler.UpdateInspectionTaskGin)
+				inspectionGroup.PUT("/tasks/:id/status", handler.UpdateInspectionTaskStatusGin)
+				inspectionGroup.DELETE("/tasks/:id", handler.DeleteInspectionTaskGin)
+				inspectionGroup.POST("/tasks/:id/run", handler.RunInspectionTaskNowGin)
+				inspectionGroup.GET("/reports", handler.ListInspectionReportsGin)
+				inspectionGroup.GET("/reports/:id", handler.GetInspectionReportDetailGin)
+				inspectionGroup.DELETE("/reports/:id", handler.DeleteInspectionReportGin)
 			}
 
 			// 任务日志

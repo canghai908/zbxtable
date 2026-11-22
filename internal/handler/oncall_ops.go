@@ -55,9 +55,12 @@ func RegisterOnCallRoutes(group *gin.RouterGroup) {
 
 func OnCallDirectory(c *gin.Context) {
 	type channels struct {
-		Mail   bool `json:"mail"`
-		Wechat bool `json:"wechat"`
-		Robot  bool `json:"wechat_robot"`
+		Mail          bool `json:"mail"`
+		Wechat        bool `json:"wechat"`
+		Robot         bool `json:"wechat_robot"`
+		DingTalkRobot bool `json:"dingtalk_robot"`
+		FeishuRobot   bool `json:"feishu_robot"`
+		Webhook       bool `json:"webhook"`
 	}
 	type account struct {
 		ID       int      `json:"id"`
@@ -70,13 +73,20 @@ func OnCallDirectory(c *gin.Context) {
 		Name string `json:"name"`
 	}
 	users := []model.User{}
-	if err := model.DB.Select("id", "username", "status", "email", "wechat", "wechat_robot_key").Order("id").Find(&users).Error; err != nil {
+	if err := model.DB.Select("id", "username", "status", "email", "wechat", "wechat_robot_key", "ding_talk", "feishu_robot_key", "webhook_url").Order("id").Find(&users).Error; err != nil {
 		response.DatabaseError(c, "读取排班人员失败")
 		return
 	}
 	safe := make([]account, 0, len(users))
 	for _, u := range users {
-		safe = append(safe, account{ID: u.ID, Username: u.Username, Status: u.Status, Channels: channels{Mail: strings.TrimSpace(u.Email) != "", Wechat: strings.TrimSpace(u.Wechat) != "", Robot: strings.TrimSpace(u.WechatRobotKey) != ""}})
+		safe = append(safe, account{ID: u.ID, Username: u.Username, Status: u.Status, Channels: channels{
+			Mail:          strings.TrimSpace(u.Email) != "",
+			Wechat:        strings.TrimSpace(u.Wechat) != "",
+			Robot:         strings.TrimSpace(u.WechatRobotKey) != "",
+			DingTalkRobot: strings.TrimSpace(u.DingTalk) != "",
+			FeishuRobot:   strings.TrimSpace(u.FeishuRobotKey) != "",
+			Webhook:       strings.TrimSpace(u.WebhookURL) != "",
+		}})
 	}
 	groups := []group{}
 	if err := model.DB.Model(&model.UserGroup{}).Select("id", "name").Order("id").Scan(&groups).Error; err != nil {

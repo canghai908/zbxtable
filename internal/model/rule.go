@@ -19,6 +19,18 @@ func AddRule(m *Rule) (id int64, err error) {
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
+	m.EscalationUserIDs = utils.VAarToStr(m.EscalationUserIDs)
+	m.EscalationGroupIDs = utils.VAarToStr(m.EscalationGroupIDs)
+	m.EscalationChannel = utils.VAarToStr(m.EscalationChannel)
+	if m.SuppressWindow < 0 {
+		m.SuppressWindow = 0
+	}
+	if m.SuppressThreshold <= 0 {
+		m.SuppressThreshold = 1
+	}
+	if m.EscalationMinutes < 0 {
+		m.EscalationMinutes = 0
+	}
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		if err := LockScheduleReferences(tx, m.ScheduleIDs); err != nil {
 			return err
@@ -78,7 +90,9 @@ func GetRule(page, limit, name, zid, m_type, status string) (cnt int64, userlist
 	// 获取分页数据
 	offset := (pages - 1) * limits
 	err = query.Select("id", "name", "schedule_ids", "conditions", "z_ids", "note", "m_type", "s_week",
-		"s_time", "e_time", "user_ids", "group_ids", "channel", "status", "created").
+		"s_time", "e_time", "user_ids", "group_ids", "channel", "status",
+		"suppress_window", "suppress_threshold", "escalation_minutes",
+		"escalation_user_ids", "escalation_group_ids", "escalation_channel", "created").
 		Limit(limits).Offset(offset).Find(&rules).Error
 	if err != nil {
 		return 0, []Rule{}, err
@@ -124,6 +138,18 @@ func UpdateRule(m *Rule, tuser string) error {
 	m.Channel = utils.VAarToStr(m.Channel)
 	m.UserIds = utils.VAarToStr(m.UserIds)
 	m.GroupIds = utils.VAarToStr(m.GroupIds)
+	m.EscalationUserIDs = utils.VAarToStr(m.EscalationUserIDs)
+	m.EscalationGroupIDs = utils.VAarToStr(m.EscalationGroupIDs)
+	m.EscalationChannel = utils.VAarToStr(m.EscalationChannel)
+	if m.SuppressWindow < 0 {
+		m.SuppressWindow = 0
+	}
+	if m.SuppressThreshold <= 0 {
+		m.SuppressThreshold = 1
+	}
+	if m.EscalationMinutes < 0 {
+		m.EscalationMinutes = 0
+	}
 	//判断是不是修改默认规则，如果是修改默认规则，则默认规则类型不变,表达式，条件配置
 	var mType, mConditions, mZIds string
 	if m.MType == "2" {
@@ -136,18 +162,24 @@ func UpdateRule(m *Rule, tuser string) error {
 		mZIds = m.ZIDs
 	}
 	updates := map[string]interface{}{
-		"name":       m.Name,
-		"z_ids":      mZIds,
-		"conditions": mConditions,
-		"s_week":     m.Sweek,
-		"m_type":     mType,
-		"s_time":     m.Stime,
-		"e_time":     m.Etime,
-		"channel":    m.Channel,
-		"user_ids":   m.UserIds,
-		"group_ids":  m.GroupIds,
-		"note":       m.Note,
-		"status":     m.Status,
+		"name":                 m.Name,
+		"z_ids":                mZIds,
+		"conditions":           mConditions,
+		"s_week":               m.Sweek,
+		"m_type":               mType,
+		"s_time":               m.Stime,
+		"e_time":               m.Etime,
+		"channel":              m.Channel,
+		"user_ids":             m.UserIds,
+		"group_ids":            m.GroupIds,
+		"note":                 m.Note,
+		"status":               m.Status,
+		"suppress_window":      m.SuppressWindow,
+		"suppress_threshold":   m.SuppressThreshold,
+		"escalation_minutes":   m.EscalationMinutes,
+		"escalation_user_ids":  m.EscalationUserIDs,
+		"escalation_group_ids": m.EscalationGroupIDs,
+		"escalation_channel":   m.EscalationChannel,
 	}
 	if m.ScheduleIDs != nil {
 		updates["schedule_ids"] = serializedScheduleIDs(m.ScheduleIDs)
