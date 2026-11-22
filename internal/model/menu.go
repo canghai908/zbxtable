@@ -69,6 +69,7 @@ func getMenuDefinitions() []Menu {
 		{ParentId: 7, Name: "拓扑展示", Path: "show", Router: "topologyShow", Invisible: true, Highlight: "/topology", Role: "admin,user"},
 		//报表管理 (ParentId: 8)
 		{ParentId: 8, Name: "指标报表", Path: "host", Router: "hostReport", Icon: "file-excel", Role: "admin,user"},
+		{ParentId: 8, Name: "自动巡检", Path: "inspect", Router: "inspectReport", Icon: "safety-certificate", Role: "admin,user"},
 		//系统管理 (ParentId: 9)
 		{ParentId: 9, Name: "用户管理", Path: "users", Router: "systemUsers", Icon: "user", Role: "admin", Permission: "['add','edit','delete','update']"},
 		{ParentId: 9, Name: "组织管理", Path: "groups", Router: "systemGroups", Icon: "team", Role: "admin", Permission: "['add','edit','delete','update']"},

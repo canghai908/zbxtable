@@ -128,7 +128,10 @@ func runWeb(*cli.Context) error {
 	dbhost := GetConfKey("dbhost")
 	dbport := GetConfKey("dbport")
 	dbname := GetConfKey("dbname")
-	httpport := GetConfKey("httpport")
+	httpport := os.Getenv("ZBXTABLE_HTTP_PORT")
+	if httpport == "" {
+		httpport = GetConfKey("httpport")
+	}
 	if httpport == "" {
 		httpport = "8088"
 	}
@@ -177,6 +180,9 @@ func runWeb(*cli.Context) error {
 	} else {
 		logger.Log.Info("Stale running reports reset successfully")
 	}
+	if err := model.ResetStaleRunningInspections(0); err != nil {
+		logger.Log.Error("Reset stale running inspections failed:", err)
+	}
 
 	//Scheduled tasks
 	logger.Log.Info("Initializing scheduled tasks...")
@@ -215,7 +221,10 @@ func runWeb(*cli.Context) error {
 	fmt.Printf("Database: %s@%s:%s\n", dbtype, dbhost, dbport)
 	fmt.Println("ZbxTable service started successfully!")
 
-	r.Run(":" + httpport)
+	if err := r.Run(":" + httpport); err != nil {
+		logger.Log.Error("HTTP server error:", err)
+		return err
+	}
 	return nil
 }
 

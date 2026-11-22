@@ -185,6 +185,17 @@ func ReloadTaskScheduler() {
 	startTaskSchedulerLocked()
 }
 
+// ReloadTaskSchedulerIfRunning 仅在调度器已启动时刷新调度任务（避免测试或无调度器场景误启动）。
+func ReloadTaskSchedulerIfRunning() {
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	if cronScheduler == nil {
+		return
+	}
+	stopTaskSchedulerLocked()
+	startTaskSchedulerLocked()
+}
+
 func startTaskSchedulerLocked() {
 	if cronScheduler != nil {
 		cronScheduler.Stop()
@@ -245,6 +256,41 @@ func startTaskSchedulerLocked() {
 			}
 			logger.Log.Infof("资产绑定 [ID=%d, type=%s] 定时任务已注册，Cron=%s", s.ID, s.TypeCode, spec)
 		}
+	}
+
+	registerInspectionTaskCronsLocked()
+}
+
+func registerInspectionTaskCronsLocked() {
+	if cronScheduler == nil || DB == nil {
+		return
+	}
+	var tasks []InspectionTask
+	if err := DB.Where("status = ? AND inspect_mode = ?", "1", "scheduled").Find(&tasks).Error; err != nil {
+		logger.Log.Errorf("查询自动化巡检任务失败: %v", err)
+		return
+	}
+	for _, t := range tasks {
+		spec := strings.TrimSpace(t.CronExpr)
+		if spec == "" {
+			spec = defaultCronForInspectionCycle(t.Cycle)
+		}
+		if _, parseErr := taskCronParser.Parse(spec); parseErr != nil {
+			logger.Log.Errorf("巡检任务 [ID=%d, %s] cron 表达式无效 [%s]: %v", t.ID, t.Name, spec, parseErr)
+			continue
+		}
+		taskID := t.ID
+		taskName := t.Name
+		if _, addErr := cronScheduler.AddFunc(spec, func() {
+			logger.Log.Infof("触发定时巡检任务 [ID=%d, name=%s]", taskID, taskName)
+			if _, runErr := RunInspectionTask(taskID, "scheduled"); runErr != nil {
+				logger.Log.Errorf("定时巡检任务执行失败 [ID=%d]: %v", taskID, runErr)
+			}
+		}); addErr != nil {
+			logger.Log.Errorf("注册巡检任务 [ID=%d] cron 失败: %v", t.ID, addErr)
+			continue
+		}
+		logger.Log.Infof("巡检任务 [ID=%d, name=%s] 定时任务已注册，Cron=%s", t.ID, t.Name, spec)
 	}
 }
 
