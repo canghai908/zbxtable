@@ -220,3 +220,117 @@ func TestCreateInspectionReportFiles(t *testing.T) {
 		t.Fatalf("generated html missing expected content")
 	}
 }
+
+func TestFilterUnclosedLocalAlarmsExcludesRecovered(t *testing.T) {
+	base := time.Now().Add(-2 * time.Hour)
+	rows := []Alarm{
+		// 1. 同一 EventID 已产生恢复记录 ("0") -> 应剔除
+		{ID: 1, ZID: 1, HostID: "1001", Host: "web-01", Hostname: "web-01", TriggerID: 5001, EventID: 9001, Status: "1", Level: "4", Message: "High CPU", OccurTime: base},
+		{ID: 2, ZID: 1, HostID: "1001", Host: "web-01", Hostname: "web-01", TriggerID: 5001, EventID: 9001, Status: "0", Level: "4", Message: "High CPU", OccurTime: base.Add(5 * time.Minute)},
+
+		// 2. EventID 不同但同主机 + 同 TriggerID 且产生过中文"恢复" -> 应剔除
+		{ID: 3, ZID: 1, HostID: "1002", Host: "db-01", Hostname: "db-01", TriggerID: 5002, EventID: 9002, Status: "故障", Level: "5", Message: "DB down", OccurTime: base.Add(10 * time.Minute)},
+		{ID: 4, ZID: 1, HostID: "1002", Host: "db-01", Hostname: "db-01", TriggerID: 5002, EventID: 9099, Status: "恢复", Level: "5", Message: "DB down", OccurTime: base.Add(12 * time.Minute)},
+
+		// 3. TriggerID 为 0，通过同主机 + 同消息在更晚时间恢复 -> 应剔除
+		{ID: 5, ZID: 1, HostID: "1003", Host: "app-01", Hostname: "app-01", EventID: 9003, Status: "1", Level: "3", Message: "Port 8080 unreachable", OccurTime: base.Add(15 * time.Minute)},
+		{ID: 6, ZID: 1, HostID: "1003", Host: "app-01", Hostname: "app-01", EventID: 9004, Status: "0", Level: "3", Message: "Port 8080 unreachable", OccurTime: base.Add(18 * time.Minute)},
+
+		// 4. escalation_step = -1 已标记关闭 -> 应剔除
+		{ID: 7, ZID: 1, HostID: "1004", Host: "cache-01", Hostname: "cache-01", TriggerID: 5004, EventID: 9005, Status: "1", Level: "2", Message: "Memory high", EscalationStep: -1, OccurTime: base.Add(20 * time.Minute)},
+
+		// 5. 先恢复过一次，之后又再次触发且尚未恢复 + 同触发器重复触发一条 -> 应保留最新 1 条
+		{ID: 8, ZID: 1, HostID: "1005", Host: "mq-01", Hostname: "mq-01", TriggerID: 5005, EventID: 9006, Status: "0", Level: "4", Message: "Disk > 90%", OccurTime: base.Add(22 * time.Minute)},
+		{ID: 9, ZID: 1, HostID: "1005", Host: "mq-01", Hostname: "mq-01", TriggerID: 5005, EventID: 9007, Status: "1", Level: "4", Message: "Disk > 90%", OccurTime: base.Add(30 * time.Minute)},
+		{ID: 10, ZID: 1, HostID: "1005", Host: "mq-01", Hostname: "mq-01", TriggerID: 5005, EventID: 9008, Status: "1", Level: "4", Message: "Disk > 90%", OccurTime: base.Add(35 * time.Minute)},
+
+		// 6. 真正未恢复的高危告警（但在 allowedHostIDs 范围之外）
+		{ID: 11, ZID: 1, HostID: "9999", Host: "other-01", Hostname: "other-01", TriggerID: 5006, EventID: 9009, Status: "1", Level: "5", Message: "Outside scope", OccurTime: base.Add(40 * time.Minute)},
+	}
+
+	gotAll := filterUnclosedLocalAlarms(rows, nil)
+	if len(gotAll) != 2 {
+		t.Fatalf("expected 2 unclosed alarms without host filter, got %d: %+v", len(gotAll), gotAll)
+	}
+	if gotAll[0].HostID != "9999" || gotAll[1].HostID != "1005" || gotAll[1].EventID != "9008" {
+		t.Fatalf("unexpected remaining alarms: %+v", gotAll)
+	}
+
+	allowed := map[string]bool{"1001": true, "1002": true, "1003": true, "1004": true, "1005": true}
+	gotScoped := filterUnclosedLocalAlarms(rows, allowed)
+	if len(gotScoped) != 1 || gotScoped[0].HostID != "1005" || gotScoped[0].EventID != "9008" {
+		t.Fatalf("expected only host 1005 latest active alarm in scope, got %+v", gotScoped)
+	}
+}
+
+func TestExtractActiveTriggerAlarmsStrictFiltering(t *testing.T) {
+	triggers := []inspectRawTrigger{
+		{
+			Triggerid:   "101",
+			Description: "Agent unavailable",
+			Priority:    "4",
+			Value:       "1",
+			Lastchange:  "1700000100",
+			Hosts: []struct {
+				Hostid string `json:"hostid"`
+				Host   string `json:"host"`
+				Name   string `json:"name"`
+			}{{Hostid: "1001", Host: "prod-web-01", Name: "Web 01"}},
+			LastEvent: struct {
+				Acknowledged string `json:"acknowledged"`
+				Clock        string `json:"clock"`
+				Eventid      string `json:"eventid"`
+				Name         string `json:"name"`
+				Severity     string `json:"severity"`
+				Value        string `json:"value"`
+			}{Eventid: "7001", Value: "1", Severity: "4", Clock: "1700000100", Name: "Agent unavailable", Acknowledged: "0"},
+		},
+		{
+			// 触发器当前值已恢复为 0 -> 应剔除
+			Triggerid:   "102",
+			Description: "Recovered trigger value",
+			Priority:    "3",
+			Value:       "0",
+			Lastchange:  "1700000200",
+			Hosts: []struct {
+				Hostid string `json:"hostid"`
+				Host   string `json:"host"`
+				Name   string `json:"name"`
+			}{{Hostid: "1001", Host: "prod-web-01", Name: "Web 01"}},
+			LastEvent: struct {
+				Acknowledged string `json:"acknowledged"`
+				Clock        string `json:"clock"`
+				Eventid      string `json:"eventid"`
+				Name         string `json:"name"`
+				Severity     string `json:"severity"`
+				Value        string `json:"value"`
+			}{Eventid: "7002", Value: "1", Severity: "3"},
+		},
+		{
+			// LastEvent 已经是恢复事件 (Value == "0") -> 应剔除
+			Triggerid:   "103",
+			Description: "Resolved last event",
+			Priority:    "3",
+			Value:       "1",
+			Lastchange:  "1700000300",
+			Hosts: []struct {
+				Hostid string `json:"hostid"`
+				Host   string `json:"host"`
+				Name   string `json:"name"`
+			}{{Hostid: "1001", Host: "prod-web-01", Name: "Web 01"}},
+			LastEvent: struct {
+				Acknowledged string `json:"acknowledged"`
+				Clock        string `json:"clock"`
+				Eventid      string `json:"eventid"`
+				Name         string `json:"name"`
+				Severity     string `json:"severity"`
+				Value        string `json:"value"`
+			}{Eventid: "7003", Value: "0", Severity: "3"},
+		},
+	}
+
+	got := extractActiveTriggerAlarms(1, "Prod", triggers, map[string]bool{"1001": true}, make(map[string]bool))
+	if len(got) != 1 || got[0].EventID != "7001" || got[0].Host != "prod-web-01" || got[0].Hostname != "Web 01" {
+		t.Fatalf("expected only active trigger 7001, got %+v", got)
+	}
+}
