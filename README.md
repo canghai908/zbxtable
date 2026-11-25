@@ -230,10 +230,33 @@ sudo systemctl status zbxtable
 
 Visit `http://your-server-ip:8088` and follow the installation wizard to configure database connection and complete the setup.
 
+### Method 3: Build from Source & Local Development
+
+To set up a local development environment or compile a standalone binary from source (requires Go `1.26+`, Node.js `16~20`, and Yarn):
+
+```bash
+# 1. Clone backend and frontend repositories side by side (3.0 branch)
+git clone -b 3.0 https://github.com/canghai908/zbxtable.git zbxtable
+git clone -b 3.0 https://github.com/canghai908/zbxtable-web.git zbxtable-web
+
+# 2. Build frontend and sync into backend go:embed directory
+cd zbxtable-web && yarn install && yarn build
+cd ../zbxtable
+rm -rf api/v1/web/web && mkdir -p api/v1/web/web
+cp -R ../zbxtable-web/web/. api/v1/web/web/
+
+# 3. Build and start backend (outputs build/zbxtable)
+make install && make build
+./build/zbxtable web
+```
+
+For frontend/backend hot-reload workflow, configuration details, cross-compilation, and Docker builds, see the **[Local Development & Build Guide](./docs/DEVELOPMENT.md)**.
+
 ## 📚 Documentation
 
-- [Release Notes 3.0](./RELEASE_3.0.md) - Detailed version update information
-- [System Documentation](./docs/SYSTEM.md) - Complete system documentation
+- [Local Development & Build Guide](./docs/DEVELOPMENT.md) - Local setup, debugging, and packaging instructions
+- [Docker Deployment Guide](./deployments/docker/README.md) - Docker and Docker Compose setup
+- [OpenTelemetry Guide](./docs/OPENTELEMETRY.md) - Zabbix 8 APM tracing, metrics, and logs integration
 - [API Documentation](./docs/api/README.md) - API reference
 - [Official Website](https://zbxtable.com) - More documentation and tutorials
 

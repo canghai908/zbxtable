@@ -230,10 +230,33 @@ sudo systemctl status zbxtable
 
 访问 `http://your-server-ip:8088`，按照安装向导配置数据库连接并完成安装。
 
+### 方式三：源码编译与本地开发
+
+如需在本地搭建前后端联调环境或自行编译单二进制可执行文件（需 Go `1.26+`、Node.js `16~20`、Yarn）：
+
+```bash
+# 1. 并排克隆前后端仓库（3.0 分支）
+git clone -b 3.0 https://github.com/canghai908/zbxtable.git zbxtable
+git clone -b 3.0 https://github.com/canghai908/zbxtable-web.git zbxtable-web
+
+# 2. 构建前端并同步到后端 go:embed 目录
+cd zbxtable-web && yarn install && yarn build
+cd ../zbxtable
+rm -rf api/v1/web/web && mkdir -p api/v1/web/web
+cp -R ../zbxtable-web/web/. api/v1/web/web/
+
+# 3. 编译并运行后端（输出 build/zbxtable）
+make install && make build
+./build/zbxtable web
+```
+
+完整的本地热重载联调、配置说明、Linux 交叉编译与 Docker 构建步骤请参阅 **[本地开发与编译指南](./docs/DEVELOPMENT.md)**。
+
 ## 📚 文档
 
-- [3.0 版本发布说明](./RELEASE_3.0.md) - 详细的版本更新内容
-- [系统说明文档](./docs/SYSTEM.md) - 完整的系统文档
+- [本地开发与编译指南](./docs/DEVELOPMENT.md) - 本地开发环境搭建、联调与编译打包说明
+- [Docker 部署指南](./deployments/docker/README.md) - Docker 与 Docker Compose 部署文档
+- [OpenTelemetry 链路追踪](./docs/OPENTELEMETRY.md) - 对接 Zabbix 8 APM 配置说明
 - [API 文档](./docs/api/README.md) - API 接口文档
 - [官方网站](https://zbxtable.com) - 更多文档和教程
 
