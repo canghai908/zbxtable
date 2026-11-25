@@ -21,6 +21,7 @@
 
 ### 开发文档
 
+- **[本地开发与编译指南](./DEVELOPMENT.md)** - 本地环境搭建、前后端联调、单二进制编译与多平台打包
 - **[贡献指南](../CONTRIBUTING.md)** - 如何为项目做出贡献
 - **[API 文档](./api/README.md)** - RESTful API 接口文档
 - **[更新日志](../CHANGELOG.md)** - 版本更新记录
@@ -79,6 +80,7 @@ zbxtable/
 │
 ├── docs/                              # 文档目录
 │   ├── README.md                      # 文档索引（本文件）
+│   ├── DEVELOPMENT.md                 # 本地开发与编译指南
 │   ├── QUICKSTART.md                  # 快速开始指南
 │   ├── SYSTEM.md                      # 系统说明文档
 │   └── api/
@@ -107,9 +109,10 @@ zbxtable/
 
 ### 开发者
 
-1. [贡献指南](../CONTRIBUTING.md) - 参与开发
-2. [API 文档](./api/README.md) - API 接口
-3. [系统架构](./SYSTEM.md#系统架构) - 架构设计
+1. [本地开发与编译指南](./DEVELOPMENT.md) - 本地联调与源码编译
+2. [贡献指南](../CONTRIBUTING.md) - 参与开发
+3. [API 文档](./api/README.md) - API 接口
+4. [系统架构](./SYSTEM.md#系统架构) - 架构设计
 
 ## 🔍 按主题查找文档
 
@@ -117,7 +120,7 @@ zbxtable/
 
 - [Docker 部署](../deployments/docker/README.md)
 - [二进制部署](./QUICKSTART.md#二进制快速部署)
-- [源码编译](../README.md#compile-from-source)
+- [源码编译与本地开发](./DEVELOPMENT.md)
 - [环境要求](./QUICKSTART.md#环境要求)
 
 ### 配置管理
@@ -151,6 +154,7 @@ zbxtable/
 
 ### 开发相关
 
+- [本地开发与编译](./DEVELOPMENT.md)
 - [开发环境](../CONTRIBUTING.md#开发环境搭建)
 - [代码规范](../CONTRIBUTING.md#代码规范)
 - [测试指南](../CONTRIBUTING.md#测试)

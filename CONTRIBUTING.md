@@ -63,91 +63,72 @@
 
 ## 开发环境搭建
 
+完整的本地联调、单二进制内嵌前端编译、跨平台打包与常见问题排查请参阅 **[本地开发与编译指南](./docs/DEVELOPMENT.md)**。以下为快速上手步骤：
+
 ### 后端开发环境
 
-1. **安装 Go**
+1. **安装 Go（1.26+）**
+
+请前往 [go.dev/dl](https://go.dev/dl/) 安装与 `go.mod` 匹配的 Go 版本（当前要求 `Go 1.26+`）。
+
+2. **并列克隆前后端仓库（`3.0` 分支）**
 
 ```bash
-# 下载并安装 Go 1.23+
-wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
-
-# 配置环境变量
-export PATH=$PATH:/usr/local/go/bin
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin
+mkdir -p zbxtable-workspace && cd zbxtable-workspace
+git clone -b 3.0 https://github.com/canghai908/zbxtable.git zbxtable
+git clone -b 3.0 https://github.com/canghai908/zbxtable-web.git zbxtable-web
+cd zbxtable
 ```
 
-2. **克隆项目**
+3. **准备嵌入目录占位与安装依赖**
 
 ```bash
-git clone https://github.com/canghai908/zbxtable.git
-cd zbxtable/zbxtable
+# 首次克隆尚未构建前端时，为 go:embed 创建占位文件以便直接运行/测试后端
+mkdir -p api/v1/web/web
+[ -f api/v1/web/web/index.html ] || echo "<!doctype html><title>ZbxTable Dev</title>" > api/v1/web/web/index.html
+
+# 下载并整理依赖
+make install
 ```
 
-3. **安装依赖**
+4. **准备数据库与配置**
+
+创建 MySQL（`utf8mb4`）或 PostgreSQL 数据库。首次启动时可不创建 `config/app.conf`，直接通过安装向导（`/install`）完成初始化；也可手动创建 `config/app.conf`（配置项说明见 [本地开发与编译指南](./docs/DEVELOPMENT.md#33-配置后端两种方式任选其一)）。
+
+5. **运行与编译后端**
 
 ```bash
-go mod download
-```
+# 编译并启动（默认监听 :8088）
+make run
 
-4. **配置数据库**
-
-```bash
-# 创建数据库
-mysql -uroot -p -e "CREATE DATABASE zbxtable_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-
-# 复制配置文件
-cp config/app.conf.example config/app.conf
-
-# 编辑配置文件
-vim config/app.conf
-```
-
-5. **运行项目**
-
-```bash
-# 开发模式运行
+# 或直接开发运行
 go run main.go web
 
-# 或编译后运行
-go build -o zbxtable main.go
-./zbxtable web
+# 编译当前平台二进制（输出 build/zbxtable）
+make build
 ```
 
 ### 前端开发环境
 
-1. **安装 Node.js**
+1. **安装 Node.js（16.x ~ 20.x）与 Yarn**
+
+2. **安装依赖并启动开发服务器**
 
 ```bash
-# 安装 Node.js 16+
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-sudo apt-get install -y nodejs
+cd ../zbxtable-web
+yarn install
+
+# 启动开发服务器（默认监听 http://127.0.0.1:8080，自动代理 API 到 :8088）
+yarn serve
+# 若使用 Node.js 17+ 提示 OpenSSL 错误，请运行：
+# NODE_OPTIONS=--openssl-legacy-provider yarn serve
 ```
 
-2. **克隆前端项目**
+3. **代码检查与生产构建**
 
 ```bash
-git clone https://github.com/canghai908/zbxtable-web.git
-cd zbxtable-web
-```
-
-3. **安装依赖**
-
-```bash
-npm install
-```
-
-4. **运行开发服务器**
-
-```bash
-npm run serve
-```
-
-5. **构建生产版本**
-
-```bash
-npm run build
+yarn lint
+yarn build   # 构建产物输出到 zbxtable-web/web/
 ```
 
 ## 代码规范
@@ -252,7 +233,8 @@ cd zbxtable
 ### 3. 创建分支
 
 ```bash
-# 从 main 分支创建新分支
+# 从 3.0 分支创建新功能分支
+git checkout 3.0
 git checkout -b feature/your-feature-name
 
 # 或修复 bug
